@@ -7,6 +7,11 @@ import {
   type Response,
 } from "express";
 import { detectImageContentType } from "../lib/objectStorage";
+import {
+  generateJson,
+  GeminiProviderError,
+  MissingGeminiKeyError,
+} from "../lib/gemini";
 
 const router: IRouter = Router();
 const MAX_LABEL_BYTES = 10 * 1024 * 1024;
@@ -16,14 +21,6 @@ const SUPPORTED_LABEL_TYPES = new Set([
   "image/webp",
   "image/gif",
 ]);
-const LABEL_MODELS = [
-  "gemini-flash-lite-latest",
-  "gemini-2.5-flash-lite",
-  "gemini-flash-latest",
-  "gemini-2.5-flash",
-] as const;
-const MODEL_ATTEMPT_TIMEOUT_MS = 12_000;
-const GEMINI_BUDGET_MS = 28_000;
 const MAX_ACTIVE_SCANS = 2;
 const MAX_SCANS_PER_WINDOW = 6;
 const SCAN_WINDOW_MS = 10 * 60_000;
@@ -69,16 +66,6 @@ const labelResponseSchema = {
 } as const;
 
 class UnreadableLabelError extends Error {}
-class MissingGeminiKeyError extends Error {}
-class GeminiProviderError extends Error {
-  constructor(
-    readonly status: number,
-    readonly providerCode: unknown,
-    message: string,
-  ) {
-    super(message);
-  }
-}
 
 function admitLabelScan(
   req: Request,
@@ -273,91 +260,6 @@ const labelPrompt = [
   "Read this ingredient product label and extract the requested fields.",
 ].join(" ");
 
-// A key that can reach one Flash model cannot be assumed to reach them all,
-// so provider-level failures fall through to the next candidate. A readable
-// response that simply has no usable label data is NOT a provider failure and
-// must not trigger a retry.
-function isRetryableProviderError(error: GeminiProviderError): boolean {
-  return (
-    error.status === 403 ||
-    error.status === 404 ||
-    error.status === 429 ||
-    error.status >= 500
-  );
-}
-
-async function requestLabelText(
-  apiKey: string,
-  model: string,
-  mimeType: string,
-  imageBase64: string,
-  timeoutMs: number,
-): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  let response: Awaited<ReturnType<typeof fetch>>;
-  try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: labelPrompt },
-                { inline_data: { mime_type: mimeType, data: imageBase64 } },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0,
-            maxOutputTokens: 8192,
-            responseMimeType: "application/json",
-            responseSchema: labelResponseSchema,
-          },
-        }),
-      },
-    );
-  } catch (error) {
-    // Network failure or per-attempt timeout. Surface it as a provider error
-    // so the caller can move on while it still has budget.
-    throw new GeminiProviderError(
-      504,
-      "fetch_failed",
-      error instanceof Error ? error.message : "Gemini request failed",
-    );
-  } finally {
-    clearTimeout(timeout);
-  }
-  if (!response.ok) {
-    const providerPayload = (await response.json().catch(() => null)) as
-      | { error?: { code?: unknown; message?: unknown } }
-      | null;
-    const providerMessage =
-      typeof providerPayload?.error?.message === "string"
-        ? providerPayload.error.message.slice(0, 500)
-        : `Gemini request failed with status ${response.status}`;
-    throw new GeminiProviderError(
-      response.status,
-      providerPayload?.error?.code,
-      providerMessage,
-    );
-  }
-  const responsePayload = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>;
-  };
-  return (
-    responsePayload.candidates?.[0]?.content?.parts
-      ?.map((part) => (typeof part.text === "string" ? part.text : ""))
-      .join("")
-      .trim() ?? ""
-  );
-}
-
 router.post(
   "/ingredient-label-scan",
   admitLabelScan,
@@ -382,53 +284,30 @@ router.post(
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new MissingGeminiKeyError();
 
-      const imageBase64 = req.body.toString("base64");
-      const deadline = Date.now() + GEMINI_BUDGET_MS;
-      let content = "";
-      let usedModel = "";
-      let lastProviderError: GeminiProviderError | null = null;
-
-      for (const model of LABEL_MODELS) {
-        const remaining = deadline - Date.now();
-        if (remaining <= 1_000) break;
-        try {
-          content = await requestLabelText(
-            apiKey,
-            model,
-            declaredContentType,
-            imageBase64,
-            Math.min(MODEL_ATTEMPT_TIMEOUT_MS, remaining),
-          );
-          usedModel = model;
-          break;
-        } catch (error) {
-          if (
-            error instanceof GeminiProviderError &&
-            isRetryableProviderError(error)
-          ) {
-            lastProviderError = error;
-            req.log.warn(
-              {
-                model,
-                providerStatus: error.status,
-                providerCode: error.providerCode,
-                providerMessage: error.message,
-              },
-              "Gemini label model unavailable, trying the next one",
-            );
-            continue;
-          }
-          throw error;
-        }
-      }
-
-      if (!usedModel) {
-        throw (
-          lastProviderError ??
-          new GeminiProviderError(502, null, "No Gemini model was reachable")
-        );
-      }
-      req.log.info({ model: usedModel }, "Gemini label model responded");
+      const { text: content, model } = await generateJson({
+        apiKey,
+        parts: [
+          { text: labelPrompt },
+          {
+            inline_data: {
+              mime_type: declaredContentType,
+              data: req.body.toString("base64"),
+            },
+          },
+        ],
+        responseSchema: labelResponseSchema,
+        onModelSkipped: (skipped, error) =>
+          req.log.warn(
+            {
+              model: skipped,
+              providerStatus: error.status,
+              providerCode: error.providerCode,
+              providerMessage: error.message,
+            },
+            "Gemini label model unavailable, trying the next one",
+          ),
+      });
+      req.log.info({ model }, "Gemini label model responded");
 
       if (!content) throw new UnreadableLabelError();
       let parsed: unknown;

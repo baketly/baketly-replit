@@ -4,6 +4,8 @@ import { applyIngredientRecordBehavior } from "./ingredient-template";
 import { applyRecipeRecordBehavior } from "./recipe-template";
 import { applyAnalyticsBehavior } from "./analytics-template";
 import { scanIngredientLabel } from "./ingredient-label-scan";
+import { applyChatBehavior } from "./chat-template";
+import { askBaketly, buildAskContext } from "./ask-baketly";
 
 type WorkspaceState = Record<string, unknown>;
 type PersistenceStatus = "loading" | "ready" | "offline";
@@ -14,6 +16,16 @@ declare global {
     __baketlyServerState: WorkspaceState;
     __baketlyPersist: (state: WorkspaceState) => void;
     __baketlyApplyRecipeRecords: (template: string) => string;
+    __baketlyAsk: (
+      question: string,
+      context: Record<string, unknown>,
+      history: Array<{ who: string; text: string }>,
+    ) => Promise<import("./ask-baketly").AskAnswer>;
+    __baketlyAskContext: (
+      state: Record<string, unknown>,
+      ingredientMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
+      packagingMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
+    ) => Record<string, unknown>;
     __baketlyScanIngredientLabel: (
       file: File,
     ) => Promise<import("./ingredient-label-scan").IngredientLabelScan>;
@@ -203,9 +215,13 @@ window.__baketlyApplyRecipeRecords = (template) => {
     recipeTemplate = removeKnownPackagingPlaceholders(template);
   }
 
-  return applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate));
+  return applyChatBehavior(
+    applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+  );
 };
 window.__baketlyScanIngredientLabel = scanIngredientLabel;
+window.__baketlyAsk = askBaketly;
+window.__baketlyAskContext = buildAskContext;
 window.__baketlyReady = workspaceClient.hydrate();
 window.__baketlyPersist = (state) => workspaceClient.queue(state);
 window.addEventListener("pagehide", workspaceClient.flush);
