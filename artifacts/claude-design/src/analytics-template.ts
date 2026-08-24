@@ -85,7 +85,7 @@ export function applyAnalyticsBehavior(template: string): string {
     <h6 style="margin-top:28px;margin-bottom:4px;font-size:16px;font-weight:600">Revenue Trends</h6>
     <div class="an-bar-container">
       <sc-for list="{{ chartBars }}" as="bar" hint-placeholder-count="6">
-        <div class="an-bar-col">
+        <div class="an-bar-col" sc-camel-on-click="{{ bar.open }}" style="cursor:pointer">
           <div class="an-bar {{ bar.activeCls }}" style="height:{{ bar.height }}"></div>
           <div class="an-bar-label">{{ bar.label }}</div>
         </div>
@@ -134,7 +134,7 @@ export function applyAnalyticsBehavior(template: string): string {
     
     <sc-if value="{{ hasEvents }}" hint-placeholder-val="{{ true }}">
       <sc-for list="{{ eventsData }}" as="ev" hint-placeholder-count="2">
-        <div class="an-card">
+        <div class="an-card" sc-camel-on-click="{{ ev.open }}" style="cursor:pointer">
           <div style="display:flex;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid var(--color-divider);padding-bottom:14px;">
             <div>
               <div style="font-size:16px;font-weight:600;margin-bottom:2px;">{{ ev.name }}</div>
@@ -263,6 +263,45 @@ export function applyAnalyticsBehavior(template: string): string {
   </sc-if>
 </div>
 </sc-if>
+
+<!-- ══ ANALYTICS · EVENT BREAKDOWN ══ -->
+<sc-if value="{{ onAnalyticsEvent }}" hint-placeholder-val="{{ false }}">
+<div style="padding:14px 20px 28px">
+  <button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>
+  <sc-if value="{{ hasEventDetail }}" hint-placeholder-val="{{ false }}">
+    <h2 style="font-size:26px;margin:6px 0 2px">{{ eventDetailName }}</h2>
+    <p class="text-muted" style="font-size:13px;margin-bottom:18px">{{ eventDetailDateStr }}</p>
+
+    <div class="an-card">
+      <div class="an-list-item"><span>Revenue</span><span style="font-feature-settings:'tnum'">{{ eventDetailRevStr }}</span></div>
+      <div class="an-list-item"><span>Production cost</span><span style="font-feature-settings:'tnum';color:#b0563e">−{{ eventDetailProductionStr }}</span></div>
+      <div class="an-list-item"><span>Booth fee</span><span style="font-feature-settings:'tnum';color:#b0563e">−{{ eventDetailBoothStr }}</span></div>
+      <div class="an-list-item" style="border-top:2px solid var(--color-text);margin-top:4px"><span style="font-weight:600">Profit</span><span style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum';color:{{ eventDetailProfitColor }}">{{ eventDetailProfitStr }}</span></div>
+      <div class="an-list-item"><span class="text-muted" style="font-size:13px">ROI · margin</span><span class="text-muted" style="font-size:13px;font-feature-settings:'tnum'">{{ eventDetailRoiStr }} · {{ eventDetailMarginStr }}</span></div>
+    </div>
+
+    <sc-if value="{{ hasEventDetailItems }}" hint-placeholder-val="{{ false }}">
+      <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">Sold at this market</h6>
+      <div class="an-card">
+        <sc-for list="{{ eventDetailItems }}" as="row" hint-placeholder-count="5">
+          <div class="an-list-item">
+            <div style="min-width:0"><div style="font-size:14px">{{ row.name }}</div><div class="text-muted" style="font-size:12px">{{ row.unitsStr }} · {{ row.profitStr }} profit</div></div>
+            <span style="font-feature-settings:'tnum';flex:none">{{ row.revStr }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasNoEventDetailItems }}" hint-placeholder-val="{{ false }}">
+      <div class="text-muted" style="text-align:center;padding:40px 20px;font-size:13px">Nothing was recorded as sold at this market.</div>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ hasNoEventDetail }}" hint-placeholder-val="{{ false }}">
+    <div class="text-muted" style="text-align:center;padding:40px 20px;font-size:13px">That event is no longer available.</div>
+  </sc-if>
+</div>
+</sc-if>
 <!-- ══`;
 
   const newLogic = `      ...(() => {
@@ -298,6 +337,10 @@ export function applyAnalyticsBehavior(template: string): string {
         });
 
          const monthKeys = new Set(Object.keys(salesByMonth));
+         for (let i = 5; i >= 0; i--) {
+           const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+           monthKeys.add(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+         }
          events.forEach(ev => {
            if (!ev.occurredAt) return;
            const d = new Date(ev.occurredAt);
@@ -327,8 +370,11 @@ export function applyAnalyticsBehavior(template: string): string {
         const sortedAsc = [...sortedMonths].reverse();
         const mIdx = sortedAsc.indexOf(selectedMonth);
         if (mIdx > 0) {
-          const prevMonth = sortedAsc[mIdx - 1];
-          const prevRev = salesByMonth[prevMonth] ? salesByMonth[prevMonth].revenue : 0;
+          let prevRev = 0;
+          for (let i = mIdx - 1; i >= 0 && prevRev === 0; i--) {
+            const candidate = sortedAsc[i];
+            prevRev = salesByMonth[candidate] ? salesByMonth[candidate].revenue : 0;
+          }
           if (prevRev > 0) {
             const diff = Math.round(((monthRev - prevRev) / prevRev) * 100);
             monthRevDiff = (diff >= 0 ? '↑' : '↓') + Math.abs(diff) + '% vs prev';
@@ -368,7 +414,8 @@ export function applyAnalyticsBehavior(template: string): string {
             label: d.toLocaleString('en-US', { month: 'short' }),
             val: rev,
             height: maxRev > 0 ? Math.max(4, Math.round((rev / maxRev) * 100)) + '%' : '4px',
-            activeCls: m === selectedMonth ? 'active' : ''
+            activeCls: m === selectedMonth ? 'active' : '',
+            open: () => this.setState(st => ({ analyticsMonth: m, screen: 'analyticsKept', stack: [...st.stack, st.screen] }))
           };
         });
 
@@ -389,7 +436,7 @@ export function applyAnalyticsBehavior(template: string): string {
           };
         }).sort((a, b) => b.revenue - a.revenue);
 
-         const eventsData = events.filter(ev => (ev.occurredAt || '').slice(0, 7) === selectedMonth).map(ev => {
+         const buildEventStats = (ev) => {
           const evSales = sales.filter(s => s.eventId === ev.id);
           const evRev = evSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
             const productionCost = evSales.reduce((sum, sale) => sum + (sale.lineItems || []).reduce((lineSum, li) => lineSum + (Number(li.quantity) || 0) * (Number(li.unitCost) || 0), 0), 0);
@@ -408,9 +455,39 @@ export function applyAnalyticsBehavior(template: string): string {
             profitColor: evProfit >= 0 ? 'var(--color-text)' : '#b0563e',
             marginStr: evMargin + '%',
              roiStr: evRoi + '%',
-            dateStr: new Date(ev.occurredAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            dateStr: new Date(ev.occurredAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            open: () => this.setState(st => ({ screen: 'analyticsEvent', stack: [...st.stack, st.screen], analyticsEventId: ev.id }))
           };
-        }).sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime());
+        };
+        const eventsData = events
+          .filter(ev => (ev.occurredAt || '').slice(0, 7) === selectedMonth)
+          .map(buildEventStats)
+          .sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime());
+
+        // looked up across every event, not just the selected month
+        const detailEventRaw = events.find(ev => ev.id === (this.state.analyticsEventId || '')) || null;
+        const eventDetail = detailEventRaw ? buildEventStats(detailEventRaw) : null;
+        const eventDetailTotals = {};
+        if (eventDetail) {
+          sales.filter(sale => sale.eventId === eventDetail.id).forEach(sale => {
+            (sale.lineItems || []).forEach(li => {
+              const key = li.productId || li.name;
+              if (!eventDetailTotals[key]) eventDetailTotals[key] = { name: li.name || 'Item', items: 0, revenue: 0, cost: 0 };
+              const quantity = Number(li.quantity) || 0;
+              eventDetailTotals[key].items += quantity;
+              eventDetailTotals[key].revenue += quantity * (Number(li.unitPrice) || 0);
+              eventDetailTotals[key].cost += quantity * (Number(li.unitCost) || 0);
+            });
+          });
+        }
+        const eventDetailItems = Object.values(eventDetailTotals)
+          .sort((a, b) => b.revenue - a.revenue)
+          .map(row => ({
+            name: row.name,
+            unitsStr: row.items + (row.items === 1 ? ' unit' : ' units'),
+            revStr: '$' + row.revenue.toFixed(2),
+            profitStr: (row.revenue - row.cost < 0 ? '-$' : '$') + Math.abs(row.revenue - row.cost).toFixed(2)
+          }));
 
         const groupLabels = { bread: 'Bread', babka: 'Babka', cookie: 'Cookies', treat: 'Treats', other: 'Other' };
         const productEntries = Object.entries(monthData.products);
@@ -492,6 +569,20 @@ export function applyAnalyticsBehavior(template: string): string {
           hasGroupRows: groupRows.length > 0,
           hasNoGroupRows: groupRows.length === 0,
           itemProductRows,
+          hasEventDetail: !!eventDetail,
+          hasNoEventDetail: !eventDetail,
+          hasEventDetailItems: eventDetailItems.length > 0,
+          hasNoEventDetailItems: !!eventDetail && eventDetailItems.length === 0,
+          eventDetailItems,
+          eventDetailName: eventDetail ? eventDetail.name : '',
+          eventDetailDateStr: eventDetail ? eventDetail.dateStr : '',
+          eventDetailRevStr: eventDetail ? eventDetail.revStr : '$0.00',
+          eventDetailProductionStr: eventDetail ? eventDetail.productionCostStr : '$0.00',
+          eventDetailBoothStr: eventDetail ? eventDetail.boothFeeStr : '$0.00',
+          eventDetailProfitStr: eventDetail ? eventDetail.profitStr : '$0.00',
+          eventDetailProfitColor: eventDetail ? eventDetail.profitColor : 'var(--color-text)',
+          eventDetailRoiStr: eventDetail ? eventDetail.roiStr : '0%',
+          eventDetailMarginStr: eventDetail ? eventDetail.marginStr : '0%',
           insightText,
           chartBars,
           allTimeProductsArr,
@@ -505,6 +596,7 @@ export function applyAnalyticsBehavior(template: string): string {
       onAnalytics: screen === 'analytics', goAnalytics: () => this.setState(st => ({ screen: 'analytics', stack: [...st.stack, st.screen], analyticsTab: 'overview' })),
       onAnalyticsKept: screen === 'analyticsKept',
       onAnalyticsItems: screen === 'analyticsItems',
+      onAnalyticsEvent: screen === 'analyticsEvent',
       goAnalyticsKept: () => this.setState(st => ({ screen: 'analyticsKept', stack: [...st.stack, st.screen] })),
       goAnalyticsItems: () => this.setState(st => ({ screen: 'analyticsItems', stack: [...st.stack, st.screen] })),
       backFromAnalyticsDetail: () => this.setState(st => { const stack = [...st.stack]; const previous = stack.pop() || 'analytics'; return { screen: previous, stack }; }),`;
