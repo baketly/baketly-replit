@@ -10,7 +10,6 @@ export * from './errorEnvelope';
 export * from './healthStatus';
 export * from './ingredientLabelScanResponse';
 export * from './ingredientLabelScanResponseNutritionBasis';
-export * from './photoUploadResponse';
 export * from './saveWorkspaceStateBody';
 export * from './workspaceState';
 export * from './workspaceStateResponse';

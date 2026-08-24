@@ -40,30 +40,6 @@ export const SaveWorkspaceStateResponse = zod.object({
 
 
 /**
- * Receives an image body up to 10 MB, verifies its bytes match the
- * supplied image content type, then stores it. This endpoint is public
- * for the current single-user app and must be protected when
- * per-customer accounts are introduced.
- * @summary Upload a verified image
- */
-export const UploadPhotoResponse = zod.object({
-  "objectPath": zod.string()
-})
-
-
-/**
- * Serves image objects. This route is public for the current single-user
- * app and must be protected with authentication and ACL checks later.
- * @summary Serve a stored image
- */
-export const GetStorageObjectParams = zod.object({
-  "objectPath": zod.coerce.string()
-})
-
-export const GetStorageObjectResponse = zod.unknown()
-
-
-/**
  * Reads a product label photo with vision AI and returns nullable
  * ingredient fields for review. The photo is not persisted.
  * @summary Read an ingredient nutrition label

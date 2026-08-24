@@ -23,7 +23,6 @@ import type {
   ErrorEnvelope,
   HealthStatus,
   IngredientLabelScanResponse,
-  PhotoUploadResponse,
   SaveWorkspaceStateBody,
   WorkspaceStateResponse
 } from './api.schemas';
@@ -281,160 +280,6 @@ export const useSaveWorkspaceState = <TError = ErrorType<unknown>,
       return useMutation(getSaveWorkspaceStateMutationOptions(options));
     }
 
-export const getUploadPhotoUrl = () => {
-
-
-
-
-  return `/api/storage/uploads`
-}
-
-/**
- * Receives an image body up to 10 MB, verifies its bytes match the
- * supplied image content type, then stores it. This endpoint is public
- * for the current single-user app and must be protected when
- * per-customer accounts are introduced.
- * @summary Upload a verified image
- */
-export const uploadPhoto = async (uploadPhotoBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<PhotoUploadResponse> => {
-
-  return customFetch<PhotoUploadResponse>(getUploadPhotoUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'image/jpeg', ...options?.headers },
-    body: uploadPhotoBody
-  }
-);}
-
-
-
-
-
-export const getUploadPhotoMutationOptions = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPhoto>>, TError,{data: BodyType<Blob>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof uploadPhoto>>, TError,{data: BodyType<Blob>}, TContext> => {
-
-const mutationKey = ['uploadPhoto'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadPhoto>>, {data: BodyType<Blob>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  uploadPhoto(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UploadPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof uploadPhoto>>>
-    export type UploadPhotoMutationBody = BodyType<Blob>
-    export type UploadPhotoMutationError = ErrorType<ErrorEnvelope>
-
-    /**
- * @summary Upload a verified image
- */
-export const useUploadPhoto = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPhoto>>, TError,{data: BodyType<Blob>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof uploadPhoto>>,
-        TError,
-        {data: BodyType<Blob>},
-        TContext
-      > => {
-      return useMutation(getUploadPhotoMutationOptions(options));
-    }
-
-export const getGetStorageObjectUrl = (objectPath: string,) => {
-
-
-
-
-  return `/api/storage/objects/${objectPath}`
-}
-
-/**
- * Serves image objects. This route is public for the current single-user
- * app and must be protected with authentication and ACL checks later.
- * @summary Serve a stored image
- */
-export const getStorageObject = async (objectPath: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
-
-  return customFetch<Blob>(getGetStorageObjectUrl(objectPath),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetStorageObjectQueryKey = (objectPath: string,) => {
-    return [
-    `/api/storage/objects/${objectPath}`
-    ] as const;
-    }
-
-
-export const getGetStorageObjectQueryOptions = <TData = Awaited<ReturnType<typeof getStorageObject>>, TError = ErrorType<ErrorEnvelope>>(objectPath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStorageObject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetStorageObjectQueryKey(objectPath);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStorageObject>>> = ({ signal }) => getStorageObject(objectPath, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: objectPath !== null && objectPath !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStorageObject>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetStorageObjectQueryResult = NonNullable<Awaited<ReturnType<typeof getStorageObject>>>
-export type GetStorageObjectQueryError = ErrorType<ErrorEnvelope>
-
-
-/**
- * @summary Serve a stored image
- */
-
-export function useGetStorageObject<TData = Awaited<ReturnType<typeof getStorageObject>>, TError = ErrorType<ErrorEnvelope>>(
- objectPath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStorageObject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetStorageObjectQueryOptions(objectPath,options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
 export const getScanIngredientLabelUrl = () => {
 
 
@@ -507,3 +352,4 @@ export const useScanIngredientLabel = <TError = ErrorType<ErrorEnvelope>,
       > => {
       return useMutation(getScanIngredientLabelMutationOptions(options));
     }
+

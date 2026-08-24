@@ -17,10 +17,6 @@ export interface WorkspaceStateResponse {
   updatedAt: string | null;
 }
 
-export interface PhotoUploadResponse {
-  objectPath: string;
-}
-
 export type IngredientLabelScanResponseNutritionBasis = typeof IngredientLabelScanResponseNutritionBasis[keyof typeof IngredientLabelScanResponseNutritionBasis];
 
 

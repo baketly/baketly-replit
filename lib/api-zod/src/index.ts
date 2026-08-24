@@ -4,7 +4,6 @@ export type {
   HealthStatus,
   IngredientLabelScanResponse,
   IngredientLabelScanResponseNutritionBasis,
-  PhotoUploadResponse,
   WorkspaceState,
   WorkspaceStateResponse,
 } from "./generated/types";

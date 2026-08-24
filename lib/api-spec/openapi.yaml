@@ -10,8 +10,6 @@ servers:
 tags:
   - name: health
     description: Health operations
-  - name: Storage
-    description: Object storage upload and serving endpoints.
 paths:
   /healthz:
     get:
@@ -59,94 +57,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WorkspaceStateResponse"
-  /storage/uploads:
-    post:
-      tags: [Storage]
-      operationId: uploadPhoto
-      summary: Upload a verified image
-      description: |
-        Receives an image body up to 10 MB, verifies its bytes match the
-        supplied image content type, then stores it. This endpoint is public
-        for the current single-user app and must be protected when
-        per-customer accounts are introduced.
-      requestBody:
-        required: true
-        content:
-          image/jpeg:
-            schema:
-              type: string
-              format: binary
-          image/png:
-            schema:
-              type: string
-              format: binary
-          image/webp:
-            schema:
-              type: string
-              format: binary
-          image/gif:
-            schema:
-              type: string
-              format: binary
-      responses:
-        "201":
-          description: Image stored.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PhotoUploadResponse"
-        "400":
-          description: Image body is invalid, unsupported, or too large.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-        "413":
-          description: Image body exceeds 10 MB.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-        "500":
-          description: Failed to store the image.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-  /storage/objects/{objectPath}:
-    get:
-      tags: [Storage]
-      operationId: getStorageObject
-      summary: Serve a stored image
-      description: |
-        Serves image objects. This route is public for the current single-user
-        app and must be protected with authentication and ACL checks later.
-      parameters:
-        - name: objectPath
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Object content streamed with its content type.
-          content:
-            "*/*":
-              schema:
-                type: string
-                format: binary
-        "404":
-          description: Object not found.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-        "415":
-          description: Object is not a supported image.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
   /ingredient-label-scan:
     post:
       tags: [Ingredients]
@@ -238,12 +148,6 @@ components:
     WorkspaceState:
       type: object
       additionalProperties: true
-    PhotoUploadResponse:
-      type: object
-      required: [objectPath]
-      properties:
-        objectPath:
-          type: string
     IngredientLabelScanResponse:
       type: object
       required:
