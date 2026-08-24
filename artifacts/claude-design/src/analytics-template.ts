@@ -335,10 +335,11 @@ export function applyAnalyticsBehavior(template: string): string {
     <div class="an-card">
       <div class="an-ledger-row"><span>Revenue</span><span class="an-num">{{ eventDetailRevStr }}</span></div>
       <div class="an-ledger-row"><span>Production cost</span><span class="an-num an-neg">−{{ eventDetailProductionStr }}</span></div>
-      <div class="an-ledger-row"><span>Booth fee</span><span class="an-num an-neg">−{{ eventDetailBoothStr }}</span></div>
-      <sc-if value="{{ eventDetailHasOtherCosts }}" hint-placeholder-val="{{ false }}">
-        <sc-for list="{{ eventDetailOtherCosts }}" as="oc" hint-placeholder-count="1">
-          <div class="an-ledger-row"><span>{{ oc.label }}</span><span class="an-num an-neg">−{{ oc.amountStr }}</span></div>
+      <div class="an-ledger-row"><span>Event costs</span><span class="an-num an-neg">−{{ eventDetailCostsStr }}</span></div>
+      <div style="padding:2px 0 10px"><button class="btn btn-ghost" sc-camel-on-click="{{ toggleEventCosts }}" style="min-height:32px;padding:0;font-size:12px;font-weight:600;color:var(--color-accent-700)">{{ eventCostsToggleLabel }} ▾</button></div>
+      <sc-if value="{{ eventCostsOpen }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ eventDetailCostLines }}" as="cl" hint-placeholder-count="2">
+          <div class="an-ledger-row" style="padding-left:14px"><span class="text-muted" style="font-size:13px">{{ cl.label }}</span><span class="an-num text-muted" style="font-size:13px">{{ cl.amountStr }}</span></div>
         </sc-for>
       </sc-if>
       <div class="an-ledger-total"><span class="an-label">Profit</span><span class="an-total-num" style="color:{{ eventDetailProfitColor }}">{{ eventDetailProfitStr }}</span></div>
@@ -526,6 +527,13 @@ export function applyAnalyticsBehavior(template: string): string {
            costStr: '$' + evCost.toFixed(2),
              productionCostStr: '$' + productionCost.toFixed(2),
              boothFeeStr: '$' + boothFee.toFixed(2),
+             allCostsStr: '$' + (boothFee + otherCosts).toFixed(2),
+             costLines: [{ label: 'Booth fee', amountStr: '$' + boothFee.toFixed(2) }].concat(
+               (Array.isArray(ev.otherCosts) ? ev.otherCosts : []).map(cost => ({
+                 label: String((cost && cost.label) || 'Other cost'),
+                 amountStr: '$' + (Number(cost && cost.amount) || 0).toFixed(2)
+               }))
+             ),
              otherCostsStr: '$' + otherCosts.toFixed(2),
              hasOtherCosts: otherCosts > 0,
              otherCostRows: (Array.isArray(ev.otherCosts) ? ev.otherCosts : []).map(cost => ({
@@ -742,9 +750,11 @@ export function applyAnalyticsBehavior(template: string): string {
           eventDetailDateStr: eventDetail ? eventDetail.dateStr : '',
           eventDetailRevStr: eventDetail ? eventDetail.revStr : '$0.00',
           eventDetailProductionStr: eventDetail ? eventDetail.productionCostStr : '$0.00',
-          eventDetailBoothStr: eventDetail ? eventDetail.boothFeeStr : '$0.00',
-          eventDetailOtherCosts: eventDetail ? eventDetail.otherCostRows : [],
-          eventDetailHasOtherCosts: !!eventDetail && eventDetail.hasOtherCosts,
+          eventDetailCostsStr: eventDetail ? eventDetail.allCostsStr : '$0.00',
+          eventDetailCostLines: eventDetail ? eventDetail.costLines : [],
+          eventCostsOpen: this.state.eventCostsOpen === true,
+          eventCostsToggleLabel: this.state.eventCostsOpen === true ? 'Hide the breakdown' : 'Show the breakdown',
+          toggleEventCosts: () => this.setState(st => ({ eventCostsOpen: !st.eventCostsOpen })),
           eventDetailProfitStr: eventDetail ? eventDetail.profitStr : '$0.00',
           eventDetailProfitColor: eventDetail ? eventDetail.profitColor : 'var(--color-text)',
           eventDetailRoiStr: eventDetail ? eventDetail.roiStr : '0%',
@@ -855,6 +865,37 @@ function removeCashTracker(template: string): string {
 
 // The mockup's two "Baketly noticed" cards held invented copy and did nothing.
 // They now show a real tip and open the chat with it.
+const eventCostEditorMarkup = `
+  <div style="border-top:1px solid var(--color-divider);padding-top:16px;margin-top:4px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
+      <h6 style="margin:0">Other costs</h6>
+      <sc-if value="{{ hasEventOtherCosts }}" hint-placeholder-val="{{ false }}"><span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">{{ eventOtherCostTotalStr }}</span></sc-if>
+    </div>
+    <p class="text-muted" style="font-size:12px;margin-bottom:10px">Travel, parking, a helper's hours — anything the table cost you beyond the booth fee.</p>
+    <sc-for list="{{ eventOtherCosts }}" as="oc" hint-placeholder-count="0">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input class="input" value="{{ oc.label }}" sc-camel-on-change="{{ oc.setLabel }}" placeholder="Travel, parking, staff…" aria-label="Cost name" style="flex:1;min-width:0">
+        <input class="input" value="{{ oc.amount }}" sc-camel-on-change="{{ oc.setAmount }}" inputmode="decimal" placeholder="0.00" aria-label="Cost amount" style="width:88px;flex:none;text-align:right;font-feature-settings:'tnum'">
+        <button class="btn btn-ghost" sc-camel-on-click="{{ oc.remove }}" aria-label="Remove cost" style="min-height:38px;padding:0 8px;color:#b0563e;flex:none">×</button>
+      </div>
+    </sc-for>
+    <button class="btn btn-secondary" sc-camel-on-click="{{ addEventOtherCost }}" style="min-height:38px;font-size:12px">+ Add cost</button>
+  </div>
+`;
+
+// Costs sit at the end of the event screen, after the lineup and results,
+// rather than interrupting the header.
+function moveEventCostsToBottom(template: string): string {
+  const anchor = "  </sc-if>\n</div>\n</sc-if>\n\n<!-- ══ SHOPPING LIST ══ -->";
+  if (!template.includes(anchor)) {
+    throw new Error("Missing stable event screen end anchor");
+  }
+  return template.replace(
+    anchor,
+    () => "  </sc-if>\n" + eventCostEditorMarkup + "</div>\n</sc-if>\n\n<!-- ══ SHOPPING LIST ══ -->",
+  );
+}
+
 function linkNoticedCards(template: string): string {
   const cards: Array<[string, string, string]> = [
     ["  <div class=\"card\" style=\"gap:8px\">\n    <span class=\"card-kicker\">Baketly noticed</span>\n    <div style=\"font-size:14px;line-height:1.55\">Sourdough is your best earner per oven-hour, and Base Market Saturdays drive most of it. Margins still exclude your time — <span style=\"color:var(--color-accent-700)\">set an hourly rate</span> to see true profit.</div>\n  </div>", "  <div class=\"card\" sc-camel-on-click=\"{{ askAboutInsight }}\" style=\"gap:8px;cursor:pointer\">\n    <span class=\"card-kicker\">Baketly noticed</span>\n    <div style=\"font-size:14px;line-height:1.55\">{{ insightText }}</div>\n    <div style=\"font-size:12px;font-weight:600;color:var(--color-accent-700)\">Ask about this ›</div>\n  </div>", "home noticed card"],
@@ -878,7 +919,7 @@ function addCommerceBehavior(template: string): string {
   );
   out = out.replace(
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:28px;margin:0">Base Farmers Market</h2><span class="tag tag-accent">{{ evStatusLabel }}</span></div>\n  <p class="text-muted" style="font-size:13px;margin:4px 0 18px">Production date Sep 12 · booth $125</p>',
-    () => '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><input class="input" value="{{ eventName }}" sc-camel-on-change="{{ setEventName }}" aria-label="Event name" style="flex:1;min-width:180px;font-family:var(--font-heading);font-weight:600;font-size:24px;padding:7px 10px"><span class="tag tag-accent">{{ evStatusLabel }}</span><button class="btn btn-secondary" sc-camel-on-click="{{ startNewEvent }}" style="min-height:38px;padding:7px 10px;white-space:nowrap;flex:none">+ New event</button></div>\n  <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin:10px 0 18px"><div class="field"><label>Event date</label><input class="input" type="date" value="{{ eventDate }}" sc-camel-on-change="{{ setEventDate }}" aria-label="Event date"></div><div class="field"><label>Booth fee</label><input class="input" inputmode="decimal" value="{{ eventBoothFee }}" sc-camel-on-change="{{ setEventBoothFee }}" aria-label="Booth fee"></div></div>\n  <div style="margin:-6px 0 18px"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px"><span class="card-kicker">Other costs</span><sc-if value="{{ hasEventOtherCosts }}" hint-placeholder-val="{{ false }}"><span class="text-muted" style="font-size:12px;font-feature-settings:\'tnum\'">{{ eventOtherCostTotalStr }}</span></sc-if></div><sc-for list="{{ eventOtherCosts }}" as="oc" hint-placeholder-count="0"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input class="input" value="{{ oc.label }}" sc-camel-on-change="{{ oc.setLabel }}" placeholder="Travel, parking, staff…" aria-label="Cost name" style="flex:1;min-width:0"><input class="input" value="{{ oc.amount }}" sc-camel-on-change="{{ oc.setAmount }}" inputmode="decimal" placeholder="0.00" aria-label="Cost amount" style="width:88px;flex:none;text-align:right;font-feature-settings:\'tnum\'"><button class="btn btn-ghost" sc-camel-on-click="{{ oc.remove }}" aria-label="Remove cost" style="min-height:38px;padding:0 8px;color:#b0563e;flex:none">×</button></div></sc-for><button class="btn btn-secondary" sc-camel-on-click="{{ addEventOtherCost }}" style="min-height:38px;font-size:12px">+ Add cost</button></div>',
+    () => '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><input class="input" value="{{ eventName }}" sc-camel-on-change="{{ setEventName }}" aria-label="Event name" style="flex:1;min-width:180px;font-family:var(--font-heading);font-weight:600;font-size:24px;padding:7px 10px"><span class="tag tag-accent">{{ evStatusLabel }}</span><button class="btn btn-secondary" sc-camel-on-click="{{ startNewEvent }}" style="min-height:38px;padding:7px 10px;white-space:nowrap;flex:none">+ New event</button></div>\n  <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin:10px 0 18px"><div class="field"><label>Event date</label><input class="input" type="date" value="{{ eventDate }}" sc-camel-on-change="{{ setEventDate }}" aria-label="Event date"></div><div class="field"><label>Booth fee</label><input class="input" inputmode="decimal" value="{{ eventBoothFee }}" sc-camel-on-change="{{ setEventBoothFee }}" aria-label="Booth fee"></div></div>',
   );
   out = out.replace(
     "        const { evQty, evSold, shopChecked, cashQty, cashPaid, cashOrdersArr } = this.state;",
@@ -995,5 +1036,5 @@ function addCommerceBehavior(template: string): string {
     "todayArr: [...st.todayArr, final],",
     () => "todayArr: [...st.todayArr, final], saleRecords: [...(st.saleRecords || []), { id: 'sale-pos-' + Date.now().toString(36), occurredAt: new Date().toISOString(), source: 'pos', total: final, lineItems: posRecipes.filter(r => (st.posQty || {})[r.id] > 0).map(r => ({ productId: r.id, name: r.name, quantity: (st.posQty || {})[r.id], unitPrice: ((Number(r.sell) || 0) * (total > 0 ? final / total : 1)), unitCost: r.cost })) }],",
   );
-  return linkNoticedCards(replacePastEvents(removeCashTracker(out)));
+  return moveEventCostsToBottom(linkNoticedCards(replacePastEvents(removeCashTracker(out))));
 }
