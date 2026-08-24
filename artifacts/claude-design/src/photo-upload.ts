@@ -1,1 +1,52 @@
-Y29uc3QgTUFYX0lNQUdFX0JZVEVTID0gMTAgKiAxMDI0ICogMTAyNDsKY29uc3QgQUNDRVBURURfSU1BR0VfVFlQRVMgPSBuZXcgU2V0KFsKICAiaW1hZ2UvanBlZyIsCiAgImltYWdlL3BuZyIsCiAgImltYWdlL3dlYnAiLAogICJpbWFnZS9naWYiLApdKTsKCnR5cGUgUGhvdG9VcGxvYWRSZXNwb25zZSA9IHsKICBvYmplY3RQYXRoPzogdW5rbm93bjsKfTsKCmV4cG9ydCBmdW5jdGlvbiBnZXRQaG90b1VybChwaG90b1BhdGg6IHVua25vd24pOiBzdHJpbmcgewogIGlmICgKICAgIHR5cGVvZiBwaG90b1BhdGggIT09ICJzdHJpbmciIHx8CiAgICAhL15cL29iamVjdHNcL3VwbG9hZHNcL1thLXowLTktXSskL2kudGVzdChwaG90b1BhdGgpCiAgKSB7CiAgICByZXR1cm4gIiI7CiAgfQoKICByZXR1cm4gYC9hcGkvc3RvcmFnZSR7cGhvdG9QYXRofWA7Cn0KCmV4cG9ydCBhc3luYyBmdW5jdGlvbiB1cGxvYWRQaG90byhmaWxlOiBGaWxlKTogUHJvbWlzZTxzdHJpbmc+IHsKICBpZiAoIUFDQ0VQVEVEX0lNQUdFX1RZUEVTLmhhcyhmaWxlLnR5cGUpKSB7CiAgICB0aHJvdyBuZXcgRXJyb3IoIkNob29zZSBhIEpQRUcsIFBORywgV2ViUCwgb3IgR0lGIGltYWdlLiIpOwogIH0KICBpZiAoZmlsZS5zaXplIDwgMSB8fCBmaWxlLnNpemUgPiBNQVhfSU1BR0VfQllURVMpIHsKICAgIHRocm93IG5ldyBFcnJvcigiQ2hvb3NlIGFuIGltYWdlIHNtYWxsZXIgdGhhbiAxMCBNQi4iKTsKICB9CgogIGNvbnN0IHJlcXVlc3QgPSBhd2FpdCBmZXRjaCgiL2FwaS9zdG9yYWdlL3VwbG9hZHMiLCB7CiAgICBtZXRob2Q6ICJQT1NUIiwKICAgIGhlYWRlcnM6IHsgIkNvbnRlbnQtVHlwZSI6IGZpbGUudHlwZSB9LAogICAgYm9keTogZmlsZSwKICB9KTsKICBjb25zdCByZXNwb25zZSA9IChhd2FpdCByZXF1ZXN0Lmpzb24oKS5jYXRjaCgoKSA9PiAoe30pKSkgYXMgUGhvdG9VcGxvYWRSZXNwb25zZSAmIHsKICAgIGVycm9yPzogdW5rbm93bjsKICB9OwogIGlmICghcmVxdWVzdC5vaykgewogICAgdGhyb3cgbmV3IEVycm9yKAogICAgICB0eXBlb2YgcmVzcG9uc2UuZXJyb3IgPT09ICJzdHJpbmciCiAgICAgICAgPyByZXNwb25zZS5lcnJvcgogICAgICAgIDogIkNvdWxkIG5vdCB1cGxvYWQgdGhlIHBob3RvLiBQbGVhc2UgdHJ5IGFnYWluLiIsCiAgICApOwogIH0KICBpZiAoIWdldFBob3RvVXJsKHJlc3BvbnNlLm9iamVjdFBhdGgpKSB7CiAgICB0aHJvdyBuZXcgRXJyb3IoIlRoZSB1cGxvYWRlZCBwaG90byByZWZlcmVuY2Ugd2FzIGludmFsaWQuIik7CiAgfQoKICByZXR1cm4gcmVzcG9uc2Uub2JqZWN0UGF0aCBhcyBzdHJpbmc7Cn0=
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+type PhotoUploadResponse = {
+  objectPath?: unknown;
+};
+
+export function getPhotoUrl(photoPath: unknown): string {
+  if (
+    typeof photoPath !== "string" ||
+    !/^\/objects\/uploads\/[a-z0-9-]+$/i.test(photoPath)
+  ) {
+    return "";
+  }
+
+  return `/api/storage${photoPath}`;
+}
+
+export async function uploadPhoto(file: File): Promise<string> {
+  if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Choose a JPEG, PNG, WebP, or GIF image.");
+  }
+  if (file.size < 1 || file.size > MAX_IMAGE_BYTES) {
+    throw new Error("Choose an image smaller than 10 MB.");
+  }
+
+  const request = await fetch("/api/storage/uploads", {
+    method: "POST",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  const response = (await request.json().catch(() => ({}))) as PhotoUploadResponse & {
+    error?: unknown;
+  };
+  if (!request.ok) {
+    throw new Error(
+      typeof response.error === "string"
+        ? response.error
+        : "Could not upload the photo. Please try again.",
+    );
+  }
+  if (!getPhotoUrl(response.objectPath)) {
+    throw new Error("The uploaded photo reference was invalid.");
+  }
+
+  return response.objectPath as string;
+}

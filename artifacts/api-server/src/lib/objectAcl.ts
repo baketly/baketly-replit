@@ -1,1 +1,137 @@
-aW1wb3J0IHsgRmlsZSB9IGZyb20gJ0Bnb29nbGUtY2xvdWQvc3RvcmFnZSc7Cgpjb25zdCBBQ0xfUE9MSUNZX01FVEFEQVRBX0tFWSA9ICdjdXN0b206YWNsUG9saWN5JzsKCi8vIENhbiBiZSBmbGV4aWJseSBkZWZpbmVkIGFjY29yZGluZyB0byB0aGUgdXNlIGNhc2UuCi8vCi8vIEV4YW1wbGVzOgovLyAtIFVTRVJfTElTVDogdGhlIHVzZXJzIGZyb20gYSBsaXN0IHN0b3JlZCBpbiB0aGUgZGF0YWJhc2U7Ci8vIC0gRU1BSUxfRE9NQUlOOiB0aGUgdXNlcnMgd2hvc2UgZW1haWwgaXMgaW4gYSBzcGVjaWZpYyBkb21haW47Ci8vIC0gR1JPVVBfTUVNQkVSOiB0aGUgdXNlcnMgd2hvIGFyZSBtZW1iZXJzIG9mIGEgc3BlY2lmaWMgZ3JvdXA7Ci8vIC0gU1VCU0NSSUJFUjogdGhlIHVzZXJzIHdobyBhcmUgc3Vic2NyaWJlcnMgb2YgYSBzcGVjaWZpYyBzZXJ2aWNlIC8gY29udGVudAovLyAgIGNyZWF0b3IuCmV4cG9ydCBlbnVtIE9iamVjdEFjY2Vzc0dyb3VwVHlwZSB7fQoKZXhwb3J0IGludGVyZmFjZSBPYmplY3RBY2Nlc3NHcm91cCB7CiAgdHlwZTogT2JqZWN0QWNjZXNzR3JvdXBUeXBlOwogIC8vIFRoZSBsb2dpYyBpZCB0aGF0IGlkZW50aWZpZXMgcXVhbGlmaWVkIGdyb3VwIG1lbWJlcnMuIEZvcm1hdCBkZXBlbmRzIG9uIHRoZQogIC8vIE9iamVjdEFjY2Vzc0dyb3VwVHlwZSDigJQgZS5nLiBhIHVzZXItbGlzdCBEQiBpZCwgYW4gZW1haWwgZG9tYWluLCBhIGdyb3VwIGlkLgogIGlkOiBzdHJpbmc7Cn0KCmV4cG9ydCBlbnVtIE9iamVjdFBlcm1pc3Npb24gewogIFJFQUQgPSAncmVhZCcsCiAgV1JJVEUgPSAnd3JpdGUnLAp9CgpleHBvcnQgaW50ZXJmYWNlIE9iamVjdEFjbFJ1bGUgewogIGdyb3VwOiBPYmplY3RBY2Nlc3NHcm91cDsKICBwZXJtaXNzaW9uOiBPYmplY3RQZXJtaXNzaW9uOwp9CgovLyBTdG9yZWQgYXMgb2JqZWN0IGN1c3RvbSBtZXRhZGF0YSB1bmRlciAiY3VzdG9tOmFjbFBvbGljeSIgKEpTT04gc3RyaW5nKS4KZXhwb3J0IGludGVyZmFjZSBPYmplY3RBY2xQb2xpY3kgewogIG93bmVyOiBzdHJpbmc7CiAgdmlzaWJpbGl0eTogJ3B1YmxpYycgfCAncHJpdmF0ZSc7CiAgYWNsUnVsZXM/OiBBcnJheTxPYmplY3RBY2xSdWxlPjsKfQoKZnVuY3Rpb24gaXNQZXJtaXNzaW9uQWxsb3dlZCgKICByZXF1ZXN0ZWQ6IE9iamVjdFBlcm1pc3Npb24sCiAgZ3JhbnRlZDogT2JqZWN0UGVybWlzc2lvbiwKKTogYm9vbGVhbiB7CiAgaWYgKHJlcXVlc3RlZCA9PT0gT2JqZWN0UGVybWlzc2lvbi5SRUFEKSB7CiAgICByZXR1cm4gW09iamVjdFBlcm1pc3Npb24uUkVBRCwgT2JqZWN0UGVybWlzc2lvbi5XUklURV0uaW5jbHVkZXMoZ3JhbnRlZCk7CiAgfQogIHJldHVybiBncmFudGVkID09PSBPYmplY3RQZXJtaXNzaW9uLldSSVRFOwp9CgphYnN0cmFjdCBjbGFzcyBCYXNlT2JqZWN0QWNjZXNzR3JvdXAgaW1wbGVtZW50cyBPYmplY3RBY2Nlc3NHcm91cCB7CiAgY29uc3RydWN0b3IoCiAgICBwdWJsaWMgcmVhZG9ubHkgdHlwZTogT2JqZWN0QWNjZXNzR3JvdXBUeXBlLAogICAgcHVibGljIHJlYWRvbmx5IGlkOiBzdHJpbmcsCiAgKSB7fQoKICBwdWJsaWMgYWJzdHJhY3QgaGFzTWVtYmVyKHVzZXJJZDogc3RyaW5nKTogUHJvbWlzZTxib29sZWFuPjsKfQoKZnVuY3Rpb24gY3JlYXRlT2JqZWN0QWNjZXNzR3JvdXAoCiAgZ3JvdXA6IE9iamVjdEFjY2Vzc0dyb3VwLAopOiBCYXNlT2JqZWN0QWNjZXNzR3JvdXAgewogIHN3aXRjaCAoZ3JvdXAudHlwZSkgewogICAgLy8gSW1wbGVtZW50IHBlciBhY2Nlc3MgZ3JvdXAgdHlwZSwgZS5nLjoKICAgIC8vIGNhc2UgIlVTRVJfTElTVCI6CiAgICAvLyAgIHJldHVybiBuZXcgVXNlckxpc3RBY2Nlc3NHcm91cChncm91cC5pZCk7CiAgICBkZWZhdWx0OgogICAgICB0aHJvdyBuZXcgRXJyb3IoYFVua25vd24gYWNjZXNzIGdyb3VwIHR5cGU6ICR7Z3JvdXAudHlwZX1gKTsKICB9Cn0KCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBzZXRPYmplY3RBY2xQb2xpY3koCiAgb2JqZWN0RmlsZTogRmlsZSwKICBhY2xQb2xpY3k6IE9iamVjdEFjbFBvbGljeSwKKTogUHJvbWlzZTx2b2lkPiB7CiAgY29uc3QgW2V4aXN0c10gPSBhd2FpdCBvYmplY3RGaWxlLmV4aXN0cygpOwogIGlmICghZXhpc3RzKSB7CiAgICB0aHJvdyBuZXcgRXJyb3IoYE9iamVjdCBub3QgZm91bmQ6ICR7b2JqZWN0RmlsZS5uYW1lfWApOwogIH0KCiAgYXdhaXQgb2JqZWN0RmlsZS5zZXRNZXRhZGF0YSh7CiAgICBtZXRhZGF0YTogewogICAgICBbQUNMX1BPTElDWV9NRVRBREFUQV9LRVldOiBKU09OLnN0cmluZ2lmeShhY2xQb2xpY3kpLAogICAgfSwKICB9KTsKfQoKZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIGdldE9iamVjdEFjbFBvbGljeSgKICBvYmplY3RGaWxlOiBGaWxlLAopOiBQcm9taXNlPE9iamVjdEFjbFBvbGljeSB8IG51bGw+IHsKICBjb25zdCBbbWV0YWRhdGFdID0gYXdhaXQgb2JqZWN0RmlsZS5nZXRNZXRhZGF0YSgpOwogIGNvbnN0IGFjbFBvbGljeSA9IG1ldGFkYXRhPy5tZXRhZGF0YT8uW0FDTF9QT0xJQ1lfTUVUQURBVEFfS0VZXTsKICBpZiAoIWFjbFBvbGljeSkgewogICAgcmV0dXJuIG51bGw7CiAgfQogIHJldHVybiBKU09OLnBhcnNlKGFjbFBvbGljeSBhcyBzdHJpbmcpOwp9CgpleHBvcnQgYXN5bmMgZnVuY3Rpb24gY2FuQWNjZXNzT2JqZWN0KHsKICB1c2VySWQsCiAgb2JqZWN0RmlsZSwKICByZXF1ZXN0ZWRQZXJtaXNzaW9uLAp9OiB7CiAgdXNlcklkPzogc3RyaW5nOwogIG9iamVjdEZpbGU6IEZpbGU7CiAgcmVxdWVzdGVkUGVybWlzc2lvbjogT2JqZWN0UGVybWlzc2lvbjsKfSk6IFByb21pc2U8Ym9vbGVhbj4gewogIGNvbnN0IGFjbFBvbGljeSA9IGF3YWl0IGdldE9iamVjdEFjbFBvbGljeShvYmplY3RGaWxlKTsKICBpZiAoIWFjbFBvbGljeSkgewogICAgcmV0dXJuIGZhbHNlOwogIH0KCiAgaWYgKAogICAgYWNsUG9saWN5LnZpc2liaWxpdHkgPT09ICdwdWJsaWMnICYmCiAgICByZXF1ZXN0ZWRQZXJtaXNzaW9uID09PSBPYmplY3RQZXJtaXNzaW9uLlJFQUQKICApIHsKICAgIHJldHVybiB0cnVlOwogIH0KCiAgaWYgKCF1c2VySWQpIHsKICAgIHJldHVybiBmYWxzZTsKICB9CgogIGlmIChhY2xQb2xpY3kub3duZXIgPT09IHVzZXJJZCkgewogICAgcmV0dXJuIHRydWU7CiAgfQoKICBmb3IgKGNvbnN0IHJ1bGUgb2YgYWNsUG9saWN5LmFjbFJ1bGVzIHx8IFtdKSB7CiAgICBjb25zdCBhY2Nlc3NHcm91cCA9IGNyZWF0ZU9iamVjdEFjY2Vzc0dyb3VwKHJ1bGUuZ3JvdXApOwogICAgaWYgKAogICAgICAoYXdhaXQgYWNjZXNzR3JvdXAuaGFzTWVtYmVyKHVzZXJJZCkpICYmCiAgICAgIGlzUGVybWlzc2lvbkFsbG93ZWQocmVxdWVzdGVkUGVybWlzc2lvbiwgcnVsZS5wZXJtaXNzaW9uKQogICAgKSB7CiAgICAgIHJldHVybiB0cnVlOwogICAgfQogIH0KCiAgcmV0dXJuIGZhbHNlOwp9Cg==
+import { File } from '@google-cloud/storage';
+
+const ACL_POLICY_METADATA_KEY = 'custom:aclPolicy';
+
+// Can be flexibly defined according to the use case.
+//
+// Examples:
+// - USER_LIST: the users from a list stored in the database;
+// - EMAIL_DOMAIN: the users whose email is in a specific domain;
+// - GROUP_MEMBER: the users who are members of a specific group;
+// - SUBSCRIBER: the users who are subscribers of a specific service / content
+//   creator.
+export enum ObjectAccessGroupType {}
+
+export interface ObjectAccessGroup {
+  type: ObjectAccessGroupType;
+  // The logic id that identifies qualified group members. Format depends on the
+  // ObjectAccessGroupType — e.g. a user-list DB id, an email domain, a group id.
+  id: string;
+}
+
+export enum ObjectPermission {
+  READ = 'read',
+  WRITE = 'write',
+}
+
+export interface ObjectAclRule {
+  group: ObjectAccessGroup;
+  permission: ObjectPermission;
+}
+
+// Stored as object custom metadata under "custom:aclPolicy" (JSON string).
+export interface ObjectAclPolicy {
+  owner: string;
+  visibility: 'public' | 'private';
+  aclRules?: Array<ObjectAclRule>;
+}
+
+function isPermissionAllowed(
+  requested: ObjectPermission,
+  granted: ObjectPermission,
+): boolean {
+  if (requested === ObjectPermission.READ) {
+    return [ObjectPermission.READ, ObjectPermission.WRITE].includes(granted);
+  }
+  return granted === ObjectPermission.WRITE;
+}
+
+abstract class BaseObjectAccessGroup implements ObjectAccessGroup {
+  constructor(
+    public readonly type: ObjectAccessGroupType,
+    public readonly id: string,
+  ) {}
+
+  public abstract hasMember(userId: string): Promise<boolean>;
+}
+
+function createObjectAccessGroup(
+  group: ObjectAccessGroup,
+): BaseObjectAccessGroup {
+  switch (group.type) {
+    // Implement per access group type, e.g.:
+    // case "USER_LIST":
+    //   return new UserListAccessGroup(group.id);
+    default:
+      throw new Error(`Unknown access group type: ${group.type}`);
+  }
+}
+
+export async function setObjectAclPolicy(
+  objectFile: File,
+  aclPolicy: ObjectAclPolicy,
+): Promise<void> {
+  const [exists] = await objectFile.exists();
+  if (!exists) {
+    throw new Error(`Object not found: ${objectFile.name}`);
+  }
+
+  await objectFile.setMetadata({
+    metadata: {
+      [ACL_POLICY_METADATA_KEY]: JSON.stringify(aclPolicy),
+    },
+  });
+}
+
+export async function getObjectAclPolicy(
+  objectFile: File,
+): Promise<ObjectAclPolicy | null> {
+  const [metadata] = await objectFile.getMetadata();
+  const aclPolicy = metadata?.metadata?.[ACL_POLICY_METADATA_KEY];
+  if (!aclPolicy) {
+    return null;
+  }
+  return JSON.parse(aclPolicy as string);
+}
+
+export async function canAccessObject({
+  userId,
+  objectFile,
+  requestedPermission,
+}: {
+  userId?: string;
+  objectFile: File;
+  requestedPermission: ObjectPermission;
+}): Promise<boolean> {
+  const aclPolicy = await getObjectAclPolicy(objectFile);
+  if (!aclPolicy) {
+    return false;
+  }
+
+  if (
+    aclPolicy.visibility === 'public' &&
+    requestedPermission === ObjectPermission.READ
+  ) {
+    return true;
+  }
+
+  if (!userId) {
+    return false;
+  }
+
+  if (aclPolicy.owner === userId) {
+    return true;
+  }
+
+  for (const rule of aclPolicy.aclRules || []) {
+    const accessGroup = createObjectAccessGroup(rule.group);
+    if (
+      (await accessGroup.hasMember(userId)) &&
+      isPermissionAllowed(requestedPermission, rule.permission)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}

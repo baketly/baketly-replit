@@ -1,1 +1,28 @@
-a2luZCA9ICJ3ZWIiCnZlcnNpb24gPSAiMS4wLjAiCnRpdGxlID0gIkNsYXVkZSBkZXNpZ24iCnByZXZpZXdQYXRoID0gIi8iCmlkID0gImFydGlmYWN0cy9jbGF1ZGUtZGVzaWduIgpyb3V0ZXIgPSAicGF0aCIKCltbc2VydmljZXNdXQpuYW1lID0gIndlYiIKcGF0aHMgPSBbICIvIiBdCmVuc3VyZVByZXZpZXdSZWFjaGFibGUgPSAiLyIKbG9jYWxQb3J0ID0gMjQ3MjIKCltzZXJ2aWNlcy5kZXZlbG9wbWVudF0KcnVuID0gInBucG0gLS1maWx0ZXIgQHdvcmtzcGFjZS9jbGF1ZGUtZGVzaWduIHJ1biBkZXYiCgpbc2VydmljZXMucHJvZHVjdGlvbl0Kc2VydmUgPSAic3RhdGljIgpidWlsZCA9IFsgInBucG0iLCAiLS1maWx0ZXIiLCAiQHdvcmtzcGFjZS9jbGF1ZGUtZGVzaWduIiwgInJ1biIsICJidWlsZCIgXQpwdWJsaWNEaXIgPSAiYXJ0aWZhY3RzL2NsYXVkZS1kZXNpZ24vZGlzdC9wdWJsaWMiCgpbW3NlcnZpY2VzLnByb2R1Y3Rpb24ucmV3cml0ZXNdXQpmcm9tID0gIi8qIgp0byA9ICIvaW5kZXguaHRtbCIKCltzZXJ2aWNlcy5lbnZdClBPUlQgPSAiMjQ3MjIiCkJBU0VfUEFUSCA9ICIvIgo=
+kind = "web"
+version = "1.0.0"
+title = "Claude design"
+previewPath = "/"
+id = "artifacts/claude-design"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+ensurePreviewReachable = "/"
+localPort = 24722
+
+[services.development]
+run = "pnpm --filter @workspace/claude-design run dev"
+
+[services.production]
+serve = "static"
+build = [ "pnpm", "--filter", "@workspace/claude-design", "run", "build" ]
+publicDir = "artifacts/claude-design/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24722"
+BASE_PATH = "/"

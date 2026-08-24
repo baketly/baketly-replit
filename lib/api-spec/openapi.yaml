@@ -1,1 +1,291 @@
-b3BlbmFwaTogMy4xLjAKaW5mbzoKICAjIERvIG5vdCBjaGFuZ2UgdGhlIHRpdGxlLCBpZiB0aGUgdGl0bGUgY2hhbmdlcywgdGhlIGltcG9ydCBwYXRocyB3aWxsIGJlIGJyb2tlbgogIHRpdGxlOiBBcGkKICB2ZXJzaW9uOiAwLjEuMAogIGRlc2NyaXB0aW9uOiBBUEkgc3BlY2lmaWNhdGlvbgpzZXJ2ZXJzOgogIC0gdXJsOiAvYXBpCiAgICBkZXNjcmlwdGlvbjogQmFzZSBBUEkgcGF0aAp0YWdzOgogIC0gbmFtZTogaGVhbHRoCiAgICBkZXNjcmlwdGlvbjogSGVhbHRoIG9wZXJhdGlvbnMKICAtIG5hbWU6IFN0b3JhZ2UKICAgIGRlc2NyaXB0aW9uOiBPYmplY3Qgc3RvcmFnZSB1cGxvYWQgYW5kIHNlcnZpbmcgZW5kcG9pbnRzLgpwYXRoczoKICAvaGVhbHRoejoKICAgIGdldDoKICAgICAgb3BlcmF0aW9uSWQ6IGhlYWx0aENoZWNrCiAgICAgIHRhZ3M6IFtoZWFsdGhdCiAgICAgIHN1bW1hcnk6IEhlYWx0aCBjaGVjawogICAgICBkZXNjcmlwdGlvbjogUmV0dXJucyBzZXJ2ZXIgaGVhbHRoIHN0YXR1cwogICAgICByZXNwb25zZXM6CiAgICAgICAgIjIwMCI6CiAgICAgICAgICBkZXNjcmlwdGlvbjogSGVhbHRoeQogICAgICAgICAgY29udGVudDoKICAgICAgICAgICAgYXBwbGljYXRpb24vanNvbjoKICAgICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvSGVhbHRoU3RhdHVzIgogIC93b3Jrc3BhY2Utc3RhdGU6CiAgICBnZXQ6CiAgICAgIG9wZXJhdGlvbklkOiBnZXRXb3Jrc3BhY2VTdGF0ZQogICAgICB0YWdzOiBbd29ya3NwYWNlXQogICAgICBzdW1tYXJ5OiBHZXQgdGhlIHNhdmVkIHdvcmtzcGFjZSBzdGF0ZQogICAgICByZXNwb25zZXM6CiAgICAgICAgIjIwMCI6CiAgICAgICAgICBkZXNjcmlwdGlvbjogU2F2ZWQgc3RhdGUKICAgICAgICAgIGNvbnRlbnQ6CiAgICAgICAgICAgIGFwcGxpY2F0aW9uL2pzb246CiAgICAgICAgICAgICAgc2NoZW1hOgogICAgICAgICAgICAgICAgJHJlZjogIiMvY29tcG9uZW50cy9zY2hlbWFzL1dvcmtzcGFjZVN0YXRlUmVzcG9uc2UiCiAgICBwdXQ6CiAgICAgIG9wZXJhdGlvbklkOiBzYXZlV29ya3NwYWNlU3RhdGUKICAgICAgdGFnczogW3dvcmtzcGFjZV0KICAgICAgc3VtbWFyeTogU2F2ZSB0aGUgd29ya3NwYWNlIHN0YXRlCiAgICAgIHJlcXVlc3RCb2R5OgogICAgICAgIHJlcXVpcmVkOiB0cnVlCiAgICAgICAgY29udGVudDoKICAgICAgICAgIGFwcGxpY2F0aW9uL2pzb246CiAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICB0eXBlOiBvYmplY3QKICAgICAgICAgICAgICByZXF1aXJlZDogW3N0YXRlXQogICAgICAgICAgICAgIHByb3BlcnRpZXM6CiAgICAgICAgICAgICAgICBzdGF0ZToKICAgICAgICAgICAgICAgICAgJHJlZjogIiMvY29tcG9uZW50cy9zY2hlbWFzL1dvcmtzcGFjZVN0YXRlIgogICAgICByZXNwb25zZXM6CiAgICAgICAgIjIwMCI6CiAgICAgICAgICBkZXNjcmlwdGlvbjogU3RhdGUgc2F2ZWQKICAgICAgICAgIGNvbnRlbnQ6CiAgICAgICAgICAgIGFwcGxpY2F0aW9uL2pzb246CiAgICAgICAgICAgICAgc2NoZW1hOgogICAgICAgICAgICAgICAgJHJlZjogIiMvY29tcG9uZW50cy9zY2hlbWFzL1dvcmtzcGFjZVN0YXRlUmVzcG9uc2UiCiAgL3N0b3JhZ2UvdXBsb2FkczoKICAgIHBvc3Q6CiAgICAgIHRhZ3M6IFtTdG9yYWdlXQogICAgICBvcGVyYXRpb25JZDogdXBsb2FkUGhvdG8KICAgICAgc3VtbWFyeTogVXBsb2FkIGEgdmVyaWZpZWQgaW1hZ2UKICAgICAgZGVzY3JpcHRpb246IHwKICAgICAgICBSZWNlaXZlcyBhbiBpbWFnZSBib2R5IHVwIHRvIDEwIE1CLCB2ZXJpZmllcyBpdHMgYnl0ZXMgbWF0Y2ggdGhlCiAgICAgICAgc3VwcGxpZWQgaW1hZ2UgY29udGVudCB0eXBlLCB0aGVuIHN0b3JlcyBpdC4gVGhpcyBlbmRwb2ludCBpcyBwdWJsaWMKICAgICAgICBmb3IgdGhlIGN1cnJlbnQgc2luZ2xlLXVzZXIgYXBwIGFuZCBtdXN0IGJlIHByb3RlY3RlZCB3aGVuCiAgICAgICAgcGVyLWN1c3RvbWVyIGFjY291bnRzIGFyZSBpbnRyb2R1Y2VkLgogICAgICByZXF1ZXN0Qm9keToKICAgICAgICByZXF1aXJlZDogdHJ1ZQogICAgICAgIGNvbnRlbnQ6CiAgICAgICAgICBpbWFnZS9qcGVnOgogICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgdHlwZTogc3RyaW5nCiAgICAgICAgICAgICAgZm9ybWF0OiBiaW5hcnkKICAgICAgICAgIGltYWdlL3BuZzoKICAgICAgICAgICAgc2NoZW1hOgogICAgICAgICAgICAgIHR5cGU6IHN0cmluZwogICAgICAgICAgICAgIGZvcm1hdDogYmluYXJ5CiAgICAgICAgICBpbWFnZS93ZWJwOgogICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgdHlwZTogc3RyaW5nCiAgICAgICAgICAgICAgZm9ybWF0OiBiaW5hcnkKICAgICAgICAgIGltYWdlL2dpZjoKICAgICAgICAgICAgc2NoZW1hOgogICAgICAgICAgICAgIHR5cGU6IHN0cmluZwogICAgICAgICAgICAgIGZvcm1hdDogYmluYXJ5CiAgICAgIHJlc3BvbnNlczoKICAgICAgICAiMjAxIjoKICAgICAgICAgIGRlc2NyaXB0aW9uOiBJbWFnZSBzdG9yZWQuCiAgICAgICAgICBjb250ZW50OgogICAgICAgICAgICBhcHBsaWNhdGlvbi9qc29uOgogICAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICAgICRyZWY6ICIjL2NvbXBvbmVudHMvc2NoZW1hcy9QaG90b1VwbG9hZFJlc3BvbnNlIgogICAgICAgICI0MDAiOgogICAgICAgICAgZGVzY3JpcHRpb246IEltYWdlIGJvZHkgaXMgaW52YWxpZCwgdW5zdXBwb3J0ZWQsIG9yIHRvbyBsYXJnZS4KICAgICAgICAgIGNvbnRlbnQ6CiAgICAgICAgICAgIGFwcGxpY2F0aW9uL2pzb246CiAgICAgICAgICAgICAgc2NoZW1hOgogICAgICAgICAgICAgICAgJHJlZjogIiMvY29tcG9uZW50cy9zY2hlbWFzL0Vycm9yRW52ZWxvcGUiCiAgICAgICAgIjQxMyI6CiAgICAgICAgICBkZXNjcmlwdGlvbjogSW1hZ2UgYm9keSBleGNlZWRzIDEwIE1CLgogICAgICAgICAgY29udGVudDoKICAgICAgICAgICAgYXBwbGljYXRpb24vanNvbjoKICAgICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvRXJyb3JFbnZlbG9wZSIKICAgICAgICAiNTAwIjoKICAgICAgICAgIGRlc2NyaXB0aW9uOiBGYWlsZWQgdG8gc3RvcmUgdGhlIGltYWdlLgogICAgICAgICAgY29udGVudDoKICAgICAgICAgICAgYXBwbGljYXRpb24vanNvbjoKICAgICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvRXJyb3JFbnZlbG9wZSIKICAvc3RvcmFnZS9vYmplY3RzL3tvYmplY3RQYXRofToKICAgIGdldDoKICAgICAgdGFnczogW1N0b3JhZ2VdCiAgICAgIG9wZXJhdGlvbklkOiBnZXRTdG9yYWdlT2JqZWN0CiAgICAgIHN1bW1hcnk6IFNlcnZlIGEgc3RvcmVkIGltYWdlCiAgICAgIGRlc2NyaXB0aW9uOiB8CiAgICAgICAgU2VydmVzIGltYWdlIG9iamVjdHMuIFRoaXMgcm91dGUgaXMgcHVibGljIGZvciB0aGUgY3VycmVudCBzaW5nbGUtdXNlcgogICAgICAgIGFwcCBhbmQgbXVzdCBiZSBwcm90ZWN0ZWQgd2l0aCBhdXRoZW50aWNhdGlvbiBhbmQgQUNMIGNoZWNrcyBsYXRlci4KICAgICAgcGFyYW1ldGVyczoKICAgICAgICAtIG5hbWU6IG9iamVjdFBhdGgKICAgICAgICAgIGluOiBwYXRoCiAgICAgICAgICByZXF1aXJlZDogdHJ1ZQogICAgICAgICAgc2NoZW1hOgogICAgICAgICAgICB0eXBlOiBzdHJpbmcKICAgICAgcmVzcG9uc2VzOgogICAgICAgICIyMDAiOgogICAgICAgICAgZGVzY3JpcHRpb246IE9iamVjdCBjb250ZW50IHN0cmVhbWVkIHdpdGggaXRzIGNvbnRlbnQgdHlwZS4KICAgICAgICAgIGNvbnRlbnQ6CiAgICAgICAgICAgICIqLyoiOgogICAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICAgIHR5cGU6IHN0cmluZwogICAgICAgICAgICAgICAgZm9ybWF0OiBiaW5hcnkKICAgICAgICAiNDA0IjoKICAgICAgICAgIGRlc2NyaXB0aW9uOiBPYmplY3Qgbm90IGZvdW5kLgogICAgICAgICAgY29udGVudDoKICAgICAgICAgICAgYXBwbGljYXRpb24vanNvbjoKICAgICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvRXJyb3JFbnZlbG9wZSIKICAgICAgICAiNDE1IjoKICAgICAgICAgIGRlc2NyaXB0aW9uOiBPYmplY3QgaXMgbm90IGEgc3VwcG9ydGVkIGltYWdlLgogICAgICAgICAgY29udGVudDoKICAgICAgICAgICAgYXBwbGljYXRpb24vanNvbjoKICAgICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvRXJyb3JFbnZlbG9wZSIKICAvaW5ncmVkaWVudC1sYWJlbC1zY2FuOgogICAgcG9zdDoKICAgICAgdGFnczogW0luZ3JlZGllbnRzXQogICAgICBvcGVyYXRpb25JZDogc2NhbkluZ3JlZGllbnRMYWJlbAogICAgICBzdW1tYXJ5OiBSZWFkIGFuIGluZ3JlZGllbnQgbnV0cml0aW9uIGxhYmVsCiAgICAgIGRlc2NyaXB0aW9uOiB8CiAgICAgICAgUmVhZHMgYSBwcm9kdWN0IGxhYmVsIHBob3RvIHdpdGggdmlzaW9uIEFJIGFuZCByZXR1cm5zIG51bGxhYmxlCiAgICAgICAgaW5ncmVkaWVudCBmaWVsZHMgZm9yIHJldmlldy4gVGhlIHBob3RvIGlzIG5vdCBwZXJzaXN0ZWQuCiAgICAgIHJlcXVlc3RCb2R5OgogICAgICAgIHJlcXVpcmVkOiB0cnVlCiAgICAgICAgY29udGVudDoKICAgICAgICAgIGltYWdlL2pwZWc6CiAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICB0eXBlOiBzdHJpbmcKICAgICAgICAgICAgICBmb3JtYXQ6IGJpbmFyeQogICAgICAgICAgaW1hZ2UvcG5nOgogICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgdHlwZTogc3RyaW5nCiAgICAgICAgICAgICAgZm9ybWF0OiBiaW5hcnkKICAgICAgICAgIGltYWdlL3dlYnA6CiAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICB0eXBlOiBzdHJpbmcKICAgICAgICAgICAgICBmb3JtYXQ6IGJpbmFyeQogICAgICAgICAgaW1hZ2UvZ2lmOgogICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgdHlwZTogc3RyaW5nCiAgICAgICAgICAgICAgZm9ybWF0OiBiaW5hcnkKICAgICAgcmVzcG9uc2VzOgogICAgICAgICIyMDAiOgogICAgICAgICAgZGVzY3JpcHRpb246IEV4dHJhY3RlZCBmaWVsZHMuIE51bGwgZmllbGRzIHdlcmUgbm90IHJlYWRhYmxlLgogICAgICAgICAgY29udGVudDoKICAgICAgICAgICAgYXBwbGljYXRpb24vanNvbjoKICAgICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvSW5ncmVkaWVudExhYmVsU2NhblJlc3BvbnNlIgogICAgICAgICI0MDAiOgogICAgICAgICAgZGVzY3JpcHRpb246IEludmFsaWQgb3IgdW5zdXBwb3J0ZWQgaW1hZ2UuCiAgICAgICAgICBjb250ZW50OgogICAgICAgICAgICBhcHBsaWNhdGlvbi9qc29uOgogICAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICAgICRyZWY6ICIjL2NvbXBvbmVudHMvc2NoZW1hcy9FcnJvckVudmVsb3BlIgogICAgICAgICI0MTMiOgogICAgICAgICAgZGVzY3JpcHRpb246IEltYWdlIGlzIGxhcmdlciB0aGFuIDEwIE1CLgogICAgICAgICAgY29udGVudDoKICAgICAgICAgICAgYXBwbGljYXRpb24vanNvbjoKICAgICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvRXJyb3JFbnZlbG9wZSIKICAgICAgICAiNDIyIjoKICAgICAgICAgIGRlc2NyaXB0aW9uOiBUaGUgbGFiZWwgY291bGQgbm90IGJlIHJlYWQuCiAgICAgICAgICBjb250ZW50OgogICAgICAgICAgICBhcHBsaWNhdGlvbi9qc29uOgogICAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICAgICRyZWY6ICIjL2NvbXBvbmVudHMvc2NoZW1hcy9FcnJvckVudmVsb3BlIgogICAgICAgICI0MjkiOgogICAgICAgICAgZGVzY3JpcHRpb246IFRvbyBtYW55IGxhYmVsIHNjYW4gcmVxdWVzdHMuCiAgICAgICAgICBjb250ZW50OgogICAgICAgICAgICBhcHBsaWNhdGlvbi9qc29uOgogICAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICAgICRyZWY6ICIjL2NvbXBvbmVudHMvc2NoZW1hcy9FcnJvckVudmVsb3BlIgogICAgICAgICI1MDIiOgogICAgICAgICAgZGVzY3JpcHRpb246IFZpc2lvbiBwcm92aWRlciBmYWlsdXJlLgogICAgICAgICAgY29udGVudDoKICAgICAgICAgICAgYXBwbGljYXRpb24vanNvbjoKICAgICAgICAgICAgICBzY2hlbWE6CiAgICAgICAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvRXJyb3JFbnZlbG9wZSIKICAgICAgICAiNTAzIjoKICAgICAgICAgIGRlc2NyaXB0aW9uOiBWaXNpb24gcHJvdmlkZXIgaXMgbm90IGNvbmZpZ3VyZWQuCiAgICAgICAgICBjb250ZW50OgogICAgICAgICAgICBhcHBsaWNhdGlvbi9qc29uOgogICAgICAgICAgICAgIHNjaGVtYToKICAgICAgICAgICAgICAgICRyZWY6ICIjL2NvbXBvbmVudHMvc2NoZW1hcy9FcnJvckVudmVsb3BlIgpjb21wb25lbnRzOgogIHNjaGVtYXM6CiAgICBIZWFsdGhTdGF0dXM6CiAgICAgIHR5cGU6IG9iamVjdAogICAgICBwcm9wZXJ0aWVzOgogICAgICAgIHN0YXR1czoKICAgICAgICAgIHR5cGU6IHN0cmluZwogICAgICByZXF1aXJlZDoKICAgICAgICAtIHN0YXR1cwogICAgV29ya3NwYWNlU3RhdGVSZXNwb25zZToKICAgICAgdHlwZTogb2JqZWN0CiAgICAgIHByb3BlcnRpZXM6CiAgICAgICAgc3RhdGU6CiAgICAgICAgICAkcmVmOiAiIy9jb21wb25lbnRzL3NjaGVtYXMvV29ya3NwYWNlU3RhdGUiCiAgICAgICAgdXBkYXRlZEF0OgogICAgICAgICAgdHlwZTogW3N0cmluZywgIm51bGwiXQogICAgICAgICAgZm9ybWF0OiBkYXRlLXRpbWUKICAgICAgcmVxdWlyZWQ6IFtzdGF0ZSwgdXBkYXRlZEF0XQogICAgV29ya3NwYWNlU3RhdGU6CiAgICAgIHR5cGU6IG9iamVjdAogICAgICBhZGRpdGlvbmFsUHJvcGVydGllczogdHJ1ZQogICAgUGhvdG9VcGxvYWRSZXNwb25zZToKICAgICAgdHlwZTogb2JqZWN0CiAgICAgIHJlcXVpcmVkOiBbb2JqZWN0UGF0aF0KICAgICAgcHJvcGVydGllczoKICAgICAgICBvYmplY3RQYXRoOgogICAgICAgICAgdHlwZTogc3RyaW5nCiAgICBJbmdyZWRpZW50TGFiZWxTY2FuUmVzcG9uc2U6CiAgICAgIHR5cGU6IG9iamVjdAogICAgICByZXF1aXJlZDoKICAgICAgICAtIHByb2R1Y3ROYW1lCiAgICAgICAgLSBwYWNrYWdlU2l6ZQogICAgICAgIC0gcGFja2FnZVVuaXQKICAgICAgICAtIHNlcnZpbmdTaXplCiAgICAgICAgLSBzZXJ2aW5nVW5pdAogICAgICAgIC0gbnV0cml0aW9uQmFzaXMKICAgICAgICAtIGNhbG9yaWVzCiAgICAgICAgLSBwcm90ZWluX2cKICAgICAgICAtIGNhcmJvaHlkcmF0ZXNfZwogICAgICAgIC0gZmF0X2cKICAgICAgICAtIHN1Z2FyX2cKICAgICAgcHJvcGVydGllczoKICAgICAgICBwcm9kdWN0TmFtZToKICAgICAgICAgIHR5cGU6IFtzdHJpbmcsICJudWxsIl0KICAgICAgICBwYWNrYWdlU2l6ZToKICAgICAgICAgIHR5cGU6IFtudW1iZXIsICJudWxsIl0KICAgICAgICBwYWNrYWdlVW5pdDoKICAgICAgICAgIHR5cGU6IFtzdHJpbmcsICJudWxsIl0KICAgICAgICBzZXJ2aW5nU2l6ZToKICAgICAgICAgIHR5cGU6IFtudW1iZXIsICJudWxsIl0KICAgICAgICBzZXJ2aW5nVW5pdDoKICAgICAgICAgIHR5cGU6IFtzdHJpbmcsICJudWxsIl0KICAgICAgICBudXRyaXRpb25CYXNpczoKICAgICAgICAgIHR5cGU6IHN0cmluZwogICAgICAgICAgZW51bTogW3Blcl8xMDBnLCBwZXJfc2VydmluZywgdW5rbm93bl0KICAgICAgICBjYWxvcmllczoKICAgICAgICAgIHR5cGU6IFtudW1iZXIsICJudWxsIl0KICAgICAgICBwcm90ZWluX2c6CiAgICAgICAgICB0eXBlOiBbbnVtYmVyLCAibnVsbCJdCiAgICAgICAgY2FyYm9oeWRyYXRlc19nOgogICAgICAgICAgdHlwZTogW251bWJlciwgIm51bGwiXQogICAgICAgIGZhdF9nOgogICAgICAgICAgdHlwZTogW251bWJlciwgIm51bGwiXQogICAgICAgIHN1Z2FyX2c6CiAgICAgICAgICB0eXBlOiBbbnVtYmVyLCAibnVsbCJdCiAgICBFcnJvckVudmVsb3BlOgogICAgICB0eXBlOiBvYmplY3QKICAgICAgcmVxdWlyZWQ6IFtlcnJvcl0KICAgICAgcHJvcGVydGllczoKICAgICAgICBlcnJvcjoKICAgICAgICAgIHR5cGU6IHN0cmluZwoK
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /workspace-state:
+    get:
+      operationId: getWorkspaceState
+      tags: [workspace]
+      summary: Get the saved workspace state
+      responses:
+        "200":
+          description: Saved state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceStateResponse"
+    put:
+      operationId: saveWorkspaceState
+      tags: [workspace]
+      summary: Save the workspace state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state:
+                  $ref: "#/components/schemas/WorkspaceState"
+      responses:
+        "200":
+          description: State saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceStateResponse"
+  /storage/uploads:
+    post:
+      tags: [Storage]
+      operationId: uploadPhoto
+      summary: Upload a verified image
+      description: |
+        Receives an image body up to 10 MB, verifies its bytes match the
+        supplied image content type, then stores it. This endpoint is public
+        for the current single-user app and must be protected when
+        per-customer accounts are introduced.
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+          image/gif:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Image stored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoUploadResponse"
+        "400":
+          description: Image body is invalid, unsupported, or too large.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "413":
+          description: Image body exceeds 10 MB.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Failed to store the image.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve a stored image
+      description: |
+        Serves image objects. This route is public for the current single-user
+        app and must be protected with authentication and ACL checks later.
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Object content streamed with its content type.
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "415":
+          description: Object is not a supported image.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /ingredient-label-scan:
+    post:
+      tags: [Ingredients]
+      operationId: scanIngredientLabel
+      summary: Read an ingredient nutrition label
+      description: |
+        Reads a product label photo with vision AI and returns nullable
+        ingredient fields for review. The photo is not persisted.
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+          image/gif:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Extracted fields. Null fields were not readable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngredientLabelScanResponse"
+        "400":
+          description: Invalid or unsupported image.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "413":
+          description: Image is larger than 10 MB.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: The label could not be read.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Too many label scan requests.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: Vision provider failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Vision provider is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    WorkspaceStateResponse:
+      type: object
+      properties:
+        state:
+          $ref: "#/components/schemas/WorkspaceState"
+        updatedAt:
+          type: [string, "null"]
+          format: date-time
+      required: [state, updatedAt]
+    WorkspaceState:
+      type: object
+      additionalProperties: true
+    PhotoUploadResponse:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath:
+          type: string
+    IngredientLabelScanResponse:
+      type: object
+      required:
+        - productName
+        - packageSize
+        - packageUnit
+        - servingSize
+        - servingUnit
+        - nutritionBasis
+        - calories
+        - protein_g
+        - carbohydrates_g
+        - fat_g
+        - sugar_g
+      properties:
+        productName:
+          type: [string, "null"]
+        packageSize:
+          type: [number, "null"]
+        packageUnit:
+          type: [string, "null"]
+        servingSize:
+          type: [number, "null"]
+        servingUnit:
+          type: [string, "null"]
+        nutritionBasis:
+          type: string
+          enum: [per_100g, per_serving, unknown]
+        calories:
+          type: [number, "null"]
+        protein_g:
+          type: [number, "null"]
+        carbohydrates_g:
+          type: [number, "null"]
+        fat_g:
+          type: [number, "null"]
+        sugar_g:
+          type: [number, "null"]
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+

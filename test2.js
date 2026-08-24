@@ -1,1 +1,3 @@
-Y29uc3QgbSA9ICIyMDIzLTEwIjsKY29uc3QgZCA9IG5ldyBEYXRlKHBhcnNlSW50KG0uc3BsaXQoJy0nKVswXSksIHBhcnNlSW50KG0uc3BsaXQoJy0nKVsxXSktMSk7CmNvbnNvbGUubG9nKGQudG9Mb2NhbGVTdHJpbmcoJ2VuLVVTJywgeyBtb250aDogJ3Nob3J0JyB9KSk7Cg==
+const m = "2023-10";
+const d = new Date(parseInt(m.split('-')[0]), parseInt(m.split('-')[1])-1);
+console.log(d.toLocaleString('en-US', { month: 'short' }));

@@ -1,1 +1,34 @@
-aW1wb3J0IGV4cHJlc3MsIHsgdHlwZSBFeHByZXNzIH0gZnJvbSAiZXhwcmVzcyI7CmltcG9ydCBjb29raWVQYXJzZXIgZnJvbSAiY29va2llLXBhcnNlciI7CmltcG9ydCBwaW5vSHR0cCBmcm9tICJwaW5vLWh0dHAiOwppbXBvcnQgcm91dGVyIGZyb20gIi4vcm91dGVzIjsKaW1wb3J0IHsgbG9nZ2VyIH0gZnJvbSAiLi9saWIvbG9nZ2VyIjsKCmNvbnN0IGFwcDogRXhwcmVzcyA9IGV4cHJlc3MoKTsKCmFwcC51c2UoCiAgcGlub0h0dHAoewogICAgbG9nZ2VyLAogICAgc2VyaWFsaXplcnM6IHsKICAgICAgcmVxKHJlcSkgewogICAgICAgIHJldHVybiB7CiAgICAgICAgICBpZDogcmVxLmlkLAogICAgICAgICAgbWV0aG9kOiByZXEubWV0aG9kLAogICAgICAgICAgdXJsOiByZXEudXJsPy5zcGxpdCgiPyIpWzBdLAogICAgICAgIH07CiAgICAgIH0sCiAgICAgIHJlcyhyZXMpIHsKICAgICAgICByZXR1cm4gewogICAgICAgICAgc3RhdHVzQ29kZTogcmVzLnN0YXR1c0NvZGUsCiAgICAgICAgfTsKICAgICAgfSwKICAgIH0sCiAgfSksCik7CmFwcC51c2UoY29va2llUGFyc2VyKHByb2Nlc3MuZW52LlNFU1NJT05fU0VDUkVUKSk7CmFwcC51c2UoZXhwcmVzcy5qc29uKCkpOwphcHAudXNlKGV4cHJlc3MudXJsZW5jb2RlZCh7IGV4dGVuZGVkOiB0cnVlIH0pKTsKCmFwcC51c2UoIi9hcGkiLCByb3V0ZXIpOwoKZXhwb3J0IGRlZmF1bHQgYXBwOwo=
+import express, { type Express } from "express";
+import cookieParser from "cookie-parser";
+import pinoHttp from "pino-http";
+import router from "./routes";
+import { logger } from "./lib/logger";
+
+const app: Express = express();
+
+app.use(
+  pinoHttp({
+    logger,
+    serializers: {
+      req(req) {
+        return {
+          id: req.id,
+          method: req.method,
+          url: req.url?.split("?")[0],
+        };
+      },
+      res(res) {
+        return {
+          statusCode: res.statusCode,
+        };
+      },
+    },
+  }),
+);
+app.use(cookieParser(process.env.SESSION_SECRET));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use("/api", router);
+
+export default app;

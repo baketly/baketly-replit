@@ -1,1 +1,14 @@
-aW1wb3J0IHsgUm91dGVyLCB0eXBlIElSb3V0ZXIgfSBmcm9tICJleHByZXNzIjsKaW1wb3J0IGhlYWx0aFJvdXRlciBmcm9tICIuL2hlYWx0aCI7CmltcG9ydCBzdG9yYWdlUm91dGVyIGZyb20gIi4vc3RvcmFnZSI7CmltcG9ydCBpbmdyZWRpZW50TGFiZWxSb3V0ZXIgZnJvbSAiLi9pbmdyZWRpZW50LWxhYmVsIjsKaW1wb3J0IHdvcmtzcGFjZVN0YXRlUm91dGVyIGZyb20gIi4vd29ya3NwYWNlLXN0YXRlIjsKCmNvbnN0IHJvdXRlcjogSVJvdXRlciA9IFJvdXRlcigpOwoKcm91dGVyLnVzZShoZWFsdGhSb3V0ZXIpOwpyb3V0ZXIudXNlKHN0b3JhZ2VSb3V0ZXIpOwpyb3V0ZXIudXNlKGluZ3JlZGllbnRMYWJlbFJvdXRlcik7CnJvdXRlci51c2Uod29ya3NwYWNlU3RhdGVSb3V0ZXIpOwoKZXhwb3J0IGRlZmF1bHQgcm91dGVyOwo=
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import storageRouter from "./storage";
+import ingredientLabelRouter from "./ingredient-label";
+import workspaceStateRouter from "./workspace-state";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use(storageRouter);
+router.use(ingredientLabelRouter);
+router.use(workspaceStateRouter);
+
+export default router;

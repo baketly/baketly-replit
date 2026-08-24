@@ -1,1 +1,155 @@
-aW1wb3J0IHsganNvbmIsIHBnVGFibGUsIHRleHQsIHRpbWVzdGFtcCB9IGZyb20gImRyaXp6bGUtb3JtL3BnLWNvcmUiOwppbXBvcnQgeyB6IH0gZnJvbSAiem9kL3Y0IjsKCmV4cG9ydCBjb25zdCB3b3Jrc3BhY2VTdGF0ZVRhYmxlID0gcGdUYWJsZSgid29ya3NwYWNlX3N0YXRlIiwgewogIGlkOiB0ZXh0KCJpZCIpLnByaW1hcnlLZXkoKSwKICBkYXRhOiBqc29uYigiZGF0YSIpLm5vdE51bGwoKS5kZWZhdWx0KHt9KSwKICB1cGRhdGVkQXQ6IHRpbWVzdGFtcCgidXBkYXRlZF9hdCIsIHsgd2l0aFRpbWV6b25lOiB0cnVlIH0pCiAgICAubm90TnVsbCgpCiAgICAuZGVmYXVsdE5vdygpCiAgICAuJG9uVXBkYXRlKCgpID0+IG5ldyBEYXRlKCkpLAp9KTsKCmNvbnN0IHF1YW50aXR5UmVjb3JkU2NoZW1hID0gei5yZWNvcmQoCiAgei5zdHJpbmcoKS5taW4oMSkubWF4KDEyMCksCiAgei5udW1iZXIoKS5maW5pdGUoKS5taW4oMCkubWF4KDFfMDAwXzAwMCksCik7CmNvbnN0IGNoZWNrUmVjb3JkU2NoZW1hID0gei5yZWNvcmQoei5zdHJpbmcoKS5taW4oMSkubWF4KDEyMCksIHouYm9vbGVhbigpKTsKY29uc3QgcmVjaXBlUmVjb3JkU2NoZW1hID0gegogIC5vYmplY3QoewogICAgaWQ6IHouc3RyaW5nKCkubWluKDEpLm1heCgxMjApLAogICAgbmFtZTogei5zdHJpbmcoKS5taW4oMSkubWF4KDE2MCksCiAgICB0eXBlOiB6LmVudW0oWyJicmVhZCIsICJiYWJrYSIsICJjb29raWUiLCAidHJlYXQiXSksCiAgICBpY29uOiB6LmVudW0oWyJsb2FmIiwgImJhYmthIiwgImZvY2FjY2lhIiwgImJyb29raWUiLCAiY29va2llIiwgImNha2UiLCAiY3VwIl0pLAogICAgcHJpY2U6IHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxMF8wMDApLAogICAgeWllbGQ6IHoubnVtYmVyKCkuaW50KCkubWluKDEpLm1heCgxMF8wMDApLAogICAgaW5ncmVkaWVudEtleXM6IHouYXJyYXkoei5zdHJpbmcoKS5taW4oMSkubWF4KDgwKSkubWF4KDEwMCksCiAgICBwYWNrYWdpbmdLZXlzOiB6LmFycmF5KHouc3RyaW5nKCkubWluKDEpLm1heCg4MCkpLm1heCgxMDApLAogICAgYW1vdW50czogcXVhbnRpdHlSZWNvcmRTY2hlbWEsCiAgfSkKICAuc3RyaWN0KCk7CmNvbnN0IGluZ3JlZGllbnRSZWNvcmRTY2hlbWEgPSB6CiAgLm9iamVjdCh7CiAgICBuYW1lOiB6LnN0cmluZygpLm1pbigxKS5tYXgoMTYwKSwKICAgIHN1cHBsaWVyOiB6LnN0cmluZygpLm1heCgxNjApLAogICAgcGFja2FnZVByaWNlOiB6Lm51bWJlcigpLmZpbml0ZSgpLm1pbigwKS5tYXgoMV8wMDBfMDAwKSwKICAgIHBhY2thZ2VTaXplOiB6Lm51bWJlcigpLmZpbml0ZSgpLnBvc2l0aXZlKCkubWF4KDFfMDAwXzAwMCksCiAgICB1bml0OiB6LmVudW0oWyJnIiwgImtnIiwgIm96IiwgImxiIiwgIm1sIiwgInBjIl0pLAogICAga2NhbDogei5udW1iZXIoKS5maW5pdGUoKS5taW4oMCkubWF4KDEwMF8wMDApLAogICAgcHJvdGVpbjogei5udW1iZXIoKS5maW5pdGUoKS5taW4oMCkubWF4KDEwMF8wMDApLAogICAgY2FyYnM6IHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxMDBfMDAwKSwKICAgIGZhdDogei5udW1iZXIoKS5maW5pdGUoKS5taW4oMCkubWF4KDEwMF8wMDApLAogICAgc3VnYXI6IHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxMDBfMDAwKS5vcHRpb25hbCgpLAogICAgc2VydmluZ1NpemU6IHoubnVtYmVyKCkuZmluaXRlKCkucG9zaXRpdmUoKS5tYXgoMTAwXzAwMCkub3B0aW9uYWwoKSwKICAgIHNlcnZpbmdVbml0OiB6LnN0cmluZygpLm1heCgzMCkub3B0aW9uYWwoKSwKICAgIHBob3RvUGF0aDogei5zdHJpbmcoKS5tYXgoMzAwKS5vcHRpb25hbCgpLAogIH0pCiAgLnN0cmljdCgpOwpjb25zdCBwYWNrYWdpbmdSZWNvcmRTY2hlbWEgPSB6CiAgLm9iamVjdCh7CiAgICBuYW1lOiB6LnN0cmluZygpLm1pbigxKS5tYXgoMTYwKSwKICAgIHN1cHBsaWVyOiB6LnN0cmluZygpLm1heCgxNjApLAogICAgcGFja1ByaWNlOiB6Lm51bWJlcigpLmZpbml0ZSgpLm1pbigwKS5tYXgoMV8wMDBfMDAwKSwKICAgIHVuaXRzUGVyUGFjazogei5udW1iZXIoKS5maW5pdGUoKS5wb3NpdGl2ZSgpLm1heCgxXzAwMF8wMDApLAogICAgcGhvdG9QYXRoOiB6LnN0cmluZygpLm1heCgzMDApLm9wdGlvbmFsKCksCiAgfSkKICAuc3RyaWN0KCk7CmNvbnN0IHNhbGVMaW5lSXRlbVNjaGVtYSA9IHoKICAub2JqZWN0KHsKICAgIHByb2R1Y3RJZDogei5zdHJpbmcoKS5taW4oMSkubWF4KDEyMCksCiAgICBuYW1lOiB6LnN0cmluZygpLm1pbigxKS5tYXgoMTYwKSwKICAgIHF1YW50aXR5OiB6Lm51bWJlcigpLmludCgpLnBvc2l0aXZlKCkubWF4KDFfMDAwXzAwMCksCiAgICB1bml0UHJpY2U6IHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxXzAwMF8wMDApLAogICAgdW5pdENvc3Q6IHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxXzAwMF8wMDApLAogIH0pCiAgLnN0cmljdCgpOwpjb25zdCBzYWxlUmVjb3JkU2NoZW1hID0gegogIC5vYmplY3QoewogICAgaWQ6IHouc3RyaW5nKCkubWluKDEpLm1heCgxMjApLAogICAgb2NjdXJyZWRBdDogei5pc28uZGF0ZXRpbWUoKSwKICAgIHNvdXJjZTogei5lbnVtKFsicG9zIiwgImNhc2giLCAiZXZlbnQiXSksCiAgICBldmVudElkOiB6LnN0cmluZygpLm1pbigxKS5tYXgoMTIwKS5vcHRpb25hbCgpLAogICAgdG90YWw6IHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxXzAwMF8wMDApLAogICAgbGluZUl0ZW1zOiB6LmFycmF5KHNhbGVMaW5lSXRlbVNjaGVtYSkubWF4KDEwMCksCiAgfSkKICAuc3RyaWN0KCk7CmNvbnN0IGV2ZW50UmVjb3JkU2NoZW1hID0gegogIC5vYmplY3QoewogICAgaWQ6IHouc3RyaW5nKCkubWluKDEpLm1heCgxMjApLAogICAgbmFtZTogei5zdHJpbmcoKS5taW4oMSkubWF4KDE2MCksCiAgICBvY2N1cnJlZEF0OiB6Lmlzby5kYXRldGltZSgpLAogICAgYm9vdGhGZWU6IHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxXzAwMF8wMDApLAogICAgbGluZUl0ZW1zOiB6LmFycmF5KHNhbGVMaW5lSXRlbVNjaGVtYSkubWF4KDEwMCksCiAgfSkKICAuc3RyaWN0KCk7CgpleHBvcnQgY29uc3Qgd29ya3NwYWNlU3RhdGVQYXlsb2FkU2NoZW1hID0gegogIC5vYmplY3QoewogICAgcHJpY2U6IHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxMF8wMDApLm9wdGlvbmFsKCksCiAgICBjaGF0TXNnczogegogICAgICAuYXJyYXkoCiAgICAgICAgei5vYmplY3QoewogICAgICAgICAgd2hvOiB6LmVudW0oWyJ1IiwgImIiXSksCiAgICAgICAgICB0ZXh0OiB6LnN0cmluZygpLm1pbigxKS5tYXgoMl8wMDApLAogICAgICAgIH0pLAogICAgICApCiAgICAgIC5tYXgoMTAwKQogICAgICAub3B0aW9uYWwoKSwKICAgIHJlY2lwZUFtdHM6IHF1YW50aXR5UmVjb3JkU2NoZW1hLm9wdGlvbmFsKCksCiAgICByZWNpcGVJbmdLZXlzOiB6LmFycmF5KHouc3RyaW5nKCkubWluKDEpLm1heCg4MCkpLm1heCgxMDApLm9wdGlvbmFsKCksCiAgICByZWNpcGVQYWNrS2V5czogei5hcnJheSh6LnN0cmluZygpLm1pbigxKS5tYXgoODApKS5tYXgoMTAwKS5vcHRpb25hbCgpLAogICAgcmVjaXBlWWllbGQ6IHoubnVtYmVyKCkuaW50KCkubWluKDEpLm1heCgxMF8wMDApLm9wdGlvbmFsKCksCiAgICByZWNpcGVSZWNvcmRzOiB6LmFycmF5KHJlY2lwZVJlY29yZFNjaGVtYSkubWF4KDIwMCkub3B0aW9uYWwoKSwKICAgIGluZ3JlZGllbnRSZWNvcmRzOiB6CiAgICAgIC5yZWNvcmQoei5zdHJpbmcoKS5taW4oMSkubWF4KDgwKSwgaW5ncmVkaWVudFJlY29yZFNjaGVtYSkKICAgICAgLnJlZmluZSgocmVjb3JkcykgPT4gT2JqZWN0LmtleXMocmVjb3JkcykubGVuZ3RoIDw9IDEwMCkKICAgICAgLm9wdGlvbmFsKCksCiAgICBwYWNrYWdpbmdSZWNvcmRzOiB6CiAgICAgIC5yZWNvcmQoei5zdHJpbmcoKS5taW4oMSkubWF4KDgwKSwgcGFja2FnaW5nUmVjb3JkU2NoZW1hKQogICAgICAucmVmaW5lKChyZWNvcmRzKSA9PiBPYmplY3Qua2V5cyhyZWNvcmRzKS5sZW5ndGggPD0gMTAwKQogICAgICAub3B0aW9uYWwoKSwKICAgIHJlbW92ZWRJbmdyZWRpZW50S2V5czogei5hcnJheSh6LnN0cmluZygpLm1pbigxKS5tYXgoODApKS5tYXgoMTAwKS5vcHRpb25hbCgpLAogICAgcmVtb3ZlZFBhY2thZ2luZ0tleXM6IHouYXJyYXkoei5zdHJpbmcoKS5taW4oMSkubWF4KDgwKSkubWF4KDEwMCkub3B0aW9uYWwoKSwKICAgIGV2UXR5OiBxdWFudGl0eVJlY29yZFNjaGVtYS5vcHRpb25hbCgpLAogICAgZXZTb2xkOiBxdWFudGl0eVJlY29yZFNjaGVtYS5vcHRpb25hbCgpLAogICAgZXZTdGF0dXM6IHouZW51bShbInBsYW5uZWQiLCAiY29tcGxldGVkIl0pLm9wdGlvbmFsKCksCiAgICBldlNhdmVkOiB6LmJvb2xlYW4oKS5vcHRpb25hbCgpLAogICAgYWN0dWFsUmV2OiB6Lm51bWJlcigpLmZpbml0ZSgpLm1pbigwKS5tYXgoMV8wMDBfMDAwKS5vcHRpb25hbCgpLAogICAgc29sZFJldjogei5udW1iZXIoKS5maW5pdGUoKS5taW4oMCkubWF4KDFfMDAwXzAwMCkub3B0aW9uYWwoKSwKICAgIHNob3BDaGVja2VkOiBjaGVja1JlY29yZFNjaGVtYS5vcHRpb25hbCgpLAogICAgY2FzaFF0eTogcXVhbnRpdHlSZWNvcmRTY2hlbWEub3B0aW9uYWwoKSwKICAgIGNhc2hQYWlkOiB6LnN0cmluZygpLm1heCg1MCkub3B0aW9uYWwoKSwKICAgIGNhc2hPcmRlcnNBcnI6IHoKICAgICAgLmFycmF5KAogICAgICAgIHoub2JqZWN0KHsKICAgICAgICAgIHN1bW1hcnk6IHouc3RyaW5nKCkubWluKDEpLm1heCg1MDApLAogICAgICAgICAgdGltZTogei5zdHJpbmcoKS5taW4oMSkubWF4KDEwMCksCiAgICAgICAgICB0b3RhbDogei5udW1iZXIoKS5maW5pdGUoKS5taW4oMCkubWF4KDFfMDAwXzAwMCksCiAgICAgICAgICBzYWxlSWQ6IHouc3RyaW5nKCkubWluKDEpLm1heCgxMjApLm9wdGlvbmFsKCksCiAgICAgICAgfSksCiAgICAgICkKICAgICAgLm1heCgxXzAwMCkKICAgICAgLm9wdGlvbmFsKCksCiAgICBzYWxlUmVjb3Jkczogei5hcnJheShzYWxlUmVjb3JkU2NoZW1hKS5tYXgoNV8wMDApLm9wdGlvbmFsKCksCiAgICBldmVudFJlY29yZHM6IHouYXJyYXkoZXZlbnRSZWNvcmRTY2hlbWEpLm1heCg1MDApLm9wdGlvbmFsKCksCiAgICBldmVudEN1cnJlbnRJZDogei5zdHJpbmcoKS5taW4oMSkubWF4KDEyMCkub3B0aW9uYWwoKSwKICAgIGV2ZW50TmFtZTogei5zdHJpbmcoKS5taW4oMSkubWF4KDE2MCkub3B0aW9uYWwoKSwKICAgIGV2ZW50RGF0ZTogei5pc28uZGF0ZSgpLm9wdGlvbmFsKCksCiAgICBldmVudEJvb3RoRmVlOiB6Lm51bWJlcigpLmZpbml0ZSgpLm1pbigwKS5tYXgoMV8wMDBfMDAwKS5vcHRpb25hbCgpLAogICAgZXh0cmFFdmVudHM6IHoKICAgICAgLmFycmF5KAogICAgICAgIHoub2JqZWN0KHsKICAgICAgICAgIG5hbWU6IHouc3RyaW5nKCkubWluKDEpLm1heCgxNjApLAogICAgICAgICAgcHJvZHVjdHM6IHouc3RyaW5nKCkubWluKDEpLm1heCg1MCksCiAgICAgICAgICByZXZTdHI6IHouc3RyaW5nKCkubWluKDEpLm1heCg1MCksCiAgICAgICAgfSksCiAgICAgICkKICAgICAgLm1heCgyMDApCiAgICAgIC5vcHRpb25hbCgpLAogICAgdG9kYXlBcnI6IHoKICAgICAgLmFycmF5KHoubnVtYmVyKCkuZmluaXRlKCkubWluKDApLm1heCgxXzAwMF8wMDApKQogICAgICAubWF4KDEwXzAwMCkKICAgICAgLm9wdGlvbmFsKCksCiAgfSkKICAuc3RyaWN0KCk7CmV4cG9ydCB0eXBlIFdvcmtzcGFjZVN0YXRlUGF5bG9hZCA9IHouaW5mZXI8dHlwZW9mIHdvcmtzcGFjZVN0YXRlUGF5bG9hZFNjaGVtYT47
+import { jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { z } from "zod/v4";
+
+export const workspaceStateTable = pgTable("workspace_state", {
+  id: text("id").primaryKey(),
+  data: jsonb("data").notNull().default({}),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+const quantityRecordSchema = z.record(
+  z.string().min(1).max(120),
+  z.number().finite().min(0).max(1_000_000),
+);
+const checkRecordSchema = z.record(z.string().min(1).max(120), z.boolean());
+const recipeRecordSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    name: z.string().min(1).max(160),
+    type: z.enum(["bread", "babka", "cookie", "treat"]),
+    icon: z.enum(["loaf", "babka", "focaccia", "brookie", "cookie", "cake", "cup"]),
+    price: z.number().finite().min(0).max(10_000),
+    yield: z.number().int().min(1).max(10_000),
+    ingredientKeys: z.array(z.string().min(1).max(80)).max(100),
+    packagingKeys: z.array(z.string().min(1).max(80)).max(100),
+    amounts: quantityRecordSchema,
+  })
+  .strict();
+const ingredientRecordSchema = z
+  .object({
+    name: z.string().min(1).max(160),
+    supplier: z.string().max(160),
+    packagePrice: z.number().finite().min(0).max(1_000_000),
+    packageSize: z.number().finite().positive().max(1_000_000),
+    unit: z.enum(["g", "kg", "oz", "lb", "ml", "pc"]),
+    kcal: z.number().finite().min(0).max(100_000),
+    protein: z.number().finite().min(0).max(100_000),
+    carbs: z.number().finite().min(0).max(100_000),
+    fat: z.number().finite().min(0).max(100_000),
+    sugar: z.number().finite().min(0).max(100_000).optional(),
+    servingSize: z.number().finite().positive().max(100_000).optional(),
+    servingUnit: z.string().max(30).optional(),
+    photoPath: z.string().max(300).optional(),
+  })
+  .strict();
+const packagingRecordSchema = z
+  .object({
+    name: z.string().min(1).max(160),
+    supplier: z.string().max(160),
+    packPrice: z.number().finite().min(0).max(1_000_000),
+    unitsPerPack: z.number().finite().positive().max(1_000_000),
+    photoPath: z.string().max(300).optional(),
+  })
+  .strict();
+const saleLineItemSchema = z
+  .object({
+    productId: z.string().min(1).max(120),
+    name: z.string().min(1).max(160),
+    quantity: z.number().int().positive().max(1_000_000),
+    unitPrice: z.number().finite().min(0).max(1_000_000),
+    unitCost: z.number().finite().min(0).max(1_000_000),
+  })
+  .strict();
+const saleRecordSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    occurredAt: z.iso.datetime(),
+    source: z.enum(["pos", "cash", "event"]),
+    eventId: z.string().min(1).max(120).optional(),
+    total: z.number().finite().min(0).max(1_000_000),
+    lineItems: z.array(saleLineItemSchema).max(100),
+  })
+  .strict();
+const eventRecordSchema = z
+  .object({
+    id: z.string().min(1).max(120),
+    name: z.string().min(1).max(160),
+    occurredAt: z.iso.datetime(),
+    boothFee: z.number().finite().min(0).max(1_000_000),
+    lineItems: z.array(saleLineItemSchema).max(100),
+  })
+  .strict();
+
+export const workspaceStatePayloadSchema = z
+  .object({
+    price: z.number().finite().min(0).max(10_000).optional(),
+    chatMsgs: z
+      .array(
+        z.object({
+          who: z.enum(["u", "b"]),
+          text: z.string().min(1).max(2_000),
+        }),
+      )
+      .max(100)
+      .optional(),
+    recipeAmts: quantityRecordSchema.optional(),
+    recipeIngKeys: z.array(z.string().min(1).max(80)).max(100).optional(),
+    recipePackKeys: z.array(z.string().min(1).max(80)).max(100).optional(),
+    recipeYield: z.number().int().min(1).max(10_000).optional(),
+    recipeRecords: z.array(recipeRecordSchema).max(200).optional(),
+    ingredientRecords: z
+      .record(z.string().min(1).max(80), ingredientRecordSchema)
+      .refine((records) => Object.keys(records).length <= 100)
+      .optional(),
+    packagingRecords: z
+      .record(z.string().min(1).max(80), packagingRecordSchema)
+      .refine((records) => Object.keys(records).length <= 100)
+      .optional(),
+    removedIngredientKeys: z.array(z.string().min(1).max(80)).max(100).optional(),
+    removedPackagingKeys: z.array(z.string().min(1).max(80)).max(100).optional(),
+    evQty: quantityRecordSchema.optional(),
+    evSold: quantityRecordSchema.optional(),
+    evStatus: z.enum(["planned", "completed"]).optional(),
+    evSaved: z.boolean().optional(),
+    actualRev: z.number().finite().min(0).max(1_000_000).optional(),
+    soldRev: z.number().finite().min(0).max(1_000_000).optional(),
+    shopChecked: checkRecordSchema.optional(),
+    cashQty: quantityRecordSchema.optional(),
+    cashPaid: z.string().max(50).optional(),
+    cashOrdersArr: z
+      .array(
+        z.object({
+          summary: z.string().min(1).max(500),
+          time: z.string().min(1).max(100),
+          total: z.number().finite().min(0).max(1_000_000),
+          saleId: z.string().min(1).max(120).optional(),
+        }),
+      )
+      .max(1_000)
+      .optional(),
+    saleRecords: z.array(saleRecordSchema).max(5_000).optional(),
+    eventRecords: z.array(eventRecordSchema).max(500).optional(),
+    eventCurrentId: z.string().min(1).max(120).optional(),
+    eventName: z.string().min(1).max(160).optional(),
+    eventDate: z.iso.date().optional(),
+    eventBoothFee: z.number().finite().min(0).max(1_000_000).optional(),
+    extraEvents: z
+      .array(
+        z.object({
+          name: z.string().min(1).max(160),
+          products: z.string().min(1).max(50),
+          revStr: z.string().min(1).max(50),
+        }),
+      )
+      .max(200)
+      .optional(),
+    todayArr: z
+      .array(z.number().finite().min(0).max(1_000_000))
+      .max(10_000)
+      .optional(),
+  })
+  .strict();
+export type WorkspaceStatePayload = z.infer<typeof workspaceStatePayloadSchema>;

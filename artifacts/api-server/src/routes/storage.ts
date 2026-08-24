@@ -1,1 +1,235 @@
-aW1wb3J0IHsgUmVhZGFibGUgfSBmcm9tICdzdHJlYW0nOwppbXBvcnQgewogIHJhdywKICBSb3V0ZXIsCiAgdHlwZSBJUm91dGVyLAogIHR5cGUgTmV4dEZ1bmN0aW9uLAogIHR5cGUgUmVxdWVzdCwKICB0eXBlIFJlc3BvbnNlLAp9IGZyb20gJ2V4cHJlc3MnOwoKaW1wb3J0IHsKICBJbnZhbGlkSW1hZ2VPYmplY3RFcnJvciwKICBJbnZhbGlkSW1hZ2VVcGxvYWRFcnJvciwKICBPYmplY3ROb3RGb3VuZEVycm9yLAogIE9iamVjdFN0b3JhZ2VTZXJ2aWNlLAp9IGZyb20gJy4uL2xpYi9vYmplY3RTdG9yYWdlJzsKCmNvbnN0IHJvdXRlcjogSVJvdXRlciA9IFJvdXRlcigpOwpjb25zdCBvYmplY3RTdG9yYWdlU2VydmljZSA9IG5ldyBPYmplY3RTdG9yYWdlU2VydmljZSgpOwpjb25zdCBQSE9UT19VUExPQURfUEFUSCA9IC9edXBsb2Fkc1wvWzAtOWEtZl17OH0tWzAtOWEtZl17NH0tWzAtOWEtZl17NH0tWzAtOWEtZl17NH0tWzAtOWEtZl17MTJ9JC9pOwpjb25zdCBNQVhfSU1BR0VfQllURVMgPSAxMCAqIDEwMjQgKiAxMDI0Owpjb25zdCBTVVBQT1JURURfSU1BR0VfVFlQRVMgPSBuZXcgU2V0KFsKICAnaW1hZ2UvanBlZycsCiAgJ2ltYWdlL3BuZycsCiAgJ2ltYWdlL3dlYnAnLAogICdpbWFnZS9naWYnLApdKTsKY29uc3QgdXBsb2FkUmVxdWVzdFdpbmRvd3MgPSBuZXcgTWFwPAogIHN0cmluZywKICB7IGNvdW50OiBudW1iZXI7IGFjdGl2ZTogbnVtYmVyOyByZXNldHNBdDogbnVtYmVyIH0KPigpOwpsZXQgYWN0aXZlVXBsb2FkcyA9IDA7CgpmdW5jdGlvbiByZXNlcnZlVXBsb2FkU2xvdChyZXE6IFJlcXVlc3QpOiBib29sZWFuIHsKICBjb25zdCBub3cgPSBEYXRlLm5vdygpOwogIGNvbnN0IGNsaWVudElkID0gcmVxLmlwIHx8ICd1bmtub3duJzsKICBjb25zdCBleGlzdGluZyA9IHVwbG9hZFJlcXVlc3RXaW5kb3dzLmdldChjbGllbnRJZCk7CiAgaWYgKCFleGlzdGluZyB8fCBleGlzdGluZy5yZXNldHNBdCA8PSBub3cpIHsKICAgIHVwbG9hZFJlcXVlc3RXaW5kb3dzLnNldChjbGllbnRJZCwgewogICAgICBjb3VudDogMSwKICAgICAgYWN0aXZlOiAxLAogICAgICByZXNldHNBdDogbm93ICsgMTAgKiA2MF8wMDAsCiAgICB9KTsKICAgIGFjdGl2ZVVwbG9hZHMgKz0gMTsKICAgIHJldHVybiB0cnVlOwogIH0KICBleGlzdGluZy5jb3VudCArPSAxOwogIGlmIChleGlzdGluZy5jb3VudCA+IDEyIHx8IGV4aXN0aW5nLmFjdGl2ZSA+PSAyIHx8IGFjdGl2ZVVwbG9hZHMgPj0gOCkgewogICAgcmV0dXJuIGZhbHNlOwogIH0KICBleGlzdGluZy5hY3RpdmUgKz0gMTsKICBhY3RpdmVVcGxvYWRzICs9IDE7CiAgcmV0dXJuIHRydWU7Cn0KCmZ1bmN0aW9uIHJlbGVhc2VVcGxvYWRTbG90KHJlcTogUmVxdWVzdCk6IHZvaWQgewogIGNvbnN0IGV4aXN0aW5nID0gdXBsb2FkUmVxdWVzdFdpbmRvd3MuZ2V0KHJlcS5pcCB8fCAndW5rbm93bicpOwogIGlmIChleGlzdGluZz8uYWN0aXZlKSB7CiAgICBleGlzdGluZy5hY3RpdmUgLT0gMTsKICAgIGFjdGl2ZVVwbG9hZHMgPSBNYXRoLm1heCgwLCBhY3RpdmVVcGxvYWRzIC0gMSk7CiAgfQp9CgpmdW5jdGlvbiBhZG1pdFBob3RvVXBsb2FkKAogIHJlcTogUmVxdWVzdCwKICByZXM6IFJlc3BvbnNlLAogIG5leHQ6IE5leHRGdW5jdGlvbiwKKTogdm9pZCB7CiAgY29uc3QgY29udGVudFR5cGUgPSByZXEuZ2V0KCdjb250ZW50LXR5cGUnKT8udG9Mb3dlckNhc2UoKSB8fCAnJzsKICBpZiAoIVNVUFBPUlRFRF9JTUFHRV9UWVBFUy5oYXMoY29udGVudFR5cGUpKSB7CiAgICByZXMuc3RhdHVzKDQwMCkuanNvbih7IGVycm9yOiAnQ2hvb3NlIGEgSlBFRywgUE5HLCBXZWJQLCBvciBHSUYgaW1hZ2UuJyB9KTsKICAgIHJldHVybjsKICB9CiAgY29uc3QgY29udGVudExlbmd0aCA9IE51bWJlcihyZXEuZ2V0KCdjb250ZW50LWxlbmd0aCcpKTsKICBpZiAoTnVtYmVyLmlzRmluaXRlKGNvbnRlbnRMZW5ndGgpICYmIGNvbnRlbnRMZW5ndGggPiBNQVhfSU1BR0VfQllURVMpIHsKICAgIHJlcy5zdGF0dXMoNDEzKS5qc29uKHsgZXJyb3I6ICdDaG9vc2UgYW4gaW1hZ2Ugc21hbGxlciB0aGFuIDEwIE1CLicgfSk7CiAgICByZXR1cm47CiAgfQogIGlmICghcmVzZXJ2ZVVwbG9hZFNsb3QocmVxKSkgewogICAgcmVzLnN0YXR1cyg0MjkpLmpzb24oeyBlcnJvcjogJ1RvbyBtYW55IHBob3RvIHVwbG9hZHMuIFBsZWFzZSB0cnkgYWdhaW4gc2hvcnRseS4nIH0pOwogICAgcmV0dXJuOwogIH0KICBsZXQgcmVsZWFzZWQgPSBmYWxzZTsKICBjb25zdCB1cGxvYWREZWFkbGluZSA9IHNldFRpbWVvdXQoKCkgPT4gewogICAgcmVxLmRlc3Ryb3kobmV3IEVycm9yKCdQaG90byB1cGxvYWQgdGltZWQgb3V0JykpOwogIH0sIDMwXzAwMCk7CiAgY29uc3QgcmVsZWFzZSA9ICgpID0+IHsKICAgIGlmIChyZWxlYXNlZCkgewogICAgICByZXR1cm47CiAgICB9CiAgICByZWxlYXNlZCA9IHRydWU7CiAgICBjbGVhclRpbWVvdXQodXBsb2FkRGVhZGxpbmUpOwogICAgcmVsZWFzZVVwbG9hZFNsb3QocmVxKTsKICB9OwogIHJlcy5vbmNlKCdmaW5pc2gnLCByZWxlYXNlKTsKICByZXMub25jZSgnY2xvc2UnLCByZWxlYXNlKTsKICByZXEub25jZSgnYWJvcnRlZCcsIHJlbGVhc2UpOwogIG5leHQoKTsKfQoKLyoqCiAqIFBPU1QgL3N0b3JhZ2UvdXBsb2FkcwogKgogKiBSZWNlaXZlIGFuZCB2YWxpZGF0ZSBhbiBpbWFnZSBiZWZvcmUgd3JpdGluZyBpdCB0byBvYmplY3Qgc3RvcmFnZS4gVGhpcyBrZWVwcwogKiB0aGUgdGVtcG9yYXJ5IGFub255bW91cyBzaW5nbGUtdXNlciBmbG93IGJvdW5kZWQ6IG5vIGNsaWVudCByZWNlaXZlcyBhIFVSTAogKiBjYXBhYmxlIG9mIHdyaXRpbmcgYXJiaXRyYXJ5IGJ5dGVzIGRpcmVjdGx5IHRvIHRoZSBidWNrZXQuCiAqLwpyb3V0ZXIucG9zdCgKICAnL3N0b3JhZ2UvdXBsb2FkcycsCiAgYWRtaXRQaG90b1VwbG9hZCwKICByYXcoewogICAgdHlwZTogWydpbWFnZS9qcGVnJywgJ2ltYWdlL3BuZycsICdpbWFnZS93ZWJwJywgJ2ltYWdlL2dpZiddLAogICAgbGltaXQ6ICcxMG1iJywKICB9KSwKICBhc3luYyAocmVxOiBSZXF1ZXN0LCByZXM6IFJlc3BvbnNlKSA9PiB7CiAgICB0cnkgewogICAgICBpZiAoIUJ1ZmZlci5pc0J1ZmZlcihyZXEuYm9keSkpIHsKICAgICAgICByZXMuc3RhdHVzKDQwMCkuanNvbih7IGVycm9yOiAnQ2hvb3NlIGEgSlBFRywgUE5HLCBXZWJQLCBvciBHSUYgaW1hZ2UuJyB9KTsKICAgICAgICByZXR1cm47CiAgICAgIH0KICAgICAgY29uc3Qgb2JqZWN0UGF0aCA9IGF3YWl0IG9iamVjdFN0b3JhZ2VTZXJ2aWNlLnNhdmVWZXJpZmllZEltYWdlKAogICAgICAgIHJlcS5ib2R5LAogICAgICAgIHJlcS5nZXQoJ2NvbnRlbnQtdHlwZScpIHx8ICcnLAogICAgICApOwogICAgICByZXMuc3RhdHVzKDIwMSkuanNvbih7IG9iamVjdFBhdGggfSk7CiAgICB9IGNhdGNoIChlcnJvcikgewogICAgICBpZiAoZXJyb3IgaW5zdGFuY2VvZiBJbnZhbGlkSW1hZ2VVcGxvYWRFcnJvcikgewogICAgICAgIHJlcy5zdGF0dXMoNDAwKS5qc29uKHsgZXJyb3I6IGVycm9yLm1lc3NhZ2UgfSk7CiAgICAgICAgcmV0dXJuOwogICAgICB9CiAgICAgIHJlcS5sb2cuZXJyb3IoeyBlcnI6IGVycm9yIH0sICdFcnJvciBzYXZpbmcgaW1hZ2UgdXBsb2FkJyk7CiAgICAgIHJlcy5zdGF0dXMoNTAwKS5qc29uKHsgZXJyb3I6ICdGYWlsZWQgdG8gdXBsb2FkIGltYWdlJyB9KTsKICAgIH0KICB9LAopOwoKLyoqCiAqIEdFVCAvc3RvcmFnZS9wdWJsaWMtb2JqZWN0cy8qCiAqCiAqIFNlcnZlIHB1YmxpYyBhc3NldHMgZnJvbSBQVUJMSUNfT0JKRUNUX1NFQVJDSF9QQVRIUy4KICogVGhlc2UgYXJlIHVuY29uZGl0aW9uYWxseSBwdWJsaWMg4oCUIG5vIGF1dGhlbnRpY2F0aW9uIG9yIEFDTCBjaGVja3MuCiAqIElNUE9SVEFOVDogQWx3YXlzIHByb3ZpZGUgdGhpcyBlbmRwb2ludCB3aGVuIG9iamVjdCBzdG9yYWdlIGlzIHNldCB1cC4KICovCnJvdXRlci5nZXQoCiAgJy9zdG9yYWdlL3B1YmxpYy1vYmplY3RzLypmaWxlUGF0aCcsCiAgYXN5bmMgKHJlcTogUmVxdWVzdCwgcmVzOiBSZXNwb25zZSkgPT4gewogICAgdHJ5IHsKICAgICAgY29uc3QgcmF3ID0gcmVxLnBhcmFtcy5maWxlUGF0aDsKICAgICAgY29uc3QgZmlsZVBhdGggPSBBcnJheS5pc0FycmF5KHJhdykgPyByYXcuam9pbignLycpIDogcmF3OwogICAgICBjb25zdCBmaWxlID0gYXdhaXQgb2JqZWN0U3RvcmFnZVNlcnZpY2Uuc2VhcmNoUHVibGljT2JqZWN0KGZpbGVQYXRoKTsKICAgICAgaWYgKCFmaWxlKSB7CiAgICAgICAgcmVzLnN0YXR1cyg0MDQpLmpzb24oeyBlcnJvcjogJ0ZpbGUgbm90IGZvdW5kJyB9KTsKICAgICAgICByZXR1cm47CiAgICAgIH0KCiAgICAgIGNvbnN0IHJlc3BvbnNlID0gYXdhaXQgb2JqZWN0U3RvcmFnZVNlcnZpY2UuZG93bmxvYWRPYmplY3QoZmlsZSk7CgogICAgICByZXMuc3RhdHVzKHJlc3BvbnNlLnN0YXR1cyk7CiAgICAgIHJlc3BvbnNlLmhlYWRlcnMuZm9yRWFjaCgodmFsdWUsIGtleSkgPT4gcmVzLnNldEhlYWRlcihrZXksIHZhbHVlKSk7CgogICAgICBpZiAocmVzcG9uc2UuYm9keSkgewogICAgICAgIGNvbnN0IG5vZGVTdHJlYW0gPSBSZWFkYWJsZS5mcm9tV2ViKAogICAgICAgICAgcmVzcG9uc2UuYm9keSBhcyBSZWFkYWJsZVN0cmVhbTxVaW50OEFycmF5PiwKICAgICAgICApOwogICAgICAgIG5vZGVTdHJlYW0ucGlwZShyZXMpOwogICAgICB9IGVsc2UgewogICAgICAgIHJlcy5lbmQoKTsKICAgICAgfQogICAgfSBjYXRjaCAoZXJyb3IpIHsKICAgICAgcmVxLmxvZy5lcnJvcih7IGVycjogZXJyb3IgfSwgJ0Vycm9yIHNlcnZpbmcgcHVibGljIG9iamVjdCcpOwogICAgICByZXMuc3RhdHVzKDUwMCkuanNvbih7IGVycm9yOiAnRmFpbGVkIHRvIHNlcnZlIHB1YmxpYyBvYmplY3QnIH0pOwogICAgfQogIH0sCik7CgovKioKICogR0VUIC9zdG9yYWdlL29iamVjdHMvKgogKgogKiBTZXJ2ZSBvYmplY3QgZW50aXRpZXMgZnJvbSBQUklWQVRFX09CSkVDVF9ESVIuCiAqIFRoZXNlIGFyZSBzZXJ2ZWQgZnJvbSBhIHNlcGFyYXRlIHBhdGggZnJvbSAvcHVibGljLW9iamVjdHMgYW5kIGNhbiBvcHRpb25hbGx5CiAqIGJlIHByb3RlY3RlZCB3aXRoIGF1dGhlbnRpY2F0aW9uIG9yIEFDTCBjaGVja3MgYmFzZWQgb24gdGhlIHVzZSBjYXNlLgogKi8Kcm91dGVyLmdldCgnL3N0b3JhZ2Uvb2JqZWN0cy8qcGF0aCcsIGFzeW5jIChyZXE6IFJlcXVlc3QsIHJlczogUmVzcG9uc2UpID0+IHsKICB0cnkgewogICAgY29uc3QgcmF3ID0gcmVxLnBhcmFtcy5wYXRoOwogICAgY29uc3Qgd2lsZGNhcmRQYXRoID0gQXJyYXkuaXNBcnJheShyYXcpID8gcmF3LmpvaW4oJy8nKSA6IHJhdzsKICAgIGlmICghUEhPVE9fVVBMT0FEX1BBVEgudGVzdCh3aWxkY2FyZFBhdGgpKSB7CiAgICAgIHJlcy5zdGF0dXMoNDA0KS5qc29uKHsgZXJyb3I6ICdPYmplY3Qgbm90IGZvdW5kJyB9KTsKICAgICAgcmV0dXJuOwogICAgfQogICAgY29uc3Qgb2JqZWN0UGF0aCA9IGAvb2JqZWN0cy8ke3dpbGRjYXJkUGF0aH1gOwogICAgY29uc3Qgb2JqZWN0RmlsZSA9CiAgICAgIGF3YWl0IG9iamVjdFN0b3JhZ2VTZXJ2aWNlLmdldE9iamVjdEVudGl0eUZpbGUob2JqZWN0UGF0aCk7CgogICAgLy8gVGhpcyBvYmplY3QgcGF0aCBpcyBpbnRlbnRpb25hbGx5IHB1YmxpYyB3aGlsZSB0aGUgYXBwIGlzIHNpbmdsZS11c2VyLgogICAgLy8gQWRkIGF1dGhlbnRpY2F0aW9uIGFuZCBvYmplY3QgQUNMIGNoZWNrcyBoZXJlIHdoZW4gY3VzdG9tZXIgYWNjb3VudHMKICAgIC8vIGFyZSBpbnRyb2R1Y2VkLgoKICAgIGNvbnN0IHZlcmlmaWVkQ29udGVudFR5cGUgPQogICAgICBhd2FpdCBvYmplY3RTdG9yYWdlU2VydmljZS5nZXRWZXJpZmllZEltYWdlQ29udGVudFR5cGUob2JqZWN0RmlsZSk7CiAgICBjb25zdCByZXNwb25zZSA9IGF3YWl0IG9iamVjdFN0b3JhZ2VTZXJ2aWNlLmRvd25sb2FkT2JqZWN0KAogICAgICBvYmplY3RGaWxlLAogICAgICAzNjAwLAogICAgICB2ZXJpZmllZENvbnRlbnRUeXBlLAogICAgKTsKCiAgICByZXMuc3RhdHVzKHJlc3BvbnNlLnN0YXR1cyk7CiAgICByZXNwb25zZS5oZWFkZXJzLmZvckVhY2goKHZhbHVlLCBrZXkpID0+IHJlcy5zZXRIZWFkZXIoa2V5LCB2YWx1ZSkpOwogICAgcmVzLnNldEhlYWRlcignQ29udGVudC1TZWN1cml0eS1Qb2xpY3knLCAic2FuZGJveDsgZGVmYXVsdC1zcmMgJ25vbmUnIik7CgogICAgaWYgKHJlc3BvbnNlLmJvZHkpIHsKICAgICAgY29uc3Qgbm9kZVN0cmVhbSA9IFJlYWRhYmxlLmZyb21XZWIoCiAgICAgICAgcmVzcG9uc2UuYm9keSBhcyBSZWFkYWJsZVN0cmVhbTxVaW50OEFycmF5PiwKICAgICAgKTsKICAgICAgbm9kZVN0cmVhbS5waXBlKHJlcyk7CiAgICB9IGVsc2UgewogICAgICByZXMuZW5kKCk7CiAgICB9CiAgfSBjYXRjaCAoZXJyb3IpIHsKICAgIGlmIChlcnJvciBpbnN0YW5jZW9mIE9iamVjdE5vdEZvdW5kRXJyb3IpIHsKICAgICAgcmVxLmxvZy53YXJuKHsgZXJyOiBlcnJvciB9LCAnT2JqZWN0IG5vdCBmb3VuZCcpOwogICAgICByZXMuc3RhdHVzKDQwNCkuanNvbih7IGVycm9yOiAnT2JqZWN0IG5vdCBmb3VuZCcgfSk7CiAgICAgIHJldHVybjsKICAgIH0KICAgIGlmIChlcnJvciBpbnN0YW5jZW9mIEludmFsaWRJbWFnZU9iamVjdEVycm9yKSB7CiAgICAgIHJlcS5sb2cud2Fybih7IGVycjogZXJyb3IgfSwgJ0Jsb2NrZWQgdW5zdXBwb3J0ZWQgaW1hZ2Ugb2JqZWN0Jyk7CiAgICAgIHJlcy5zdGF0dXMoNDE1KS5qc29uKHsgZXJyb3I6ICdVbnN1cHBvcnRlZCBpbWFnZSBvYmplY3QnIH0pOwogICAgICByZXR1cm47CiAgICB9CiAgICByZXEubG9nLmVycm9yKHsgZXJyOiBlcnJvciB9LCAnRXJyb3Igc2VydmluZyBvYmplY3QnKTsKICAgIHJlcy5zdGF0dXMoNTAwKS5qc29uKHsgZXJyb3I6ICdGYWlsZWQgdG8gc2VydmUgb2JqZWN0JyB9KTsKICB9Cn0pOwoKZXhwb3J0IGRlZmF1bHQgcm91dGVyOwo=
+import { Readable } from 'stream';
+import {
+  raw,
+  Router,
+  type IRouter,
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express';
+
+import {
+  InvalidImageObjectError,
+  InvalidImageUploadError,
+  ObjectNotFoundError,
+  ObjectStorageService,
+} from '../lib/objectStorage';
+
+const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
+const PHOTO_UPLOAD_PATH = /^uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const SUPPORTED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+const uploadRequestWindows = new Map<
+  string,
+  { count: number; active: number; resetsAt: number }
+>();
+let activeUploads = 0;
+
+function reserveUploadSlot(req: Request): boolean {
+  const now = Date.now();
+  const clientId = req.ip || 'unknown';
+  const existing = uploadRequestWindows.get(clientId);
+  if (!existing || existing.resetsAt <= now) {
+    uploadRequestWindows.set(clientId, {
+      count: 1,
+      active: 1,
+      resetsAt: now + 10 * 60_000,
+    });
+    activeUploads += 1;
+    return true;
+  }
+  existing.count += 1;
+  if (existing.count > 12 || existing.active >= 2 || activeUploads >= 8) {
+    return false;
+  }
+  existing.active += 1;
+  activeUploads += 1;
+  return true;
+}
+
+function releaseUploadSlot(req: Request): void {
+  const existing = uploadRequestWindows.get(req.ip || 'unknown');
+  if (existing?.active) {
+    existing.active -= 1;
+    activeUploads = Math.max(0, activeUploads - 1);
+  }
+}
+
+function admitPhotoUpload(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const contentType = req.get('content-type')?.toLowerCase() || '';
+  if (!SUPPORTED_IMAGE_TYPES.has(contentType)) {
+    res.status(400).json({ error: 'Choose a JPEG, PNG, WebP, or GIF image.' });
+    return;
+  }
+  const contentLength = Number(req.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > MAX_IMAGE_BYTES) {
+    res.status(413).json({ error: 'Choose an image smaller than 10 MB.' });
+    return;
+  }
+  if (!reserveUploadSlot(req)) {
+    res.status(429).json({ error: 'Too many photo uploads. Please try again shortly.' });
+    return;
+  }
+  let released = false;
+  const uploadDeadline = setTimeout(() => {
+    req.destroy(new Error('Photo upload timed out'));
+  }, 30_000);
+  const release = () => {
+    if (released) {
+      return;
+    }
+    released = true;
+    clearTimeout(uploadDeadline);
+    releaseUploadSlot(req);
+  };
+  res.once('finish', release);
+  res.once('close', release);
+  req.once('aborted', release);
+  next();
+}
+
+/**
+ * POST /storage/uploads
+ *
+ * Receive and validate an image before writing it to object storage. This keeps
+ * the temporary anonymous single-user flow bounded: no client receives a URL
+ * capable of writing arbitrary bytes directly to the bucket.
+ */
+router.post(
+  '/storage/uploads',
+  admitPhotoUpload,
+  raw({
+    type: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    limit: '10mb',
+  }),
+  async (req: Request, res: Response) => {
+    try {
+      if (!Buffer.isBuffer(req.body)) {
+        res.status(400).json({ error: 'Choose a JPEG, PNG, WebP, or GIF image.' });
+        return;
+      }
+      const objectPath = await objectStorageService.saveVerifiedImage(
+        req.body,
+        req.get('content-type') || '',
+      );
+      res.status(201).json({ objectPath });
+    } catch (error) {
+      if (error instanceof InvalidImageUploadError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      req.log.error({ err: error }, 'Error saving image upload');
+      res.status(500).json({ error: 'Failed to upload image' });
+    }
+  },
+);
+
+/**
+ * GET /storage/public-objects/*
+ *
+ * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
+ * These are unconditionally public — no authentication or ACL checks.
+ * IMPORTANT: Always provide this endpoint when object storage is set up.
+ */
+router.get(
+  '/storage/public-objects/*filePath',
+  async (req: Request, res: Response) => {
+    try {
+      const raw = req.params.filePath;
+      const filePath = Array.isArray(raw) ? raw.join('/') : raw;
+      const file = await objectStorageService.searchPublicObject(filePath);
+      if (!file) {
+        res.status(404).json({ error: 'File not found' });
+        return;
+      }
+
+      const response = await objectStorageService.downloadObject(file);
+
+      res.status(response.status);
+      response.headers.forEach((value, key) => res.setHeader(key, value));
+
+      if (response.body) {
+        const nodeStream = Readable.fromWeb(
+          response.body as ReadableStream<Uint8Array>,
+        );
+        nodeStream.pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (error) {
+      req.log.error({ err: error }, 'Error serving public object');
+      res.status(500).json({ error: 'Failed to serve public object' });
+    }
+  },
+);
+
+/**
+ * GET /storage/objects/*
+ *
+ * Serve object entities from PRIVATE_OBJECT_DIR.
+ * These are served from a separate path from /public-objects and can optionally
+ * be protected with authentication or ACL checks based on the use case.
+ */
+router.get('/storage/objects/*path', async (req: Request, res: Response) => {
+  try {
+    const raw = req.params.path;
+    const wildcardPath = Array.isArray(raw) ? raw.join('/') : raw;
+    if (!PHOTO_UPLOAD_PATH.test(wildcardPath)) {
+      res.status(404).json({ error: 'Object not found' });
+      return;
+    }
+    const objectPath = `/objects/${wildcardPath}`;
+    const objectFile =
+      await objectStorageService.getObjectEntityFile(objectPath);
+
+    // This object path is intentionally public while the app is single-user.
+    // Add authentication and object ACL checks here when customer accounts
+    // are introduced.
+
+    const verifiedContentType =
+      await objectStorageService.getVerifiedImageContentType(objectFile);
+    const response = await objectStorageService.downloadObject(
+      objectFile,
+      3600,
+      verifiedContentType,
+    );
+
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
+
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(
+        response.body as ReadableStream<Uint8Array>,
+      );
+      nodeStream.pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      req.log.warn({ err: error }, 'Object not found');
+      res.status(404).json({ error: 'Object not found' });
+      return;
+    }
+    if (error instanceof InvalidImageObjectError) {
+      req.log.warn({ err: error }, 'Blocked unsupported image object');
+      res.status(415).json({ error: 'Unsupported image object' });
+      return;
+    }
+    req.log.error({ err: error }, 'Error serving object');
+    res.status(500).json({ error: 'Failed to serve object' });
+  }
+});
+
+export default router;

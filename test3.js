@@ -1,1 +1,5 @@
-Y29uc3QgcmVnZXggPSAvb25BbmFseXRpY3M6IHNjcmVlbiA9PT0gJ2FuYWx5dGljcycsIGdvQW5hbHl0aWNzOiBta1woJ2FuYWx5dGljcydcKSwvOwpjb25zdCBzID0gYCAgICAgIGdvUmVjaXBlRWRpdG9yOiBtaygncmVjaXBlRWRpdG9yJyksCiAgICAgIG9uQW5hbHl0aWNzOiBzY3JlZW4gPT09ICdhbmFseXRpY3MnLCBnb0FuYWx5dGljczogbWsoJ2FuYWx5dGljcycpLAogICAgICBnb01hcmtldHM6IG1rKCdtYXJrZXRzJyksYDsKY29uc29sZS5sb2cocmVnZXgudGVzdChzKSk7Cg==
+const regex = /onAnalytics: screen === 'analytics', goAnalytics: mk\('analytics'\),/;
+const s = `      goRecipeEditor: mk('recipeEditor'),
+      onAnalytics: screen === 'analytics', goAnalytics: mk('analytics'),
+      goMarkets: mk('markets'),`;
+console.log(regex.test(s));

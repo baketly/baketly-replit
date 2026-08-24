@@ -1,1 +1,19 @@
-ewogICJuYW1lIjogIkB3b3Jrc3BhY2UvY2xhdWRlLWRlc2lnbiIsCiAgInByaXZhdGUiOiB0cnVlLAogICJ0eXBlIjogIm1vZHVsZSIsCiAgInNjcmlwdHMiOiB7CiAgICAiZGV2IjogInZpdGUgLS1jb25maWcgdml0ZS5jb25maWcudHMgLS1ob3N0IDAuMC4wLjAiLAogICAgImJ1aWxkIjogInZpdGUgYnVpbGQiLAogICAgInNlcnZlIjogInZpdGUgcHJldmlldyIsCiAgICAidHlwZWNoZWNrIjogInRzYyAtLW5vRW1pdCIKICB9LAogICJkZXBlbmRlbmNpZXMiOiB7CiAgICAicmVhY3QiOiAiXjE4LjMuMSIsCiAgICAicmVhY3QtZG9tIjogIl4xOC4zLjEiCiAgfSwKICAiZGV2RGVwZW5kZW5jaWVzIjogewogICAgIkB2aXRlanMvcGx1Z2luLXJlYWN0IjogIl40LjMuNCIsCiAgICAidml0ZSI6ICJeNi4wLjciCiAgfQp9Cg==
+{
+  "name": "@workspace/claude-design",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite.config.ts --host 0.0.0.0",
+    "build": "vite build",
+    "serve": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.7"
+  }
+}

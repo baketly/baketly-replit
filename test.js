@@ -1,1 +1,11 @@
-Y29uc3Qgc2FsZXMgPSBbCiAgewogICAgaWQ6ICIxIiwgb2NjdXJyZWRBdDogIjIwMjMtMTAtMDFUMTA6MDA6MDBaIiwgc291cmNlOiAicG9zIiwKICAgIGxpbmVJdGVtczogW3sgcHJvZHVjdElkOiAicDEiLCBuYW1lOiAiQmFia2EiLCBxdWFudGl0eTogMiwgdW5pdFByaWNlOiAxMCwgdW5pdENvc3Q6IDQgfV0KICB9Cl07CmNvbnN0IG1vbnRoc0xpc3QgPSBBcnJheS5mcm9tKG5ldyBTZXQoc2FsZXMubWFwKHMgPT4gewogIGNvbnN0IGQgPSBuZXcgRGF0ZShzLm9jY3VycmVkQXQpOwogIHJldHVybiBkLmdldEZ1bGxZZWFyKCkgKyAnLScgKyBTdHJpbmcoZC5nZXRNb250aCgpICsgMSkucGFkU3RhcnQoMiwgJzAnKTsKfSkpKTsKY29uc29sZS5sb2cobW9udGhzTGlzdCk7Cg==
+const sales = [
+  {
+    id: "1", occurredAt: "2023-10-01T10:00:00Z", source: "pos",
+    lineItems: [{ productId: "p1", name: "Babka", quantity: 2, unitPrice: 10, unitCost: 4 }]
+  }
+];
+const monthsList = Array.from(new Set(sales.map(s => {
+  const d = new Date(s.occurredAt);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+})));
+console.log(monthsList);

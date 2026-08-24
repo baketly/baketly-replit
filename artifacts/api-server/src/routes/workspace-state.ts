@@ -1,1 +1,73 @@
-aW1wb3J0IHsgUm91dGVyLCB0eXBlIElSb3V0ZXIgfSBmcm9tICJleHByZXNzIjsKaW1wb3J0IHsgZXEgfSBmcm9tICJkcml6emxlLW9ybSI7CmltcG9ydCB7IHJhbmRvbVVVSUQgfSBmcm9tICJub2RlOmNyeXB0byI7CmltcG9ydCB7CiAgZGIsCiAgd29ya3NwYWNlU3RhdGVQYXlsb2FkU2NoZW1hLAogIHdvcmtzcGFjZVN0YXRlVGFibGUsCn0gZnJvbSAiQHdvcmtzcGFjZS9kYiI7Cgpjb25zdCByb3V0ZXI6IElSb3V0ZXIgPSBSb3V0ZXIoKTsKCmZ1bmN0aW9uIGdldFNlc3Npb25JZChyZXE6IFBhcmFtZXRlcnM8dHlwZW9mIHJvdXRlci5nZXQ+WzFdIGV4dGVuZHMgKAogIHJlcTogaW5mZXIgUmVxdWVzdCwKICAuLi5hcmdzOiBuZXZlcltdCikgPT4gdW5rbm93bgogID8gUmVxdWVzdAogIDogbmV2ZXIsIHJlczogUGFyYW1ldGVyczx0eXBlb2Ygcm91dGVyLmdldD5bMV0gZXh0ZW5kcyAoCiAgLi4uYXJnczogaW5mZXIgQXJncwopID0+IHVua25vd24KICA/IEFyZ3NbMV0KICA6IG5ldmVyKTogc3RyaW5nIHsKICBjb25zdCBleGlzdGluZyA9IHJlcS5zaWduZWRDb29raWVzPy5iYWtldGx5X3Nlc3Npb247CiAgaWYgKHR5cGVvZiBleGlzdGluZyA9PT0gInN0cmluZyIgJiYgL15bMC05YS1mLV17MzZ9JC9pLnRlc3QoZXhpc3RpbmcpKSB7CiAgICByZXR1cm4gZXhpc3Rpbmc7CiAgfQoKICBjb25zdCBzZXNzaW9uSWQgPSByYW5kb21VVUlEKCk7CiAgcmVzLmNvb2tpZSgiYmFrZXRseV9zZXNzaW9uIiwgc2Vzc2lvbklkLCB7CiAgICBodHRwT25seTogdHJ1ZSwKICAgIG1heEFnZTogMTAwMCAqIDYwICogNjAgKiAyNCAqIDE4MCwKICAgIHNhbWVTaXRlOiAibGF4IiwKICAgIHNlY3VyZTogcHJvY2Vzcy5lbnYuTk9ERV9FTlYgPT09ICJwcm9kdWN0aW9uIiwKICAgIHNpZ25lZDogdHJ1ZSwKICB9KTsKICByZXR1cm4gc2Vzc2lvbklkOwp9Cgpyb3V0ZXIuZ2V0KCIvd29ya3NwYWNlLXN0YXRlIiwgYXN5bmMgKHJlcSwgcmVzKTogUHJvbWlzZTx2b2lkPiA9PiB7CiAgY29uc3Qgc2Vzc2lvbklkID0gZ2V0U2Vzc2lvbklkKHJlcSwgcmVzKTsKICBjb25zdCBbcmVjb3JkXSA9IGF3YWl0IGRiCiAgICAuc2VsZWN0KCkKICAgIC5mcm9tKHdvcmtzcGFjZVN0YXRlVGFibGUpCiAgICAud2hlcmUoZXEod29ya3NwYWNlU3RhdGVUYWJsZS5pZCwgc2Vzc2lvbklkKSk7CgogIGNvbnN0IHBhcnNlZCA9IHdvcmtzcGFjZVN0YXRlUGF5bG9hZFNjaGVtYS5zYWZlUGFyc2UocmVjb3JkPy5kYXRhID8/IHt9KTsKICByZXMuanNvbih7CiAgICBzdGF0ZTogcGFyc2VkLnN1Y2Nlc3MgPyBwYXJzZWQuZGF0YSA6IHt9LAogICAgdXBkYXRlZEF0OiByZWNvcmQ/LnVwZGF0ZWRBdCA/PyBudWxsLAogIH0pOwp9KTsKCnJvdXRlci5wdXQoIi93b3Jrc3BhY2Utc3RhdGUiLCBhc3luYyAocmVxLCByZXMpOiBQcm9taXNlPHZvaWQ+ID0+IHsKICBjb25zdCBzZXNzaW9uSWQgPSBnZXRTZXNzaW9uSWQocmVxLCByZXMpOwogIGNvbnN0IHBhcnNlZCA9IHdvcmtzcGFjZVN0YXRlUGF5bG9hZFNjaGVtYS5zYWZlUGFyc2UocmVxLmJvZHk/LnN0YXRlKTsKICBpZiAoIXBhcnNlZC5zdWNjZXNzKSB7CiAgICByZXEubG9nLndhcm4oeyBlcnJvcnM6IHBhcnNlZC5lcnJvci5mbGF0dGVuKCkgfSwgIkludmFsaWQgd29ya3NwYWNlIHN0YXRlIik7CiAgICByZXMuc3RhdHVzKDQwMCkuanNvbih7IGVycm9yOiAiU3RhdGUgbXVzdCBiZSBhbiBvYmplY3QuIiB9KTsKICAgIHJldHVybjsKICB9CgogIGNvbnN0IFtyZWNvcmRdID0gYXdhaXQgZGIKICAgIC5pbnNlcnQod29ya3NwYWNlU3RhdGVUYWJsZSkKICAgIC52YWx1ZXMoeyBpZDogc2Vzc2lvbklkLCBkYXRhOiBwYXJzZWQuZGF0YSB9KQogICAgLm9uQ29uZmxpY3REb1VwZGF0ZSh7CiAgICAgIHRhcmdldDogd29ya3NwYWNlU3RhdGVUYWJsZS5pZCwKICAgICAgc2V0OiB7IGRhdGE6IHBhcnNlZC5kYXRhLCB1cGRhdGVkQXQ6IG5ldyBEYXRlKCkgfSwKICAgIH0pCiAgICAucmV0dXJuaW5nKCk7CgogIHJlcy5qc29uKHsgc3RhdGU6IHJlY29yZC5kYXRhLCB1cGRhdGVkQXQ6IHJlY29yZC51cGRhdGVkQXQgfSk7Cn0pOwoKZXhwb3J0IGRlZmF1bHQgcm91dGVyOw==
+import { Router, type IRouter } from "express";
+import { eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import {
+  db,
+  workspaceStatePayloadSchema,
+  workspaceStateTable,
+} from "@workspace/db";
+
+const router: IRouter = Router();
+
+function getSessionId(req: Parameters<typeof router.get>[1] extends (
+  req: infer Request,
+  ...args: never[]
+) => unknown
+  ? Request
+  : never, res: Parameters<typeof router.get>[1] extends (
+  ...args: infer Args
+) => unknown
+  ? Args[1]
+  : never): string {
+  const existing = req.signedCookies?.baketly_session;
+  if (typeof existing === "string" && /^[0-9a-f-]{36}$/i.test(existing)) {
+    return existing;
+  }
+
+  const sessionId = randomUUID();
+  res.cookie("baketly_session", sessionId, {
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 * 180,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    signed: true,
+  });
+  return sessionId;
+}
+
+router.get("/workspace-state", async (req, res): Promise<void> => {
+  const sessionId = getSessionId(req, res);
+  const [record] = await db
+    .select()
+    .from(workspaceStateTable)
+    .where(eq(workspaceStateTable.id, sessionId));
+
+  const parsed = workspaceStatePayloadSchema.safeParse(record?.data ?? {});
+  res.json({
+    state: parsed.success ? parsed.data : {},
+    updatedAt: record?.updatedAt ?? null,
+  });
+});
+
+router.put("/workspace-state", async (req, res): Promise<void> => {
+  const sessionId = getSessionId(req, res);
+  const parsed = workspaceStatePayloadSchema.safeParse(req.body?.state);
+  if (!parsed.success) {
+    req.log.warn({ errors: parsed.error.flatten() }, "Invalid workspace state");
+    res.status(400).json({ error: "State must be an object." });
+    return;
+  }
+
+  const [record] = await db
+    .insert(workspaceStateTable)
+    .values({ id: sessionId, data: parsed.data })
+    .onConflictDoUpdate({
+      target: workspaceStateTable.id,
+      set: { data: parsed.data, updatedAt: new Date() },
+    })
+    .returning();
+
+  res.json({ state: record.data, updatedAt: record.updatedAt });
+});
+
+export default router;

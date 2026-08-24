@@ -1,1 +1,68 @@
-Y29uc3QgTUFYX0xBQkVMX0JZVEVTID0gMTAgKiAxMDI0ICogMTAyNDsKY29uc3QgQUNDRVBURURfTEFCRUxfVFlQRVMgPSBuZXcgU2V0KFsKICAiaW1hZ2UvanBlZyIsCiAgImltYWdlL3BuZyIsCiAgImltYWdlL3dlYnAiLAogICJpbWFnZS9naWYiLApdKTsKCmV4cG9ydCB0eXBlIEluZ3JlZGllbnRMYWJlbFNjYW4gPSB7CiAgcHJvZHVjdE5hbWU6IHN0cmluZyB8IG51bGw7CiAgcGFja2FnZVNpemU6IG51bWJlciB8IG51bGw7CiAgcGFja2FnZVVuaXQ6IHN0cmluZyB8IG51bGw7CiAgc2VydmluZ1NpemU6IG51bWJlciB8IG51bGw7CiAgc2VydmluZ1VuaXQ6IHN0cmluZyB8IG51bGw7CiAgbnV0cml0aW9uQmFzaXM6ICJwZXJfMTAwZyIgfCAicGVyX3NlcnZpbmciIHwgInVua25vd24iOwogIGNhbG9yaWVzOiBudW1iZXIgfCBudWxsOwogIHByb3RlaW5fZzogbnVtYmVyIHwgbnVsbDsKICBjYXJib2h5ZHJhdGVzX2c6IG51bWJlciB8IG51bGw7CiAgZmF0X2c6IG51bWJlciB8IG51bGw7CiAgc3VnYXJfZzogbnVtYmVyIHwgbnVsbDsKfTsKCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBzY2FuSW5ncmVkaWVudExhYmVsKAogIGZpbGU6IEZpbGUsCik6IFByb21pc2U8SW5ncmVkaWVudExhYmVsU2Nhbj4gewogIGlmICghQUNDRVBURURfTEFCRUxfVFlQRVMuaGFzKGZpbGUudHlwZSkpIHsKICAgIHRocm93IG5ldyBFcnJvcigiQ2hvb3NlIGEgSlBFRywgUE5HLCBXZWJQLCBvciBHSUYgcGhvdG8gb2YgdGhlIGxhYmVsLiIpOwogIH0KICBpZiAoZmlsZS5zaXplIDwgMSB8fCBmaWxlLnNpemUgPiBNQVhfTEFCRUxfQllURVMpIHsKICAgIHRocm93IG5ldyBFcnJvcigiQ2hvb3NlIGEgbGFiZWwgcGhvdG8gc21hbGxlciB0aGFuIDEwIE1CLiIpOwogIH0KCiAgY29uc3QgY29udHJvbGxlciA9IG5ldyBBYm9ydENvbnRyb2xsZXIoKTsKICBjb25zdCB0aW1lb3V0ID0gd2luZG93LnNldFRpbWVvdXQoKCkgPT4gY29udHJvbGxlci5hYm9ydCgpLCAzNV8wMDApOwogIHRyeSB7CiAgICBjb25zdCByZXNwb25zZSA9IGF3YWl0IGZldGNoKCIvYXBpL2luZ3JlZGllbnQtbGFiZWwtc2NhbiIsIHsKICAgICAgbWV0aG9kOiAiUE9TVCIsCiAgICAgIGhlYWRlcnM6IHsgIkNvbnRlbnQtVHlwZSI6IGZpbGUudHlwZSB9LAogICAgICBib2R5OiBmaWxlLAogICAgICBzaWduYWw6IGNvbnRyb2xsZXIuc2lnbmFsLAogICAgfSk7CiAgICBjb25zdCBwYXlsb2FkID0gKGF3YWl0IHJlc3BvbnNlLmpzb24oKS5jYXRjaCgoKSA9PiAoe30pKSkgYXMgewogICAgICBlcnJvcj86IHVua25vd247CiAgICB9ICYgUGFydGlhbDxJbmdyZWRpZW50TGFiZWxTY2FuPjsKICAgIGlmICghcmVzcG9uc2Uub2spIHsKICAgICAgdGhyb3cgbmV3IEVycm9yKAogICAgICAgIHR5cGVvZiBwYXlsb2FkLmVycm9yID09PSAic3RyaW5nIgogICAgICAgICAgPyBwYXlsb2FkLmVycm9yCiAgICAgICAgICA6ICJJIGNvdWxkbuKAmXQgcmVhZCB0aGF0IGxhYmVsLiBQbGVhc2UgZW50ZXIgdGhlIGRldGFpbHMgbWFudWFsbHkuIiwKICAgICAgKTsKICAgIH0KICAgIHJldHVybiBwYXlsb2FkIGFzIEluZ3JlZGllbnRMYWJlbFNjYW47CiAgfSBjYXRjaCAoZXJyb3IpIHsKICAgIGlmIChlcnJvciBpbnN0YW5jZW9mIERPTUV4Y2VwdGlvbiAmJiBlcnJvci5uYW1lID09PSAiQWJvcnRFcnJvciIpIHsKICAgICAgdGhyb3cgbmV3IEVycm9yKAogICAgICAgICJUaGUgbGFiZWwgdG9vayB0b28gbG9uZyB0byByZWFkLiBUcnkgYSBjbGVhcmVyIHBob3RvIG9yIGVudGVyIHRoZSBkZXRhaWxzIG1hbnVhbGx5LiIsCiAgICAgICk7CiAgICB9CiAgICBpZiAoZXJyb3IgaW5zdGFuY2VvZiBUeXBlRXJyb3IpIHsKICAgICAgdGhyb3cgbmV3IEVycm9yKAogICAgICAgICJJIGNvdWxkbuKAmXQgcmVhY2ggdGhlIGxhYmVsIHJlYWRlci4gUGxlYXNlIGVudGVyIHRoZSBkZXRhaWxzIG1hbnVhbGx5LiIsCiAgICAgICk7CiAgICB9CiAgICB0aHJvdyBlcnJvcjsKICB9IGZpbmFsbHkgewogICAgd2luZG93LmNsZWFyVGltZW91dCh0aW1lb3V0KTsKICB9Cn0=
+const MAX_LABEL_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_LABEL_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+export type IngredientLabelScan = {
+  productName: string | null;
+  packageSize: number | null;
+  packageUnit: string | null;
+  servingSize: number | null;
+  servingUnit: string | null;
+  nutritionBasis: "per_100g" | "per_serving" | "unknown";
+  calories: number | null;
+  protein_g: number | null;
+  carbohydrates_g: number | null;
+  fat_g: number | null;
+  sugar_g: number | null;
+};
+
+export async function scanIngredientLabel(
+  file: File,
+): Promise<IngredientLabelScan> {
+  if (!ACCEPTED_LABEL_TYPES.has(file.type)) {
+    throw new Error("Choose a JPEG, PNG, WebP, or GIF photo of the label.");
+  }
+  if (file.size < 1 || file.size > MAX_LABEL_BYTES) {
+    throw new Error("Choose a label photo smaller than 10 MB.");
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 35_000);
+  try {
+    const response = await fetch("/api/ingredient-label-scan", {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+      signal: controller.signal,
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: unknown;
+    } & Partial<IngredientLabelScan>;
+    if (!response.ok) {
+      throw new Error(
+        typeof payload.error === "string"
+          ? payload.error
+          : "I couldn’t read that label. Please enter the details manually.",
+      );
+    }
+    return payload as IngredientLabelScan;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(
+        "The label took too long to read. Try a clearer photo or enter the details manually.",
+      );
+    }
+    if (error instanceof TypeError) {
+      throw new Error(
+        "I couldn’t reach the label reader. Please enter the details manually.",
+      );
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}

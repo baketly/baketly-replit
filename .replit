@@ -1,1 +1,23 @@
-bW9kdWxlcyA9IFsibm9kZWpzLTI0IiwgInBvc3RncmVzcWwtMTYiLCAicHl0aG9uLWJhc2UtMy4xMyJdCgpbZGVwbG95bWVudF0Kcm91dGVyID0gImFwcGxpY2F0aW9uIgpkZXBsb3ltZW50VGFyZ2V0ID0gImF1dG9zY2FsZSIKCltkZXBsb3ltZW50LnBvc3RCdWlsZF0KYXJncyA9IFsicG5wbSIsICJzdG9yZSIsICJwcnVuZSJdCmVudiA9IHsgIkNJIiA9ICJ0cnVlIiB9Cgpbd29ya2Zsb3dzXQpydW5CdXR0b24gPSAiUHJvamVjdCIKClthZ2VudF0Kc3RhY2sgPSAiUE5QTV9XT1JLU1BBQ0UiCmV4cGVydE1vZGUgPSBmYWxzZQoKW3Bvc3RNZXJnZV0KcGF0aCA9ICJzY3JpcHRzL3Bvc3QtbWVyZ2Uuc2giCnRpbWVvdXRNcyA9IDIwMDAwCgpbbml4XQpjaGFubmVsID0gInN0YWJsZS0yNV8wNSIK
+modules = ["nodejs-24", "postgresql-16", "python-base-3.13"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = false
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
