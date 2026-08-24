@@ -336,6 +336,9 @@ function addPackagingController(template: string): string {
         keys.forEach(key => { const item = normalize(key); this.PACK_META[key] = { ...this.PACK_META[key], name: item.name, per: item.unitsPerPack > 0 ? item.packPrice / item.unitsPerPack : 0 }; });
         const activeKey = this.state.activePackagingKey || null;
         const active = activeKey ? normalize(activeKey, this.state.packagingDraft) : { name: '', supplier: '', packPrice: 0, unitsPerPack: 1, photoPath: '', ...(this.state.packagingDraft || {}) };
+        // See ingredient-template.ts: normalize() coerces with Number(), which would
+        // strip an in-progress decimal point out of the input on every keystroke.
+        const draftText = field => { const draft = this.state.packagingDraft; return draft && typeof draft[field] === 'string' ? draft[field] : String(active[field] ?? ''); };
         const setDraft = update => this.setState(st => ({ packagingDraft: { ...active, ...(st.packagingDraft || {}), ...update }, packagingSaveError: '' }));
         const deletePackaging = key => this.setState(st => {
           const packagingRecords = { ...(st.packagingRecords || {}) };
@@ -350,7 +353,7 @@ function addPackagingController(template: string): string {
              return { key, name: item.name || 'Unnamed packaging', initial: (item.name || 'P').slice(0, 1).toUpperCase(), photoEl: (() => { const photoUrl = window.__baketlyPhotoUrl(item.photoPath); return photoUrl && !(this.state.packagingPhotoFailures || {})[item.photoPath] ? React.createElement('img', { src: photoUrl, alt: '', onError: () => this.setState(st => ({ packagingPhotoFailures: { ...(st.packagingPhotoFailures || {}), [item.photoPath]: true } })), style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#fff' } }) : null; })(), packageLine: (item.supplier || 'No supplier') + ' · $' + item.packPrice.toFixed(2) + ' / ' + item.unitsPerPack + ' pcs', costLine: '$' + per.toFixed(2) + '/pc', open: () => this.setState(st => ({ screen: 'packagingEdit', stack: [...st.stack, st.screen], activePackagingKey: key, packagingDraft: normalize(key), packagingDeleteOpen: false, packagingSaveError: '', packagingPhotoError: '', packagingPhotoUploading: false, packagingPhotoRequest: (st.packagingPhotoRequest || 0) + 1 })), remove: () => deletePackaging(key) };
           }),
           packagingTitle: activeKey ? 'Edit packaging' : 'New packaging',
-          packagingName: active.name, packagingSupplier: active.supplier, packagingPackPrice: String(active.packPrice), packagingUnitsPerPack: String(active.unitsPerPack),
+          packagingName: active.name, packagingSupplier: active.supplier, packagingPackPrice: draftText('packPrice'), packagingUnitsPerPack: draftText('unitsPerPack'),
           packagingCostPer: '$' + (active.unitsPerPack > 0 ? active.packPrice / active.unitsPerPack : 0).toFixed(2),
            packagingInitial: (active.name || 'P').slice(0, 1).toUpperCase(),
            packagingHasPhoto: !!window.__baketlyPhotoUrl(active.photoPath) && !(this.state.packagingPhotoFailures || {})[active.photoPath],

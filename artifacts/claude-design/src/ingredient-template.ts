@@ -120,6 +120,11 @@ function addIngredientController(template: string): string {
         const activeKey = this.state.activeIngredientKey && ingredientKeys.includes(this.state.activeIngredientKey) ? this.state.activeIngredientKey : null;
          const blankIngredient = { name: '', supplier: '', packagePrice: '', packageSize: '', unit: 'g', kcal: '', protein: '', carbs: '', fat: '', sugar: '', servingSize: '', servingUnit: '', photoPath: '' };
         const active = activeKey ? normalize(activeKey, this.state.ingredientDraft) : { ...blankIngredient, ...(this.state.ingredientDraft || {}) };
+        // Numeric fields round-trip through normalize(), which coerces with Number().
+        // Showing that coerced value back in the input erases an in-progress decimal
+        // point ('12.' -> 12 -> "12"), so the user can never type one. Display the raw
+        // draft text while editing; normalize() still governs cost math and saving.
+        const draftText = field => { const draft = this.state.ingredientDraft; return draft && typeof draft[field] === 'string' ? draft[field] : String(active[field] ?? ''); };
         const setDraft = update => this.setState(st => ({ ingredientDraft: { ...active, ...(st.ingredientDraft || {}), ...update }, ingredientSaveError: '' }));
         const deleteIngredient = key => this.setState(st => {
           const ingredientRecords = { ...(st.ingredientRecords || {}) };
@@ -150,16 +155,16 @@ function addIngredientController(template: string): string {
           }),
           ingredientName: active.name,
           ingredientSupplier: active.supplier,
-          ingredientPackagePrice: String(active.packagePrice),
-          ingredientPackageSize: String(active.packageSize),
+          ingredientPackagePrice: draftText('packagePrice'),
+          ingredientPackageSize: draftText('packageSize'),
           ingredientUnit: active.unit,
           ingredientNutritionUnit: active.unit === 'ml' ? 'ml' : active.unit === 'pc' ? 'pc' : 'g',
-          ingredientKcal: String(active.kcal),
-          ingredientProtein: String(active.protein),
-          ingredientCarbs: String(active.carbs),
-          ingredientFat: String(active.fat),
-           ingredientSugar: String(active.sugar ?? ''),
-           ingredientServingSize: String(active.servingSize ?? ''),
+          ingredientKcal: draftText('kcal'),
+          ingredientProtein: draftText('protein'),
+          ingredientCarbs: draftText('carbs'),
+          ingredientFat: draftText('fat'),
+           ingredientSugar: draftText('sugar'),
+           ingredientServingSize: draftText('servingSize'),
            ingredientServingUnit: String(active.servingUnit ?? ''),
            ingredientServingVisible: !!active.servingSize || !!active.servingUnit,
           ingredientCostPer: '$' + (active.packageSize > 0 ? active.packagePrice / active.packageSize : 0).toFixed(active.packageSize > 0 && active.packagePrice / active.packageSize < 0.01 ? 4 : 2),
