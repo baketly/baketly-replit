@@ -211,21 +211,21 @@ export function applyAnalyticsBehavior(template: string): string {
 <sc-if value="{{ onAnalyticsKept }}" hint-placeholder-val="{{ false }}">
 <div style="padding:14px 20px 28px">
   <button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>
-  <h2 style="font-size:26px;margin:6px 0 0">Where it went</h2>
-  <p class="an-detail-sub">{{ detailMonthLabel }}</p>
+  <h2 style="font-size:26px;margin:6px 0 0">{{ detailMonthLabel }}</h2>
+  <p class="an-detail-sub">Revenue, costs and what you kept.</p>
 
   <div class="an-card">
     <div class="an-ledger-row"><span>Revenue</span><span class="an-num">{{ monthRevStr }}</span></div>
     <div class="an-ledger-row"><span>Production cost</span><span class="an-num an-neg">−{{ monthCostStr }}</span></div>
-    <div class="an-ledger-row"><span>Booth fees</span><span class="an-num an-neg">−{{ monthBoothFeesStr }}</span></div>
+    <div class="an-ledger-row"><span>Event costs</span><span class="an-num an-neg">−{{ monthBoothFeesStr }}</span></div>
     <div class="an-ledger-total"><span class="an-label">Kept</span><span class="an-total-num">{{ monthProfitStr }}</span></div>
     <div class="an-meta-row"><span>Margin</span><span>{{ monthMarginStr }}</span></div>
   </div>
 
-  <sc-if value="{{ hasCostRows }}" hint-placeholder-val="{{ false }}">
-    <div class="an-section-title">Production cost by product</div>
+  <sc-if value="{{ hasMonthProductRows }}" hint-placeholder-val="{{ false }}">
+    <div class="an-section-title">Products</div>
     <div class="an-card">
-      <sc-for list="{{ costRows }}" as="row" hint-placeholder-count="4">
+      <sc-for list="{{ monthProductRows }}" as="row" hint-placeholder-count="4">
         <div class="an-row">
           <div class="an-row-main">
             <div class="an-row-name">{{ row.name }}</div>
@@ -238,8 +238,23 @@ export function applyAnalyticsBehavior(template: string): string {
     </div>
   </sc-if>
 
+  <sc-if value="{{ hasMonthEventRows }}" hint-placeholder-val="{{ false }}">
+    <div class="an-section-title">Events</div>
+    <div class="an-card">
+      <sc-for list="{{ monthEventRows }}" as="row" hint-placeholder-count="1">
+        <div class="an-row" sc-camel-on-click="{{ row.open }}" style="cursor:pointer">
+          <div class="an-row-main">
+            <div class="an-row-name">{{ row.name }}</div>
+            <div class="an-row-sub">{{ row.sub }}</div>
+          </div>
+          <div class="an-row-val">{{ row.valueStr }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ hasBoothRows }}" hint-placeholder-val="{{ false }}">
-    <div class="an-section-title">Booth fees</div>
+    <div class="an-section-title">Event costs</div>
     <div class="an-card">
       <sc-for list="{{ boothRows }}" as="fee" hint-placeholder-count="1">
         <div class="an-row">
@@ -253,7 +268,7 @@ export function applyAnalyticsBehavior(template: string): string {
     </div>
   </sc-if>
 
-  <sc-if value="{{ hasNoCostRows }}" hint-placeholder-val="{{ false }}">
+  <sc-if value="{{ hasNoMonthProductRows }}" hint-placeholder-val="{{ false }}">
     <div class="text-muted" style="text-align:center;padding:44px 20px;font-size:13px">No sales recorded for this month yet.</div>
   </sc-if>
 </div>
@@ -320,6 +335,11 @@ export function applyAnalyticsBehavior(template: string): string {
       <div class="an-ledger-row"><span>Revenue</span><span class="an-num">{{ eventDetailRevStr }}</span></div>
       <div class="an-ledger-row"><span>Production cost</span><span class="an-num an-neg">−{{ eventDetailProductionStr }}</span></div>
       <div class="an-ledger-row"><span>Booth fee</span><span class="an-num an-neg">−{{ eventDetailBoothStr }}</span></div>
+      <sc-if value="{{ eventDetailHasOtherCosts }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ eventDetailOtherCosts }}" as="oc" hint-placeholder-count="1">
+          <div class="an-ledger-row"><span>{{ oc.label }}</span><span class="an-num an-neg">−{{ oc.amountStr }}</span></div>
+        </sc-for>
+      </sc-if>
       <div class="an-ledger-total"><span class="an-label">Profit</span><span class="an-total-num" style="color:{{ eventDetailProfitColor }}">{{ eventDetailProfitStr }}</span></div>
       <div class="an-meta-row"><span>ROI</span><span>{{ eventDetailRoiStr }}</span></div>
       <div class="an-meta-row" style="margin-top:0;border-top:none;padding-top:5px"><span>Margin</span><span>{{ eventDetailMarginStr }}</span></div>
@@ -356,6 +376,9 @@ export function applyAnalyticsBehavior(template: string): string {
   const newLogic = `      ...(() => {
         const events = Array.isArray(this.state.eventRecords) ? this.state.eventRecords : [];
         const sales = Array.isArray(this.state.saleRecords) ? this.state.saleRecords : [];
+
+        const otherCostTotal = (event) => (Array.isArray(event && event.otherCosts) ? event.otherCosts : [])
+          .reduce((sum, cost) => sum + (Number(cost && cost.amount) || 0), 0);
 
         const now = new Date();
         const currentMonthKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
@@ -411,7 +434,8 @@ export function applyAnalyticsBehavior(template: string): string {
         const monthData = salesByMonth[selectedMonth] || { revenue: 0, cost: 0, items: 0, count: 0, products: {} };
         const monthRev = monthData.revenue;
         const monthCost = monthData.cost;
-         const monthBoothFees = events.filter(ev => (ev.occurredAt || '').slice(0, 7) === selectedMonth).reduce((sum, ev) => sum + (Number(ev.boothFee) || 0), 0);
+         const monthEventList = events.filter(ev => (ev.occurredAt || '').slice(0, 7) === selectedMonth);
+         const monthBoothFees = monthEventList.reduce((sum, ev) => sum + (Number(ev.boothFee) || 0) + otherCostTotal(ev), 0);
          const monthProfit = monthRev - monthCost - monthBoothFees;
         const monthMargin = monthRev > 0 ? Math.round((monthProfit / monthRev) * 100) : 0;
         
@@ -490,7 +514,8 @@ export function applyAnalyticsBehavior(template: string): string {
           const evRev = evSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
             const productionCost = evSales.reduce((sum, sale) => sum + (sale.lineItems || []).reduce((lineSum, li) => lineSum + (Number(li.quantity) || 0) * (Number(li.unitCost) || 0), 0), 0);
             const boothFee = Number(ev.boothFee || 0);
-            const evCost = boothFee + productionCost;
+            const otherCosts = otherCostTotal(ev);
+            const evCost = boothFee + otherCosts + productionCost;
           const evProfit = evRev - evCost;
           const evMargin = evRev > 0 ? Math.round((evProfit / evRev) * 100) : 0;
             const evRoi = evCost > 0 ? Math.round((evProfit / evCost) * 100) : 0;
@@ -500,6 +525,12 @@ export function applyAnalyticsBehavior(template: string): string {
            costStr: '$' + evCost.toFixed(2),
              productionCostStr: '$' + productionCost.toFixed(2),
              boothFeeStr: '$' + boothFee.toFixed(2),
+             otherCostsStr: '$' + otherCosts.toFixed(2),
+             hasOtherCosts: otherCosts > 0,
+             otherCostRows: (Array.isArray(ev.otherCosts) ? ev.otherCosts : []).map(cost => ({
+               label: String((cost && cost.label) || 'Other cost'),
+               amountStr: '$' + (Number(cost && cost.amount) || 0).toFixed(2)
+             })),
             profitStr: (evProfit >= 0 ? '$' : '-$') + Math.abs(evProfit).toFixed(2),
             profitColor: evProfit >= 0 ? 'var(--color-text)' : '#b0563e',
             marginStr: evMargin + '%',
@@ -542,25 +573,14 @@ export function applyAnalyticsBehavior(template: string): string {
         const groupLabels = { bread: 'Bread', babka: 'Babka', cookie: 'Cookies', treat: 'Treats', other: 'Other' };
         const productEntries = Object.entries(monthData.products);
 
-        const costEntries = productEntries
-          .map(([productId, p]) => ({ productId, ...p }))
-          .filter(p => p.cost > 0)
-          .sort((a, b) => b.cost - a.cost);
-        const maxProductCost = costEntries.reduce((max, p) => Math.max(max, p.cost), 0);
-        const costRows = costEntries.map(p => ({
-          name: p.name,
-          sub: p.items + ' sold · ' + (monthCost > 0 ? Math.round((p.cost / monthCost) * 100) : 0) + '% of production cost',
-          valueStr: '$' + p.cost.toFixed(2),
-          barWidth: (maxProductCost > 0 ? Math.max(3, Math.round((p.cost / maxProductCost) * 100)) : 3) + '%'
-        }));
-
         const boothRows = events
           .filter(ev => (ev.occurredAt || '').slice(0, 7) === selectedMonth)
           .sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime())
           .map(ev => ({
             name: ev.name || 'Market',
-            dateStr: new Date(ev.occurredAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            feeStr: '$' + (Number(ev.boothFee) || 0).toFixed(2)
+            dateStr: new Date(ev.occurredAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              + (otherCostTotal(ev) > 0 ? ' · booth $' + (Number(ev.boothFee) || 0).toFixed(2) + ' + other $' + otherCostTotal(ev).toFixed(2) : ''),
+            feeStr: '$' + ((Number(ev.boothFee) || 0) + otherCostTotal(ev)).toFixed(2)
           }));
 
         const groupTotals = {};
@@ -581,6 +601,18 @@ export function applyAnalyticsBehavior(template: string): string {
           barWidth: (maxGroupItems > 0 ? Math.max(4, Math.round((g.items / maxGroupItems) * 100)) : 4) + '%',
           revStr: '$' + g.revenue.toFixed(2),
           sub: g.products + (g.products === 1 ? ' product' : ' products')
+        }));
+
+        const revenueEntries = productEntries
+          .map(([, product]) => product)
+          .sort((a, b) => b.revenue - a.revenue);
+        const maxProductRevenue = revenueEntries.reduce((max, product) => Math.max(max, product.revenue), 0);
+        const monthProductRows = revenueEntries.map(product => ({
+          name: product.name,
+          sub: product.items + ' sold · ' + '$' + product.cost.toFixed(2) + ' to make · '
+            + (product.revenue > 0 ? Math.round(((product.revenue - product.cost) / product.revenue) * 100) : 0) + '% margin',
+          valueStr: '$' + product.revenue.toFixed(2),
+          barWidth: (maxProductRevenue > 0 ? Math.max(3, Math.round((product.revenue / maxProductRevenue) * 100)) : 3) + '%'
         }));
 
         const itemEntries = productEntries.map(([, p]) => p).sort((a, b) => b.items - a.items);
@@ -628,6 +660,14 @@ export function applyAnalyticsBehavior(template: string): string {
           ? '1 event'
           : pastEvents.length + ' events';
 
+        // the same events the Events tab shows, reused on the month screen
+        const monthEventRows = eventsData.map(ev => ({
+          name: ev.name || 'Market',
+          sub: ev.dateStr + ' · kept ' + ev.profitStr + ' · ' + ev.roiStr + ' return',
+          valueStr: ev.revStr,
+          open: ev.open
+        }));
+
         const tab = this.state.analyticsTab || 'overview';
 
         return {
@@ -652,9 +692,11 @@ export function applyAnalyticsBehavior(template: string): string {
           detailMonthLabel: formatMonth(selectedMonth),
           monthCostStr: '$' + monthCost.toFixed(2),
           monthBoothFeesStr: '$' + monthBoothFees.toFixed(2),
-          costRows,
-          hasCostRows: costRows.length > 0,
-          hasNoCostRows: costRows.length === 0,
+          monthProductRows,
+          hasMonthProductRows: monthProductRows.length > 0,
+          hasNoMonthProductRows: monthProductRows.length === 0,
+          monthEventRows,
+          hasMonthEventRows: monthEventRows.length > 0,
           boothRows,
           hasBoothRows: boothRows.length > 0,
           groupRows,
@@ -682,6 +724,8 @@ export function applyAnalyticsBehavior(template: string): string {
           eventDetailRevStr: eventDetail ? eventDetail.revStr : '$0.00',
           eventDetailProductionStr: eventDetail ? eventDetail.productionCostStr : '$0.00',
           eventDetailBoothStr: eventDetail ? eventDetail.boothFeeStr : '$0.00',
+          eventDetailOtherCosts: eventDetail ? eventDetail.otherCostRows : [],
+          eventDetailHasOtherCosts: !!eventDetail && eventDetail.hasOtherCosts,
           eventDetailProfitStr: eventDetail ? eventDetail.profitStr : '$0.00',
           eventDetailProfitColor: eventDetail ? eventDetail.profitColor : 'var(--color-text)',
           eventDetailRoiStr: eventDetail ? eventDetail.roiStr : '0%',
@@ -754,17 +798,25 @@ function removeCashTracker(template: string): string {
     '    <button class="btn btn-secondary" sc-camel-on-click="{{ goCash }}" style="flex:1;min-height:52px;flex-direction:column;gap:2px"><span>Cash tracker</span><span class="text-muted" style="font-size:11px;font-feature-settings:\'tnum\'">{{ cashCollected }} collected</span></button>\n';
   const cashSummaryRow =
     '        <div style="display:flex;justify-content:space-between;padding:11px 16px;border-top:1px solid var(--color-divider);font-size:13px"><span class="text-muted">Cash tracker orders</span><span style="font-feature-settings:\'tnum\'">{{ cashCollected }}</span></div>\n';
+  const staleProfitCopy =
+    "Actual profit compares revenue with the plan's estimated production cost — booth fee, travel and labor not included.";
   const staleCashCopy =
     'Enter quantities sold. Skip anything already recorded order-by-order in the Cash Tracker — otherwise it counts twice.';
   for (const [fragment, label] of [
     [cashButton, "cash tracker button"],
     [cashSummaryRow, "cash tracker summary row"],
     [staleCashCopy, "stale cash tracker copy"],
+    [staleProfitCopy, "stale event profit copy"],
   ] as const) {
     if (!template.includes(fragment)) {
       throw new Error(`Missing stable ${label} anchor`);
     }
-    template = template.replace(fragment, () => (fragment === staleCashCopy ? "Enter the quantities you sold." : ""));
+    template = template.replace(fragment, () => {
+      if (fragment === staleCashCopy) return "Enter the quantities you sold.";
+      // booth fee and any other costs are now subtracted here
+      if (fragment === staleProfitCopy) return "Actual profit takes off what you baked, the booth fee and any other costs you listed. Labor is not included.";
+      return "";
+    });
   }
 
   const screenStart = template.indexOf("<!-- ══ CASH TRACKER ══ -->");
@@ -790,7 +842,7 @@ function addCommerceBehavior(template: string): string {
   );
   out = out.replace(
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:28px;margin:0">Base Farmers Market</h2><span class="tag tag-accent">{{ evStatusLabel }}</span></div>\n  <p class="text-muted" style="font-size:13px;margin:4px 0 18px">Production date Sep 12 · booth $125</p>',
-    () => '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><input class="input" value="{{ eventName }}" sc-camel-on-change="{{ setEventName }}" aria-label="Event name" style="flex:1;min-width:180px;font-family:var(--font-heading);font-weight:600;font-size:24px;padding:7px 10px"><span class="tag tag-accent">{{ evStatusLabel }}</span><button class="btn btn-secondary" sc-camel-on-click="{{ startNewEvent }}" style="min-height:38px;padding:7px 10px;white-space:nowrap;flex:none">+ New event</button></div>\n  <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin:10px 0 18px"><div class="field"><label>Event date</label><input class="input" type="date" value="{{ eventDate }}" sc-camel-on-change="{{ setEventDate }}" aria-label="Event date"></div><div class="field"><label>Booth fee</label><input class="input" inputmode="decimal" value="{{ eventBoothFee }}" sc-camel-on-change="{{ setEventBoothFee }}" aria-label="Booth fee"></div></div>',
+    () => '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><input class="input" value="{{ eventName }}" sc-camel-on-change="{{ setEventName }}" aria-label="Event name" style="flex:1;min-width:180px;font-family:var(--font-heading);font-weight:600;font-size:24px;padding:7px 10px"><span class="tag tag-accent">{{ evStatusLabel }}</span><button class="btn btn-secondary" sc-camel-on-click="{{ startNewEvent }}" style="min-height:38px;padding:7px 10px;white-space:nowrap;flex:none">+ New event</button></div>\n  <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin:10px 0 18px"><div class="field"><label>Event date</label><input class="input" type="date" value="{{ eventDate }}" sc-camel-on-change="{{ setEventDate }}" aria-label="Event date"></div><div class="field"><label>Booth fee</label><input class="input" inputmode="decimal" value="{{ eventBoothFee }}" sc-camel-on-change="{{ setEventBoothFee }}" aria-label="Booth fee"></div></div>\n  <div style="margin:-6px 0 18px"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px"><span class="card-kicker">Other costs</span><sc-if value="{{ hasEventOtherCosts }}" hint-placeholder-val="{{ false }}"><span class="text-muted" style="font-size:12px;font-feature-settings:\'tnum\'">{{ eventOtherCostTotalStr }}</span></sc-if></div><sc-for list="{{ eventOtherCosts }}" as="oc" hint-placeholder-count="0"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input class="input" value="{{ oc.label }}" sc-camel-on-change="{{ oc.setLabel }}" placeholder="Travel, parking, staff…" aria-label="Cost name" style="flex:1;min-width:0"><input class="input" value="{{ oc.amount }}" sc-camel-on-change="{{ oc.setAmount }}" inputmode="decimal" placeholder="0.00" aria-label="Cost amount" style="width:88px;flex:none;text-align:right;font-feature-settings:\'tnum\'"><button class="btn btn-ghost" sc-camel-on-click="{{ oc.remove }}" aria-label="Remove cost" style="min-height:38px;padding:0 8px;color:#b0563e;flex:none">×</button></div></sc-for><button class="btn btn-secondary" sc-camel-on-click="{{ addEventOtherCost }}" style="min-height:38px;font-size:12px">+ Add cost</button></div>',
   );
   out = out.replace(
     "        const { evQty, evSold, shopChecked, cashQty, cashPaid, cashOrdersArr } = this.state;",
@@ -824,8 +876,18 @@ function addCommerceBehavior(template: string): string {
   out = out.replace(
     "          updateRevenue: () => this.setState({ evSaved: true, soldRev: soldRevenue, actualRev: soldRevenue + collected }),",
     () => `          eventName: this.state.eventName || 'Base Farmers Market', eventDate: this.state.eventDate || '2026-09-12', eventBoothFee: String(this.state.eventBoothFee ?? 125),
+           eventOtherCosts: draftOtherCosts.map((cost, index) => ({
+             label: String((cost && cost.label) ?? ''),
+             amount: String((cost && cost.amount) ?? ''),
+             setLabel: e => this.setState(st => { const next = [...(st.eventOtherCosts || [])]; next[index] = { ...next[index], label: e.target.value.slice(0, 60) }; return { eventOtherCosts: next }; }),
+             setAmount: e => this.setState(st => { const next = [...(st.eventOtherCosts || [])]; next[index] = { ...next[index], amount: e.target.value }; return { eventOtherCosts: next }; }),
+             remove: () => this.setState(st => ({ eventOtherCosts: (st.eventOtherCosts || []).filter((_, i) => i !== index) }))
+           })),
+           hasEventOtherCosts: draftOtherCosts.length > 0,
+           eventOtherCostTotalStr: '$' + draftOtherCostTotal.toFixed(2),
+           addEventOtherCost: () => this.setState(st => ({ eventOtherCosts: [...(Array.isArray(st.eventOtherCosts) ? st.eventOtherCosts : []), { label: '', amount: '' }].slice(0, 20) })),
            setEventName: e => this.setState({ eventName: e.target.value.slice(0, 160) }), setEventDate: e => this.setState({ eventDate: e.target.value }), setEventBoothFee: e => this.setState({ eventBoothFee: Math.max(0, Number(e.target.value) || 0) }),
-           startNewEvent: () => this.setState(st => ({ eventCurrentId: 'event-' + Date.now().toString(36), eventName: 'New market', eventDate: new Date().toISOString().slice(0, 10), eventBoothFee: 0, evQty: {}, evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, cashQty: {}, cashPaid: '', cashOrdersArr: [], screen: 'event', stack: st.stack })),
+           startNewEvent: () => this.setState(st => ({ eventOtherCosts: [], eventCurrentId: 'event-' + Date.now().toString(36), eventName: 'New market', eventDate: new Date().toISOString().slice(0, 10), eventBoothFee: 0, evQty: {}, evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, cashQty: {}, cashPaid: '', cashOrdersArr: [], screen: 'event', stack: st.stack })),
           updateRevenue: () => this.setState(st => {
             const occurredAt = (st.eventDate || '2026-09-12') + 'T12:00:00.000Z';
             const previous = (st.saleRecords || []).find(s => s.id === 'sale-' + eventId + '-direct');
@@ -838,7 +900,10 @@ function addCommerceBehavior(template: string): string {
               return { productId: p.productId, name: p.name, quantity, unitPrice: (prior.unitPrice * prior.quantity + p.price * added) / quantity, unitCost: (prior.unitCost * prior.quantity + p.cost * added) / quantity };
             });
             const direct = { id: 'sale-' + eventId + '-direct', occurredAt, source: 'event', eventId, total: lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0), lineItems: lines };
-            const event = { id: eventId, name: st.eventName || 'Base Farmers Market', occurredAt, boothFee: Math.max(0, Number(st.eventBoothFee) || 0), lineItems: lines };
+            const otherCosts = (Array.isArray(st.eventOtherCosts) ? st.eventOtherCosts : [])
+              .map(cost => ({ label: String((cost && cost.label) || '').trim().slice(0, 60) || 'Other cost', amount: Math.max(0, Number(cost && cost.amount) || 0) }))
+              .filter(cost => cost.amount > 0);
+            const event = { id: eventId, name: st.eventName || 'Base Farmers Market', occurredAt, boothFee: Math.max(0, Number(st.eventBoothFee) || 0), ...(otherCosts.length ? { otherCosts } : {}), lineItems: lines };
             const salesWithoutDirect = (st.saleRecords || []).filter(s => s.id !== direct.id);
             const sales = lines.length > 0 ? [...salesWithoutDirect, direct] : salesWithoutDirect;
             const actual = sales.filter(s => s.eventId === eventId).reduce((sum, s) => sum + (Number(s.total) || 0), 0);
@@ -873,7 +938,9 @@ function addCommerceBehavior(template: string): string {
     "        const soldRevenue = eventProducts.reduce((s, p) => s + (evSold[p.id] || 0) * p.price, 0);\n        return {",
     () => `        const soldRevenue = eventProducts.reduce((s, p) => s + (evSold[p.id] || 0) * p.price, 0);
         const eventProductionCost = (this.state.saleRecords || []).filter(s => s.eventId === eventId).reduce((sum, sale) => sum + (sale.lineItems || []).reduce((lineSum, line) => lineSum + (Number(line.quantity) || 0) * (Number(line.unitCost) || 0), 0), 0);
-        const actualEventProfit = (Number(this.state.actualRev) || 0) - eventProductionCost - (Number(this.state.eventBoothFee) || 0);
+        const draftOtherCosts = Array.isArray(this.state.eventOtherCosts) ? this.state.eventOtherCosts : [];
+        const draftOtherCostTotal = draftOtherCosts.reduce((sum, cost) => sum + (Number(cost && cost.amount) || 0), 0);
+        const actualEventProfit = (Number(this.state.actualRev) || 0) - eventProductionCost - (Number(this.state.eventBoothFee) || 0) - draftOtherCostTotal;
         return {`,
   ).replace(
     "actualProfitStr: $(this.state.actualRev - cst),",

@@ -80,6 +80,15 @@ const eventRecordSchema = z
     name: z.string().min(1).max(160),
     occurredAt: z.iso.datetime(),
     boothFee: z.number().finite().min(0).max(1_000_000),
+    otherCosts: z
+      .array(
+        z.object({
+          label: z.string().min(1).max(60),
+          amount: z.number().finite().min(0).max(1_000_000),
+        }),
+      )
+      .max(20)
+      .optional(),
     lineItems: z.array(saleLineItemSchema).max(100),
   })
   .strict();
