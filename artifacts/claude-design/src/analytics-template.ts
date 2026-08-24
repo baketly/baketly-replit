@@ -2,7 +2,6 @@ import { buildDemoCommerce } from "./demo-data";
 
 export function applyAnalyticsBehavior(template: string): string {
   const newMarkup = `<!-- ══ ANALYTICS ══ -->
-<sc-if value="{{ onAnalytics }}" hint-placeholder-val="{{ false }}">
 <style>
 .an-tabs { display: flex; margin: 0 -20px 16px; padding: 0 10px; border-bottom: 1px solid var(--color-divider); }
 .an-tab {
@@ -34,7 +33,33 @@ export function applyAnalyticsBehavior(template: string): string {
   content: '▼'; position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
   font-size: 14px; pointer-events: none; color: var(--color-accent);
 }
+
+/* breakdown screens */
+.an-detail-sub { font-size: 13px; color: var(--color-neutral-500); margin: 2px 0 20px; }
+.an-section-title { font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-neutral-500); margin: 26px 0 8px; }
+.an-num { font-feature-settings: 'tnum'; font-size: 14px; flex: none; }
+.an-neg { color: #b0563e; }
+.an-ledger-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--color-divider); font-size: 14px; }
+.an-ledger-row:last-child { border-bottom: none; }
+.an-ledger-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 13px 0 2px; margin-top: 5px; border-top: 2px solid var(--color-text); }
+.an-ledger-total .an-label { font-weight: 600; font-size: 15px; }
+.an-total-num { font-family: var(--font-heading); font-weight: 600; font-size: 22px; font-feature-settings: 'tnum'; }
+.an-meta-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 11px; margin-top: 11px; border-top: 1px solid var(--color-divider); font-size: 12px; color: var(--color-neutral-500); }
+.an-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--color-divider); }
+.an-row:last-child { border-bottom: none; }
+.an-row-main { min-width: 0; flex: 1; }
+.an-row-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-row-sub { font-size: 12px; color: var(--color-neutral-500); }
+.an-row-val { font-feature-settings: 'tnum'; font-size: 14px; font-weight: 500; flex: none; text-align: right; }
+.an-mini-bar { height: 6px; border-radius: 3px; background: var(--color-neutral-100); overflow: hidden; margin-top: 8px; }
+.an-mini-bar > span { display: block; height: 100%; background: var(--color-accent); border-radius: 3px; }
+.an-chips { display: flex; gap: 10px; margin-bottom: 4px; }
+.an-chip { flex: 1; background: #fff; border: 1px solid var(--color-divider); border-radius: 12px; padding: 11px 12px; box-shadow: var(--shadow-sm); }
+.an-chip-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-500); margin-bottom: 3px; }
+.an-chip-val { font-family: var(--font-heading); font-weight: 600; font-size: 18px; font-feature-settings: 'tnum'; }
 </style>
+<sc-if value="{{ onAnalytics }}" hint-placeholder-val="{{ false }}">
+
 <div style="padding:18px 20px 28px">
   <h2 style="font-size:28px;margin:0 0 16px">Analytics</h2>
 
@@ -183,42 +208,50 @@ export function applyAnalyticsBehavior(template: string): string {
 <sc-if value="{{ onAnalyticsKept }}" hint-placeholder-val="{{ false }}">
 <div style="padding:14px 20px 28px">
   <button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>
-  <h2 style="font-size:26px;margin:6px 0 2px">Where it went</h2>
-  <p class="text-muted" style="font-size:13px;margin-bottom:18px">{{ detailMonthLabel }}</p>
+  <h2 style="font-size:26px;margin:6px 0 0">Where it went</h2>
+  <p class="an-detail-sub">{{ detailMonthLabel }}</p>
 
   <div class="an-card">
-    <div class="an-list-item"><span>Revenue</span><span style="font-feature-settings:'tnum'">{{ monthRevStr }}</span></div>
-    <div class="an-list-item"><span>Production cost</span><span style="font-feature-settings:'tnum';color:#b0563e">−{{ monthCostStr }}</span></div>
-    <div class="an-list-item"><span>Booth fees</span><span style="font-feature-settings:'tnum';color:#b0563e">−{{ monthBoothFeesStr }}</span></div>
-    <div class="an-list-item" style="border-top:2px solid var(--color-text);margin-top:4px"><span style="font-weight:600">Kept</span><span style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ monthProfitStr }}</span></div>
+    <div class="an-ledger-row"><span>Revenue</span><span class="an-num">{{ monthRevStr }}</span></div>
+    <div class="an-ledger-row"><span>Production cost</span><span class="an-num an-neg">−{{ monthCostStr }}</span></div>
+    <div class="an-ledger-row"><span>Booth fees</span><span class="an-num an-neg">−{{ monthBoothFeesStr }}</span></div>
+    <div class="an-ledger-total"><span class="an-label">Kept</span><span class="an-total-num">{{ monthProfitStr }}</span></div>
+    <div class="an-meta-row"><span>Margin</span><span>{{ monthMarginStr }}</span></div>
   </div>
 
   <sc-if value="{{ hasCostRows }}" hint-placeholder-val="{{ false }}">
-    <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">Production cost by product</h6>
+    <div class="an-section-title">Production cost by product</div>
     <div class="an-card">
       <sc-for list="{{ costRows }}" as="row" hint-placeholder-count="4">
-        <div class="an-list-item">
-          <div style="min-width:0"><div style="font-size:14px">{{ row.name }}</div><div class="text-muted" style="font-size:12px">{{ row.sub }}</div></div>
-          <span style="font-feature-settings:'tnum';flex:none">{{ row.valueStr }}</span>
+        <div class="an-row">
+          <div class="an-row-main">
+            <div class="an-row-name">{{ row.name }}</div>
+            <div class="an-row-sub">{{ row.sub }}</div>
+            <div class="an-mini-bar"><span style="width:{{ row.barWidth }}"></span></div>
+          </div>
+          <div class="an-row-val">{{ row.valueStr }}</div>
         </div>
       </sc-for>
     </div>
   </sc-if>
 
   <sc-if value="{{ hasBoothRows }}" hint-placeholder-val="{{ false }}">
-    <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">Booth fees</h6>
+    <div class="an-section-title">Booth fees</div>
     <div class="an-card">
       <sc-for list="{{ boothRows }}" as="fee" hint-placeholder-count="1">
-        <div class="an-list-item">
-          <div style="min-width:0"><div style="font-size:14px">{{ fee.name }}</div><div class="text-muted" style="font-size:12px">{{ fee.dateStr }}</div></div>
-          <span style="font-feature-settings:'tnum';flex:none">{{ fee.feeStr }}</span>
+        <div class="an-row">
+          <div class="an-row-main">
+            <div class="an-row-name">{{ fee.name }}</div>
+            <div class="an-row-sub">{{ fee.dateStr }}</div>
+          </div>
+          <div class="an-row-val">{{ fee.feeStr }}</div>
         </div>
       </sc-for>
     </div>
   </sc-if>
 
   <sc-if value="{{ hasNoCostRows }}" hint-placeholder-val="{{ false }}">
-    <div class="text-muted" style="text-align:center;padding:40px 20px;font-size:13px">No sales recorded for this month yet.</div>
+    <div class="text-muted" style="text-align:center;padding:44px 20px;font-size:13px">No sales recorded for this month yet.</div>
   </sc-if>
 </div>
 </sc-if>
@@ -227,39 +260,47 @@ export function applyAnalyticsBehavior(template: string): string {
 <sc-if value="{{ onAnalyticsItems }}" hint-placeholder-val="{{ false }}">
 <div style="padding:14px 20px 28px">
   <button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>
-  <h2 style="font-size:26px;margin:6px 0 2px">Items sold</h2>
-  <p class="text-muted" style="font-size:13px;margin-bottom:18px">{{ monthItemsStr }} items in {{ monthSalesCount }} orders · {{ detailMonthLabel }}</p>
+  <h2 style="font-size:26px;margin:6px 0 0">Items sold</h2>
+  <p class="an-detail-sub">{{ detailMonthLabel }}</p>
+
+  <div class="an-chips">
+    <div class="an-chip"><div class="an-chip-label">Items</div><div class="an-chip-val">{{ monthItemsStr }}</div></div>
+    <div class="an-chip"><div class="an-chip-label">Orders</div><div class="an-chip-val">{{ monthSalesCount }}</div></div>
+    <div class="an-chip"><div class="an-chip-label">Products</div><div class="an-chip-val">{{ monthProductCountStr }}</div></div>
+  </div>
 
   <sc-if value="{{ hasGroupRows }}" hint-placeholder-val="{{ false }}">
-    <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">By group</h6>
+    <div class="an-section-title">By group</div>
     <div class="an-card">
       <sc-for list="{{ groupRows }}" as="grp" hint-placeholder-count="4">
-        <div style="padding:12px 0;border-bottom:1px solid var(--color-divider)">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-            <span style="font-size:14px;font-weight:500">{{ grp.label }}</span>
-            <span style="font-feature-settings:'tnum';font-size:13px">{{ grp.unitsStr }} · {{ grp.shareStr }}</span>
+        <div class="an-row">
+          <div class="an-row-main">
+            <div class="an-row-name">{{ grp.label }}</div>
+            <div class="an-row-sub">{{ grp.sub }} · {{ grp.revStr }} revenue</div>
+            <div class="an-mini-bar"><span style="width:{{ grp.barWidth }}"></span></div>
           </div>
-          <div style="height:8px;background:var(--color-neutral-100);border-radius:4px;overflow:hidden">
-            <div style="height:100%;width:{{ grp.barWidth }};background:var(--color-accent);border-radius:4px"></div>
-          </div>
-          <div class="text-muted" style="font-size:12px;margin-top:5px">{{ grp.sub }} · {{ grp.revStr }} revenue</div>
+          <div class="an-row-val">{{ grp.unitsStr }}<div class="an-row-sub" style="margin-top:3px">{{ grp.shareStr }}</div></div>
         </div>
       </sc-for>
     </div>
 
-    <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">By product</h6>
+    <div class="an-section-title">By product</div>
     <div class="an-card">
       <sc-for list="{{ itemProductRows }}" as="row" hint-placeholder-count="5">
-        <div class="an-list-item">
-          <div style="min-width:0"><div style="font-size:14px">{{ row.name }}</div><div class="text-muted" style="font-size:12px">{{ row.revStr }} revenue</div></div>
-          <span style="font-feature-settings:'tnum';flex:none">{{ row.unitsStr }}</span>
+        <div class="an-row">
+          <div class="an-row-main">
+            <div class="an-row-name">{{ row.name }}</div>
+            <div class="an-row-sub">{{ row.revStr }} revenue · {{ row.shareStr }} of items</div>
+            <div class="an-mini-bar"><span style="width:{{ row.barWidth }}"></span></div>
+          </div>
+          <div class="an-row-val">{{ row.unitsStr }}</div>
         </div>
       </sc-for>
     </div>
   </sc-if>
 
   <sc-if value="{{ hasNoGroupRows }}" hint-placeholder-val="{{ false }}">
-    <div class="text-muted" style="text-align:center;padding:40px 20px;font-size:13px">No items sold in this month yet.</div>
+    <div class="text-muted" style="text-align:center;padding:44px 20px;font-size:13px">No items sold in this month yet.</div>
   </sc-if>
 </div>
 </sc-if>
@@ -269,36 +310,41 @@ export function applyAnalyticsBehavior(template: string): string {
 <div style="padding:14px 20px 28px">
   <button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>
   <sc-if value="{{ hasEventDetail }}" hint-placeholder-val="{{ false }}">
-    <h2 style="font-size:26px;margin:6px 0 2px">{{ eventDetailName }}</h2>
-    <p class="text-muted" style="font-size:13px;margin-bottom:18px">{{ eventDetailDateStr }}</p>
+    <h2 style="font-size:26px;margin:6px 0 0">{{ eventDetailName }}</h2>
+    <p class="an-detail-sub">{{ eventDetailDateStr }}</p>
 
     <div class="an-card">
-      <div class="an-list-item"><span>Revenue</span><span style="font-feature-settings:'tnum'">{{ eventDetailRevStr }}</span></div>
-      <div class="an-list-item"><span>Production cost</span><span style="font-feature-settings:'tnum';color:#b0563e">−{{ eventDetailProductionStr }}</span></div>
-      <div class="an-list-item"><span>Booth fee</span><span style="font-feature-settings:'tnum';color:#b0563e">−{{ eventDetailBoothStr }}</span></div>
-      <div class="an-list-item" style="border-top:2px solid var(--color-text);margin-top:4px"><span style="font-weight:600">Profit</span><span style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum';color:{{ eventDetailProfitColor }}">{{ eventDetailProfitStr }}</span></div>
-      <div class="an-list-item"><span class="text-muted" style="font-size:13px">ROI · margin</span><span class="text-muted" style="font-size:13px;font-feature-settings:'tnum'">{{ eventDetailRoiStr }} · {{ eventDetailMarginStr }}</span></div>
+      <div class="an-ledger-row"><span>Revenue</span><span class="an-num">{{ eventDetailRevStr }}</span></div>
+      <div class="an-ledger-row"><span>Production cost</span><span class="an-num an-neg">−{{ eventDetailProductionStr }}</span></div>
+      <div class="an-ledger-row"><span>Booth fee</span><span class="an-num an-neg">−{{ eventDetailBoothStr }}</span></div>
+      <div class="an-ledger-total"><span class="an-label">Profit</span><span class="an-total-num" style="color:{{ eventDetailProfitColor }}">{{ eventDetailProfitStr }}</span></div>
+      <div class="an-meta-row"><span>ROI</span><span>{{ eventDetailRoiStr }}</span></div>
+      <div class="an-meta-row" style="margin-top:0;border-top:none;padding-top:5px"><span>Margin</span><span>{{ eventDetailMarginStr }}</span></div>
     </div>
 
     <sc-if value="{{ hasEventDetailItems }}" hint-placeholder-val="{{ false }}">
-      <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">Sold at this market</h6>
+      <div class="an-section-title">Sold at this market</div>
       <div class="an-card">
         <sc-for list="{{ eventDetailItems }}" as="row" hint-placeholder-count="5">
-          <div class="an-list-item">
-            <div style="min-width:0"><div style="font-size:14px">{{ row.name }}</div><div class="text-muted" style="font-size:12px">{{ row.unitsStr }} · {{ row.profitStr }} profit</div></div>
-            <span style="font-feature-settings:'tnum';flex:none">{{ row.revStr }}</span>
+          <div class="an-row">
+            <div class="an-row-main">
+              <div class="an-row-name">{{ row.name }}</div>
+              <div class="an-row-sub">{{ row.unitsStr }} · {{ row.profitStr }} profit</div>
+              <div class="an-mini-bar"><span style="width:{{ row.barWidth }}"></span></div>
+            </div>
+            <div class="an-row-val">{{ row.revStr }}</div>
           </div>
         </sc-for>
       </div>
     </sc-if>
 
     <sc-if value="{{ hasNoEventDetailItems }}" hint-placeholder-val="{{ false }}">
-      <div class="text-muted" style="text-align:center;padding:40px 20px;font-size:13px">Nothing was recorded as sold at this market.</div>
+      <div class="text-muted" style="text-align:center;padding:44px 20px;font-size:13px">Nothing was recorded as sold at this market.</div>
     </sc-if>
   </sc-if>
 
   <sc-if value="{{ hasNoEventDetail }}" hint-placeholder-val="{{ false }}">
-    <div class="text-muted" style="text-align:center;padding:40px 20px;font-size:13px">That event is no longer available.</div>
+    <div class="text-muted" style="text-align:center;padding:44px 20px;font-size:13px">That event is no longer available.</div>
   </sc-if>
 </div>
 </sc-if>
@@ -480,27 +526,30 @@ export function applyAnalyticsBehavior(template: string): string {
             });
           });
         }
-        const eventDetailItems = Object.values(eventDetailTotals)
-          .sort((a, b) => b.revenue - a.revenue)
-          .map(row => ({
-            name: row.name,
-            unitsStr: row.items + (row.items === 1 ? ' unit' : ' units'),
-            revStr: '$' + row.revenue.toFixed(2),
-            profitStr: (row.revenue - row.cost < 0 ? '-$' : '$') + Math.abs(row.revenue - row.cost).toFixed(2)
-          }));
+        const eventItemEntries = Object.values(eventDetailTotals).sort((a, b) => b.revenue - a.revenue);
+        const maxEventItemRev = eventItemEntries.reduce((max, row) => Math.max(max, row.revenue), 0);
+        const eventDetailItems = eventItemEntries.map(row => ({
+          name: row.name,
+          unitsStr: row.items + (row.items === 1 ? ' unit' : ' units'),
+          revStr: '$' + row.revenue.toFixed(2),
+          profitStr: (row.revenue - row.cost < 0 ? '-$' : '$') + Math.abs(row.revenue - row.cost).toFixed(2),
+          barWidth: (maxEventItemRev > 0 ? Math.max(3, Math.round((row.revenue / maxEventItemRev) * 100)) : 3) + '%'
+        }));
 
         const groupLabels = { bread: 'Bread', babka: 'Babka', cookie: 'Cookies', treat: 'Treats', other: 'Other' };
         const productEntries = Object.entries(monthData.products);
 
-        const costRows = productEntries
+        const costEntries = productEntries
           .map(([productId, p]) => ({ productId, ...p }))
           .filter(p => p.cost > 0)
-          .sort((a, b) => b.cost - a.cost)
-          .map(p => ({
-            name: p.name,
-            sub: p.items + ' sold · ' + (monthCost > 0 ? Math.round((p.cost / monthCost) * 100) : 0) + '% of production cost',
-            valueStr: '$' + p.cost.toFixed(2)
-          }));
+          .sort((a, b) => b.cost - a.cost);
+        const maxProductCost = costEntries.reduce((max, p) => Math.max(max, p.cost), 0);
+        const costRows = costEntries.map(p => ({
+          name: p.name,
+          sub: p.items + ' sold · ' + (monthCost > 0 ? Math.round((p.cost / monthCost) * 100) : 0) + '% of production cost',
+          valueStr: '$' + p.cost.toFixed(2),
+          barWidth: (maxProductCost > 0 ? Math.max(3, Math.round((p.cost / maxProductCost) * 100)) : 3) + '%'
+        }));
 
         const boothRows = events
           .filter(ev => (ev.occurredAt || '').slice(0, 7) === selectedMonth)
@@ -531,10 +580,15 @@ export function applyAnalyticsBehavior(template: string): string {
           sub: g.products + (g.products === 1 ? ' product' : ' products')
         }));
 
-        const itemProductRows = productEntries
-          .map(([, p]) => p)
-          .sort((a, b) => b.items - a.items)
-          .map(p => ({ name: p.name, unitsStr: String(p.items), revStr: '$' + p.revenue.toFixed(2) }));
+        const itemEntries = productEntries.map(([, p]) => p).sort((a, b) => b.items - a.items);
+        const maxProductItems = itemEntries.reduce((max, p) => Math.max(max, p.items), 0);
+        const itemProductRows = itemEntries.map(p => ({
+          name: p.name,
+          unitsStr: String(p.items),
+          revStr: '$' + p.revenue.toFixed(2),
+          shareStr: (monthData.items > 0 ? Math.round((p.items / monthData.items) * 100) : 0) + '%',
+          barWidth: (maxProductItems > 0 ? Math.max(3, Math.round((p.items / maxProductItems) * 100)) : 3) + '%'
+        }));
 
         const tab = this.state.analyticsTab || 'overview';
 
@@ -569,6 +623,9 @@ export function applyAnalyticsBehavior(template: string): string {
           hasGroupRows: groupRows.length > 0,
           hasNoGroupRows: groupRows.length === 0,
           itemProductRows,
+          monthGroupCountStr: String(groupRows.length),
+          monthProductCountStr: String(productEntries.length),
+          eventDetailItemCountStr: String(eventDetailItems.reduce((sum, row) => sum + (parseInt(row.unitsStr, 10) || 0), 0)),
           hasEventDetail: !!eventDetail,
           hasNoEventDetail: !eventDetail,
           hasEventDetailItems: eventDetailItems.length > 0,
