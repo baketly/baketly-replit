@@ -1,0 +1,4 @@
+- [API Zod codegen barrel](api-zod-codegen-barrel.md) — generated schema/type names can collide; use explicit type exports after codegen.
+- [Bundled-template replacements](bundled-template-replacements.md) — use replacement callbacks when injected template code contains dollar signs.
+- [Photo storage boundary](photo-storage-boundary.md) — photo uploads are temporarily public for the single-user app; move issuance and reads behind customer ACLs with accounts.
+- [Gemini label model availability](gemini-label-model-availability.md) — new Gemini API keys may reject older Flash models; use the current model mandated by the live API.
