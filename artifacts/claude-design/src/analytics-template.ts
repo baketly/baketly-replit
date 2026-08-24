@@ -104,10 +104,11 @@ export function applyAnalyticsBehavior(template: string): string {
       </div>
     </div>
 
-    <div class="an-card" style="background:var(--color-bg);border-color:var(--color-accent);border-width:2px;position:relative;overflow:hidden;">
+    <div class="an-card" sc-camel-on-click="{{ askAboutInsight }}" style="background:var(--color-bg);border-color:var(--color-accent);border-width:2px;position:relative;overflow:hidden;cursor:pointer;">
       <div style="position:absolute;top:0;right:0;width:60px;height:60px;background:var(--color-accent);opacity:0.05;border-radius:0 0 0 60px;pointer-events:none;"></div>
       <div style="font-family:var(--font-heading);font-weight:600;font-size:16px;margin-bottom:6px;color:var(--color-accent-700)">Baketly noticed</div>
       <div style="font-size:14px;line-height:1.55;color:var(--color-text)">{{ insightText }}</div>
+      <div style="font-size:12px;font-weight:600;margin-top:9px;color:var(--color-accent-700)">Ask about this ›</div>
     </div>
 
     <h6 style="margin-top:28px;margin-bottom:4px;font-size:16px;font-weight:600">Revenue Trends</h6>
@@ -531,6 +532,8 @@ export function applyAnalyticsBehavior(template: string): string {
                label: String((cost && cost.label) || 'Other cost'),
                amountStr: '$' + (Number(cost && cost.amount) || 0).toFixed(2)
              })),
+            revenueValue: evRev,
+            profitValue: evProfit,
             profitStr: (evProfit >= 0 ? '$' : '-$') + Math.abs(evProfit).toFixed(2),
             profitColor: evProfit >= 0 ? 'var(--color-text)' : '#b0563e',
             marginStr: evMargin + '%',
@@ -627,10 +630,11 @@ export function applyAnalyticsBehavior(template: string): string {
 
         const nowMs = Date.now();
         const thisYear = now.getFullYear();
-        const allPastEvents = events
+        const allPastEventStats = events
           .filter(ev => new Date(ev.occurredAt || 0).getTime() <= nowMs)
           .sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime())
-          .map(buildEventStats)
+          .map(buildEventStats);
+        const allPastEvents = allPastEventStats
           .map(ev => {
             const when = new Date(ev.occurredAt || Date.now());
             return {
@@ -667,6 +671,21 @@ export function applyAnalyticsBehavior(template: string): string {
           valueStr: ev.revStr,
           open: ev.open
         }));
+
+        const rankedPastEvents = allPastEventStats
+          .slice()
+          .sort((a, b) => b.profitValue - a.profitValue);
+        let marketsInsightText = 'Add a market and I will tell you whether the table paid for itself.';
+        if (rankedPastEvents.length === 1) {
+          const only = rankedPastEvents[0];
+          marketsInsightText = only.name + ' kept ' + only.profitStr + ' after costs, a ' + only.roiStr + ' return on what it took to be there.';
+        } else if (rankedPastEvents.length > 1) {
+          const best = rankedPastEvents[0];
+          const worst = rankedPastEvents[rankedPastEvents.length - 1];
+          const gap = best.profitValue - worst.profitValue;
+          marketsInsightText = best.name + ' is your most profitable market, keeping ' + best.profitStr + ' at a ' + best.roiStr + ' return'
+            + (gap > 0 ? ' — about $' + gap.toFixed(2) + ' more than ' + worst.name + '.' : '.');
+        }
 
         const tab = this.state.analyticsTab || 'overview';
 
@@ -731,6 +750,9 @@ export function applyAnalyticsBehavior(template: string): string {
           eventDetailRoiStr: eventDetail ? eventDetail.roiStr : '0%',
           eventDetailMarginStr: eventDetail ? eventDetail.marginStr : '0%',
           insightText,
+          marketsInsightText,
+          askAboutInsight: () => this.__baketlyAskFromCard('Tell me more about this, and what you would do about it: ' + insightText),
+          askAboutMarketsInsight: () => this.__baketlyAskFromCard('Tell me more about this, and what you would do about it: ' + marketsInsightText),
           chartBars,
           allTimeProductsArr,
           hasProducts: allTimeProductsArr.length > 0,
@@ -828,6 +850,20 @@ function removeCashTracker(template: string): string {
   // Actual revenue needs no change: an earlier pass already rewrote
   // updateRevenue to total the sales linked to the event rather than adding a
   // separate cash figure.
+  return template;
+}
+
+// The mockup's two "Baketly noticed" cards held invented copy and did nothing.
+// They now show a real tip and open the chat with it.
+function linkNoticedCards(template: string): string {
+  const cards: Array<[string, string, string]> = [
+    ["  <div class=\"card\" style=\"gap:8px\">\n    <span class=\"card-kicker\">Baketly noticed</span>\n    <div style=\"font-size:14px;line-height:1.55\">Sourdough is your best earner per oven-hour, and Base Market Saturdays drive most of it. Margins still exclude your time — <span style=\"color:var(--color-accent-700)\">set an hourly rate</span> to see true profit.</div>\n  </div>", "  <div class=\"card\" sc-camel-on-click=\"{{ askAboutInsight }}\" style=\"gap:8px;cursor:pointer\">\n    <span class=\"card-kicker\">Baketly noticed</span>\n    <div style=\"font-size:14px;line-height:1.55\">{{ insightText }}</div>\n    <div style=\"font-size:12px;font-weight:600;color:var(--color-accent-700)\">Ask about this ›</div>\n  </div>", "home noticed card"],
+    ["  <div class=\"card\" style=\"margin-top:20px;gap:8px\">\n    <span class=\"card-kicker\">Baketly noticed</span>\n    <div style=\"font-size:14px;line-height:1.5\">Base Market Saturdays are your most profitable event — about $190 more kept per event than Montclair, mostly from sourdough sales.</div>\n  </div>", "  <div class=\"card\" sc-camel-on-click=\"{{ askAboutMarketsInsight }}\" style=\"margin-top:20px;gap:8px;cursor:pointer\">\n    <span class=\"card-kicker\">Baketly noticed</span>\n    <div style=\"font-size:14px;line-height:1.5\">{{ marketsInsightText }}</div>\n    <div style=\"font-size:12px;font-weight:600;color:var(--color-accent-700)\">Ask about this ›</div>\n  </div>", "markets noticed card"],
+  ];
+  for (const [from, to, label] of cards) {
+    if (!template.includes(from)) throw new Error(`Missing stable ${label} anchor`);
+    template = template.replace(from, () => to);
+  }
   return template;
 }
 
@@ -959,5 +995,5 @@ function addCommerceBehavior(template: string): string {
     "todayArr: [...st.todayArr, final],",
     () => "todayArr: [...st.todayArr, final], saleRecords: [...(st.saleRecords || []), { id: 'sale-pos-' + Date.now().toString(36), occurredAt: new Date().toISOString(), source: 'pos', total: final, lineItems: posRecipes.filter(r => (st.posQty || {})[r.id] > 0).map(r => ({ productId: r.id, name: r.name, quantity: (st.posQty || {})[r.id], unitPrice: ((Number(r.sell) || 0) * (total > 0 ? final / total : 1)), unitCost: r.cost })) }],",
   );
-  return replacePastEvents(removeCashTracker(out));
+  return linkNoticedCards(replacePastEvents(removeCashTracker(out)));
 }

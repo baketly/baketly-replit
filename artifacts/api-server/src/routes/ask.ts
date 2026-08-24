@@ -21,7 +21,7 @@ const answerSchema = {
   type: "OBJECT",
   properties: {
     answer: { type: "STRING" },
-    wins: { type: "ARRAY", items: { type: "STRING" } },
+    wins: { type: "ARRAY", items: { type: "STRING" }, maxItems: 1 },
     followUps: { type: "ARRAY", items: { type: "STRING" } },
   },
   required: ["answer", "wins", "followUps"],
@@ -38,9 +38,9 @@ const SYSTEM_RULES = [
   "Write plainly, as if to a smart person who does not use spreadsheets. Short sentences. No jargon, no headings, no markdown, no bullet characters.",
   "Never repeat a field name from the snapshot. Say margin, return, cost or revenue in plain words; never write marginPct, roiPct, unitCost or similar.",
   "Keep 'answer' under 90 words.",
-  "'wins' holds up to three findings the baker did NOT ask about: an underpriced product, a margin that slipped, an ingredient driving cost, a market that is not worth the booth fee, a product worth baking more of. Each one names the real figure that makes it true. Only include a win you can support from the snapshot, and prefer ones that are actionable this week. Return fewer, or none, rather than padding.",
+  "'wins' holds AT MOST ONE finding the baker did NOT ask about: an underpriced product, a margin that slipped, an ingredient driving cost, a market that is not worth its costs, a product worth baking more of. Pick the single most useful one and name the real figure that makes it true. Return an empty list rather than a weak or unsupported finding.",
   "'followUps' holds up to three short questions the baker could ask next, phrased in their words, each answerable from the snapshot.",
-  "If the snapshot is nearly empty, say what to record first and keep 'wins' empty.",
+  "GETTING STARTED: if the snapshot has no sales and no recipes, or the pantry is empty, the baker is new. Do not report findings about data that is not there. Instead explain, in their terms, what Baketly does for them: it turns what they pay for ingredients and packaging into the true cost of one bake, suggests a price that keeps a margin, reads a nutrition label from a photo, and tracks what each market actually kept after booth and travel costs. Say plainly which one thing to add first and where. Keep 'wins' empty, and make every entry in 'followUps' a question about learning or setting up the app rather than about numbers they do not have yet.",
 ] .join(" ");
 
 function admitAsk(req: Request, res: Response, next: NextFunction): void {
@@ -185,7 +185,7 @@ router.post(
       req.log.info({ model }, "Ask Baketly answered");
       res.json({
         answer,
-        wins: cleanList(source.wins, 3, 240),
+        wins: cleanList(source.wins, 1, 240),
         followUps: cleanList(source.followUps, 3, 120),
       });
     } catch (error) {

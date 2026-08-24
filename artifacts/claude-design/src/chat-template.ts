@@ -6,7 +6,15 @@
 
 const chatControllerLogic = `      ...(() => {
         const stored = Array.isArray(this.state.chatMsgs) ? this.state.chatMsgs : [];
-        const greeting = { who: 'b', text: 'Hi! I watch your costs, prices and markets. Ask me anything — or try a question below.' };
+        const savedSales = Array.isArray(this.state.saleRecords) ? this.state.saleRecords.length : 0;
+        const savedRecipes = Array.isArray(this.state.recipeRecords) ? this.state.recipeRecords.length : 0;
+        const savedIngredients = Object.keys(this.state.ingredientRecords || {}).length;
+        // a baker who has not entered anything yet needs to learn the app, not
+        // hear findings about numbers that do not exist
+        const justStarting = savedSales === 0 && (savedRecipes === 0 || savedIngredients === 0);
+        const greeting = justStarting
+          ? { who: 'b', text: 'Hi! I turn what you pay for ingredients into what each bake really costs, and what to charge for it. Tell me what you bake, or try a question below to see what I can do.' }
+          : { who: 'b', text: 'Hi! I watch your costs, prices and markets. Ask me anything — or try a question below.' };
         const shown = stored.length ? stored : [greeting];
         const pending = this.state.chatPending === true;
 
@@ -49,17 +57,22 @@ const chatControllerLogic = `      ...(() => {
           });
         };
 
-        const defaultPrompts = ['Which product earns the least?', 'Where am I losing margin?', 'How do I hit $1,500 at the next market?'];
+        const gettingStartedPrompts = ['What can Baketly do for me?', 'What should I add first?', 'How should I price what I bake?'];
+        const workingPrompts = ['Which product earns the least?', 'Where am I losing margin?', 'How do I hit $1,500 at the next market?'];
+        const defaultPrompts = justStarting ? gettingStartedPrompts : workingPrompts;
         const followUps = Array.isArray(this.state.chatFollowUps) && this.state.chatFollowUps.length
           ? this.state.chatFollowUps
           : defaultPrompts;
+
+        this.__baketlyAskFromCard = (question) => { this.go('chat'); send(question); };
 
         return {
           chatMsgs: shown.map(m => ({
             text: m.text,
             align: m.who === 'u' ? 'flex-end' : 'flex-start',
             border: m.who === 'u' ? 'var(--color-accent-300)' : 'var(--color-divider)',
-            bg: m.who === 'u' ? 'var(--color-accent-100)' : '#fff'
+            bg: m.who === 'u' ? 'var(--color-accent-100)' : '#fff',
+            radius: m.who === 'u' ? '20px 20px 6px 20px' : '20px 20px 20px 6px'
           })),
           chatDraft: this.state.chatDraft || '',
           setChatDraft: e => this.setState({ chatDraft: e.target.value.slice(0, 500) }),
@@ -124,6 +137,17 @@ function replaceChatSuggestions(template: string): string {
   return template.slice(0, start) + suggestionsMarkup + template.slice(end + "  </div>\n".length);
 }
 
+function roundChatBubbles(template: string): string {
+  const bubble =
+    '<div style="align-self:{{ msg.align }};max-width:85%;border:1px solid {{ msg.border }};border-radius:var(--radius-lg);padding:10px 14px;font-size:14px;line-height:1.55;background:{{ msg.bg }}">{{ msg.text }}</div>';
+  if (!template.includes(bubble)) throw new Error("Missing chat bubble anchor");
+  return template.replace(
+    bubble,
+    () =>
+      '<div style="align-self:{{ msg.align }};max-width:85%;border:1px solid {{ msg.border }};border-radius:{{ msg.radius }};padding:11px 16px;font-size:14px;line-height:1.55;background:{{ msg.bg }}">{{ msg.text }}</div>',
+  );
+}
+
 function bindChatComposer(template: string): string {
   const input =
     '<input class="input" placeholder="Ask about your bakery…" style="flex:1">';
@@ -143,7 +167,9 @@ function bindChatComposer(template: string): string {
 }
 
 export function applyChatBehavior(template: string): string {
-  return bindChatComposer(
-    replaceChatSuggestions(replaceChatBindings(replaceChatController(template))),
+  return roundChatBubbles(
+    bindChatComposer(
+      replaceChatSuggestions(replaceChatBindings(replaceChatController(template))),
+    ),
   );
 }
