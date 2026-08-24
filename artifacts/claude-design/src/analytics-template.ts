@@ -590,6 +590,23 @@ export function applyAnalyticsBehavior(template: string): string {
           barWidth: (maxProductItems > 0 ? Math.max(3, Math.round((p.items / maxProductItems) * 100)) : 3) + '%'
         }));
 
+        const nowMs = Date.now();
+        const pastEvents = events
+          .filter(ev => new Date(ev.occurredAt || 0).getTime() <= nowMs)
+          .sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime())
+          .map(buildEventStats)
+          .map(ev => {
+            const when = new Date(ev.occurredAt || Date.now());
+            return {
+              monthStr: when.toLocaleString('en-US', { month: 'short' }),
+              dayStr: String(when.getDate()),
+              name: ev.name || 'Market',
+              subStr: 'kept ' + ev.profitStr + ' · ' + ev.marginStr + ' margin',
+              revStr: ev.revStr,
+              open: ev.open
+            };
+          });
+
         const tab = this.state.analyticsTab || 'overview';
 
         return {
@@ -623,6 +640,9 @@ export function applyAnalyticsBehavior(template: string): string {
           hasGroupRows: groupRows.length > 0,
           hasNoGroupRows: groupRows.length === 0,
           itemProductRows,
+          pastEvents,
+          hasPastEvents: pastEvents.length > 0,
+          hasNoPastEvents: pastEvents.length === 0,
           monthGroupCountStr: String(groupRows.length),
           monthProductCountStr: String(productEntries.length),
           eventDetailItemCountStr: String(eventDetailItems.reduce((sum, row) => sum + (parseInt(row.unitsStr, 10) || 0), 0)),
@@ -664,6 +684,66 @@ export function applyAnalyticsBehavior(template: string): string {
   out = out.replace(/onAnalytics:\s*screen\s*===\s*'analytics',\s*goAnalytics:\s*mk\('analytics'\),/, () => newLogic);
   
   return out;
+}
+
+
+const pastEventsMarkup = `  <h6 style="margin-bottom:8px">Past events</h6>
+  <div style="display:flex;flex-direction:column">
+    <sc-for list="{{ pastEvents }}" as="pe" hint-placeholder-count="3">
+      <div class="bk-row" sc-camel-on-click="{{ pe.open }}" style="display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--color-divider);cursor:pointer">
+        <div style="text-align:center;flex:none;width:44px"><div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">{{ pe.monthStr }}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1;font-feature-settings:'tnum'">{{ pe.dayStr }}</div></div>
+        <div style="flex:1;min-width:0"><div style="font-family:var(--font-heading);font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ pe.name }}</div><div class="text-muted" style="font-size:12px">{{ pe.subStr }}</div></div>
+        <div style="text-align:right;flex:none;font-feature-settings:'tnum';font-size:15px">{{ pe.revStr }}</div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ hasNoPastEvents }}" hint-placeholder-val="{{ false }}">
+      <div class="text-muted" style="padding:18px 0;font-size:13px;border-top:1px solid var(--color-divider)">No past events yet.</div>
+    </sc-if>
+  </div>
+`;
+
+// The mockup shipped three invented past events as literal markup. Swap the
+// whole block for the real ones, each opening its own breakdown.
+function replacePastEvents(template: string): string {
+  const startMarker = '  <h6 style="margin-bottom:8px">Past events</h6>';
+  const endMarker = '  <div class="card" style="margin-top:20px;';
+  const start = template.indexOf(startMarker);
+  const end = template.indexOf(endMarker, start);
+  if (start === -1 || end === -1) {
+    throw new Error("Missing stable past-events anchor");
+  }
+  return template.slice(0, start) + pastEventsMarkup + template.slice(end);
+}
+
+// Cash tracking is being retired: the event screen keeps pre-orders only.
+function removeCashTracker(template: string): string {
+  const cashButton =
+    '    <button class="btn btn-secondary" sc-camel-on-click="{{ goCash }}" style="flex:1;min-height:52px;flex-direction:column;gap:2px"><span>Cash tracker</span><span class="text-muted" style="font-size:11px;font-feature-settings:\'tnum\'">{{ cashCollected }} collected</span></button>\n';
+  const cashSummaryRow =
+    '        <div style="display:flex;justify-content:space-between;padding:11px 16px;border-top:1px solid var(--color-divider);font-size:13px"><span class="text-muted">Cash tracker orders</span><span style="font-feature-settings:\'tnum\'">{{ cashCollected }}</span></div>\n';
+  const staleCashCopy =
+    'Enter quantities sold. Skip anything already recorded order-by-order in the Cash Tracker — otherwise it counts twice.';
+  for (const [fragment, label] of [
+    [cashButton, "cash tracker button"],
+    [cashSummaryRow, "cash tracker summary row"],
+    [staleCashCopy, "stale cash tracker copy"],
+  ] as const) {
+    if (!template.includes(fragment)) {
+      throw new Error(`Missing stable ${label} anchor`);
+    }
+    template = template.replace(fragment, () => (fragment === staleCashCopy ? "Enter the quantities you sold." : ""));
+  }
+
+  const screenStart = template.indexOf("<!-- ══ CASH TRACKER ══ -->");
+  if (screenStart === -1) throw new Error("Missing cash tracker screen anchor");
+  const screenEnd = template.indexOf("<!-- ══", screenStart + 10);
+  if (screenEnd === -1) throw new Error("Unclosed cash tracker screen");
+  template = template.slice(0, screenStart) + template.slice(screenEnd);
+
+  // Actual revenue needs no change: an earlier pass already rewrote
+  // updateRevenue to total the sales linked to the event rather than adding a
+  // separate cash figure.
+  return template;
 }
 
 function addCommerceBehavior(template: string): string {
@@ -779,5 +859,5 @@ function addCommerceBehavior(template: string): string {
     "todayArr: [...st.todayArr, final],",
     () => "todayArr: [...st.todayArr, final], saleRecords: [...(st.saleRecords || []), { id: 'sale-pos-' + Date.now().toString(36), occurredAt: new Date().toISOString(), source: 'pos', total: final, lineItems: posRecipes.filter(r => (st.posQty || {})[r.id] > 0).map(r => ({ productId: r.id, name: r.name, quantity: (st.posQty || {})[r.id], unitPrice: ((Number(r.sell) || 0) * (total > 0 ? final / total : 1)), unitCost: r.cost })) }],",
   );
-  return out;
+  return replacePastEvents(removeCashTracker(out));
 }
