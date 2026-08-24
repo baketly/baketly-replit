@@ -23,6 +23,24 @@ type Recipe = {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+type Tally = { name: string; units: number; revenue: number };
+
+// Comparisons are where the model slips: given a correct list it still named a
+// $210 product as the month's revenue leader over a $285 one. Work the
+// superlatives out here so answering them is reporting, not arithmetic.
+function leadersOf(rows: Tally[]): {
+  mostUnits: { name: string; units: number } | null;
+  mostRevenue: { name: string; revenue: number } | null;
+} {
+  if (rows.length === 0) return { mostUnits: null, mostRevenue: null };
+  const byUnits = rows.reduce((best, row) => (row.units > best.units ? row : best));
+  const byRevenue = rows.reduce((best, row) => (row.revenue > best.revenue ? row : best));
+  return {
+    mostUnits: { name: byUnits.name, units: byUnits.units },
+    mostRevenue: { name: byRevenue.name, revenue: round2(byRevenue.revenue) },
+  };
+}
+
 export function buildAskContext(
   state: Record<string, unknown>,
   ingredientMeta: Meta,
@@ -86,6 +104,40 @@ export function buildAskContext(
     }
   }
 
+  // "What was my best seller?" is usually a question about the whole history,
+  // not the current month, so carry lifetime product totals as well.
+  const lifetime: Record<string, { name: string; units: number; revenue: number; cost: number }> = {};
+  let firstSale = "";
+  let lastSale = "";
+  for (const sale of sales) {
+    const at = (sale.occurredAt || "").slice(0, 10);
+    if (at) {
+      if (!firstSale || at < firstSale) firstSale = at;
+      if (!lastSale || at > lastSale) lastSale = at;
+    }
+    for (const line of sale.lineItems || []) {
+      const quantity = Number(line.quantity) || 0;
+      const key = line.productId || line.name || "unknown";
+      const product = (lifetime[key] ||= { name: line.name || "Unknown", units: 0, revenue: 0, cost: 0 });
+      product.units += quantity;
+      product.revenue += quantity * (Number(line.unitPrice) || 0);
+      product.cost += quantity * (Number(line.unitCost) || 0);
+    }
+  }
+  const lifetimeProducts = Object.values(lifetime)
+    .sort((a, b) => b.units - a.units)
+    .slice(0, 15)
+    .map((product) => ({
+      name: product.name,
+      units: product.units,
+      revenue: round2(product.revenue),
+      productionCost: round2(product.cost),
+      marginPct:
+        product.revenue > 0
+          ? Math.round(((product.revenue - product.cost) / product.revenue) * 100)
+          : 0,
+    }));
+
   const boothFeesFor = (month: string) =>
     events
       .filter((event) => (event.occurredAt || "").slice(0, 7) === month)
@@ -105,6 +157,17 @@ export function buildAskContext(
       marginPct: bucket.revenue > 0 ? Math.round((profit / bucket.revenue) * 100) : 0,
       items: bucket.items,
       orders: bucket.orders,
+      // per-product detail for every month, not just the newest: without it the
+      // model answers "best seller in July" using the latest month's numbers
+      bestSellers: leadersOf(Object.values(bucket.products)),
+      products: Object.values(bucket.products)
+        .sort((a, b) => b.units - a.units)
+        .slice(0, 8)
+        .map((product) => ({
+          name: product.name,
+          units: product.units,
+          revenue: round2(product.revenue),
+        })),
     };
   });
 
@@ -159,6 +222,9 @@ export function buildAskContext(
     },
     recipes: recipeSummaries,
     months,
+    salesPeriod: firstSale && lastSale ? { from: firstSale, to: lastSale } : null,
+    bestSellersAllTime: leadersOf(Object.values(lifetime)),
+    productTotalsAllTime: lifetimeProducts,
     latestMonthProducts: latestProducts,
     events: eventSummaries,
     upcomingEvent: state.eventName
