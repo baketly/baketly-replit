@@ -5,8 +5,10 @@ const router: IRouter = Router();
 // Photon (OpenStreetMap data, run by Komoot) rather than Nominatim: Nominatim
 // states it is not built for prefix search, and it showed it — "tel av"
 // returned Singapore. Photon is designed for type-ahead and returns Tel Aviv.
-// Restricted to settlements so a query does not surface shops and bus stops,
-// and asked for English names so results are readable regardless of locale.
+// Not restricted to settlements: bakers enter street addresses as well as
+// towns, and filtering to place:city/town/village returned nothing at all for
+// "221b baker" or "10 downing". English names are requested so results stay
+// readable regardless of locale.
 const PHOTON = "https://photon.komoot.io/api/";
 const USER_AGENT = "Baketly/1.0 (home bakery pricing app)";
 const MIN_QUERY = 3;
@@ -42,9 +44,7 @@ router.get("/places", async (req: Request, res: Response) => {
     try {
       const url =
         PHOTON +
-        "?limit=6&lang=en" +
-        "&osm_tag=place:city&osm_tag=place:town&osm_tag=place:village" +
-        "&q=" +
+        "?limit=6&lang=en&q=" +
         encodeURIComponent(query);
       response = await fetch(url, {
         headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
@@ -64,16 +64,24 @@ router.get("/places", async (req: Request, res: Response) => {
     const places: string[] = [];
     for (const feature of Array.isArray(payload.features) ? payload.features : []) {
       const properties = feature.properties ?? {};
-      const name = typeof properties.name === "string" ? properties.name : "";
-      const region =
-        (typeof properties.state === "string" && properties.state) ||
-        (typeof properties.county === "string" && properties.county) ||
-        "";
-      const country = typeof properties.country === "string" ? properties.country : "";
-      const label = [name, region === name ? "" : region, country]
-        .filter(Boolean)
-        .join(", ")
-        .slice(0, 160);
+      const text = (value: unknown) => (typeof value === "string" ? value : "");
+      const name = text(properties.name);
+      const street = text(properties.street);
+      const houseNumber = text(properties.housenumber);
+      const city = text(properties.city);
+      const region = text(properties.state) || text(properties.county);
+      const country = text(properties.country);
+
+      // A street result reads as "12 Rothschild, Tel Aviv, Israel"; a town as
+      // "Manchester, England, United Kingdom".
+      const streetLine = street ? [houseNumber, street].filter(Boolean).join(" ") : "";
+      const head = name && name !== street ? name : streetLine;
+      const parts = [head];
+      if (streetLine && streetLine !== head) parts.push(streetLine);
+      if (city && city !== head) parts.push(city);
+      if (region && region !== city && region !== head) parts.push(region);
+      if (country) parts.push(country);
+      const label = parts.filter(Boolean).join(", ").slice(0, 160);
       if (label && !places.includes(label)) places.push(label);
     }
 

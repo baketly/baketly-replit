@@ -253,7 +253,7 @@ function addLocationFields(template: string): string {
     settingsField,
     () =>
       '<div class="field"><label>Bakery name</label><input class="input" value="{{ bakeryName }}" sc-camel-on-change="{{ setBakeryName }}" aria-label="Bakery name" placeholder="e.g. Base Street Bakes"></div>' +
-      '<div class="field"><label>Where you sell</label><input class="input" list="baketly-places" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where you sell" placeholder="Start typing a town…" autocomplete="off"><datalist id="baketly-places"><sc-for list="{{ locationSuggestions }}" as="sug" hint-placeholder-count="0"><option value="{{ sug.place }}"></option></sc-for></datalist><div class="text-muted" style="font-size:12px;margin-top:5px">Used to compare your prices with bakeries near you.</div></div>',
+      '<div class="field"><label>Where you sell</label><input class="input" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where you sell" placeholder="Start typing a town or address…" autocomplete="off"><sc-if value="{{ hasLocationSuggestions }}" hint-placeholder-val="{{ false }}"><div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;margin-top:6px;overflow:hidden;box-shadow:var(--shadow-sm)"><sc-for list="{{ locationSuggestions }}" as="sug" hint-placeholder-count="0"><div class="bk-row" sc-camel-on-click="{{ sug.choose }}" style="padding:11px 13px;font-size:13px;border-top:1px solid var(--color-divider);cursor:pointer">{{ sug.place }}</div></sc-for></div></sc-if><div class="text-muted" style="font-size:12px;margin-top:5px">Used to compare your prices with bakeries near you.</div></div>',
   );
 
   const onboardingField =
@@ -263,14 +263,18 @@ function addLocationFields(template: string): string {
     onboardingField,
     () =>
       '<div class="field" style="margin-bottom:16px"><label>Bakery name</label><input class="input" value="{{ bakeryName }}" sc-camel-on-change="{{ setBakeryName }}" aria-label="Bakery name" placeholder="e.g. Base Street Bakes"></div>' +
-      '<div class="field" style="margin-bottom:16px"><label>Where do you sell?</label><input class="input" list="baketly-places-ob" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where do you sell" placeholder="Start typing a town…" autocomplete="off"><datalist id="baketly-places-ob"><sc-for list="{{ locationSuggestions }}" as="sug" hint-placeholder-count="0"><option value="{{ sug.place }}"></option></sc-for></datalist><div class="text-muted" style="font-size:12px;margin-top:5px">So Baketly can tell you what bakeries near you charge.</div></div>',
+      '<div class="field" style="margin-bottom:16px"><label>Where do you sell?</label><input class="input" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where do you sell" placeholder="Start typing a town or address…" autocomplete="off"><sc-if value="{{ hasLocationSuggestions }}" hint-placeholder-val="{{ false }}"><div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;margin-top:6px;overflow:hidden;box-shadow:var(--shadow-sm)"><sc-for list="{{ locationSuggestions }}" as="sug" hint-placeholder-count="0"><div class="bk-row" sc-camel-on-click="{{ sug.choose }}" style="padding:11px 13px;font-size:13px;border-top:1px solid var(--color-divider);cursor:pointer">{{ sug.place }}</div></sc-for></div></sc-if><div class="text-muted" style="font-size:12px;margin-top:5px">So Baketly can tell you what bakeries near you charge.</div></div>',
   );
 }
 
 const profileController = `      bakeryName: this.state.bakeryName || '',
       setBakeryName: e => this.setState({ bakeryName: e.target.value.slice(0, 120) }),
       bakeryLocation: this.state.bakeryLocation || '',
-      locationSuggestions: (Array.isArray(this.state.locationSuggestions) ? this.state.locationSuggestions : []).map(place => ({ place })),
+      locationSuggestions: (Array.isArray(this.state.locationSuggestions) ? this.state.locationSuggestions : []).map(place => ({
+        place,
+        choose: () => this.setState({ bakeryLocation: place, locationSuggestions: [] })
+      })),
+      hasLocationSuggestions: Array.isArray(this.state.locationSuggestions) && this.state.locationSuggestions.length > 0,
       setBakeryLocation: e => {
         const value = e.target.value.slice(0, 160);
         this.setState({ bakeryLocation: value });
