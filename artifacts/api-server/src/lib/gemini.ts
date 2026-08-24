@@ -34,6 +34,13 @@ export function isRetryableProviderError(error: GeminiProviderError): boolean {
   );
 }
 
+export type GeminiSource = { title: string; uri: string };
+export type GeminiResult = {
+  text: string;
+  sources: GeminiSource[];
+  searches: string[];
+};
+
 export type GeminiPart =
   | { text: string }
   | { inline_data: { mime_type: string; data: string } };
@@ -41,7 +48,11 @@ export type GeminiPart =
 type GenerateOptions = {
   apiKey: string;
   parts: GeminiPart[];
-  responseSchema: unknown;
+  /** omit to get plain text back; JSON mode suppresses tool use, so grounded
+   *  lookups must run schema-free and be structured in a second pass */
+  responseSchema?: unknown;
+  /** e.g. [{ google_search: {} }] to let the model look things up */
+  tools?: unknown[];
   temperature?: number;
   maxOutputTokens?: number;
   attemptTimeoutMs?: number;
@@ -54,7 +65,7 @@ async function requestOnce(
   model: string,
   options: GenerateOptions,
   timeoutMs: number,
-): Promise<string> {
+): Promise<GeminiResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response: Awaited<ReturnType<typeof fetch>>;
@@ -67,11 +78,16 @@ async function requestOnce(
         signal: controller.signal,
         body: JSON.stringify({
           contents: [{ role: "user", parts: options.parts }],
+          ...(options.tools ? { tools: options.tools } : {}),
           generationConfig: {
             temperature: options.temperature ?? 0,
             maxOutputTokens: options.maxOutputTokens ?? 8192,
-            responseMimeType: "application/json",
-            responseSchema: options.responseSchema,
+            ...(options.responseSchema
+              ? {
+                  responseMimeType: "application/json",
+                  responseSchema: options.responseSchema,
+                }
+              : {}),
           },
         }),
       },
@@ -100,20 +116,40 @@ async function requestOnce(
   }
 
   const payload = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>;
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: unknown }> };
+      groundingMetadata?: {
+        webSearchQueries?: unknown;
+        groundingChunks?: Array<{ web?: { uri?: unknown; title?: unknown } }>;
+      };
+    }>;
   };
-  return (
-    payload.candidates?.[0]?.content?.parts
+  const candidate = payload.candidates?.[0];
+  const text =
+    candidate?.content?.parts
       ?.map((part) => (typeof part.text === "string" ? part.text : ""))
       .join("")
-      .trim() ?? ""
-  );
+      .trim() ?? "";
+  // Sources come from the API's own grounding metadata, never from the model's
+  // prose, so a cited page is one it actually retrieved.
+  const sources = (candidate?.groundingMetadata?.groundingChunks ?? [])
+    .map((chunk) => ({
+      title: typeof chunk.web?.title === "string" ? chunk.web.title : "",
+      uri: typeof chunk.web?.uri === "string" ? chunk.web.uri : "",
+    }))
+    .filter((source) => source.title || source.uri);
+  const searches = Array.isArray(candidate?.groundingMetadata?.webSearchQueries)
+    ? (candidate.groundingMetadata.webSearchQueries as unknown[]).filter(
+        (q): q is string => typeof q === "string",
+      )
+    : [];
+  return { text, sources, searches };
 }
 
 /** Walks the model list until one answers. Returns raw JSON text. */
 export async function generateJson(
   options: GenerateOptions,
-): Promise<{ text: string; model: string }> {
+): Promise<GeminiResult & { model: string }> {
   const attemptTimeoutMs = options.attemptTimeoutMs ?? 12_000;
   const deadline = Date.now() + (options.budgetMs ?? 28_000);
   let lastProviderError: GeminiProviderError | null = null;
@@ -122,13 +158,13 @@ export async function generateJson(
     const remaining = deadline - Date.now();
     if (remaining <= 1_000) break;
     try {
-      const text = await requestOnce(
+      const result = await requestOnce(
         options.apiKey,
         model,
         options,
         Math.min(attemptTimeoutMs, remaining),
       );
-      return { text, model };
+      return { ...result, model };
     } catch (error) {
       if (
         error instanceof GeminiProviderError &&
