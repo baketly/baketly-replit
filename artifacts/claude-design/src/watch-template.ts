@@ -89,7 +89,7 @@ const watchController = `      ...(() => {
         const runCheck = () => {
           const location = (this.state.bakeryLocation || '').trim();
           if (!location) {
-            this.setState({ marketError: 'Add where you sell in Settings first.' });
+            this.setState(st => ({ marketError: 'Add where you sell first.', screen: 'settings', stack: [...st.stack, st.screen] }));
             return;
           }
           if (this.state.marketPending) return;
@@ -129,6 +129,9 @@ const watchController = `      ...(() => {
           localRows,
           hasLocalRows: localRows.length > 0,
           noLocalRows: localRows.length === 0,
+          needsLocation: localRows.length === 0 && !(this.state.bakeryLocation || '').trim(),
+          awaitingFirstCheck: localRows.length === 0 && !!(this.state.bakeryLocation || '').trim(),
+          goLocationSettings: () => this.setState(st => ({ screen: 'settings', stack: [...st.stack, st.screen] })),
           localSummary: check && check.summary ? check.summary : '',
           localCheckedLabel: checkedAt ? 'Checked ' + checkedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' + ((check && check.location) || '') : 'Not checked yet',
           localSources: check && Array.isArray(check.sources) ? check.sources.map(source => ({ title: source.title || source.uri })) : [],
@@ -204,8 +207,14 @@ function replaceWatchScreen(template: string): string {
       </sc-for>
     </div>
   </sc-if>
-  <sc-if value="{{ noLocalRows }}" hint-placeholder-val="{{ false }}">
-    <div class="text-muted" style="font-size:13px;padding:6px 0 12px">Baketly checks nearby prices twice a week. Add where you sell in Settings to switch it on.</div>
+  <sc-if value="{{ needsLocation }}" hint-placeholder-val="{{ false }}">
+    <div class="an-card" sc-camel-on-click="{{ goLocationSettings }}" style="padding:14px;cursor:pointer;border-color:var(--color-accent)">
+      <div style="font-size:14px;line-height:1.5;margin-bottom:6px">Baketly checks what bakeries near you charge, twice a week. It needs to know where you sell.</div>
+      <div style="font-size:13px;font-weight:600;color:var(--color-accent-700)">Add where you sell ›</div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ awaitingFirstCheck }}" hint-placeholder-val="{{ false }}">
+    <div class="text-muted" style="font-size:13px;padding:6px 0 12px">No local prices yet. Baketly checks twice a week, or check now.</div>
   </sc-if>
   <sc-if value="{{ hasLocalSources }}" hint-placeholder-val="{{ false }}">
     <div class="text-muted" style="font-size:11px;margin-bottom:10px">Found on: <sc-for list="{{ localSources }}" as="src" hint-placeholder-count="2"><span>{{ src.title }} </span></sc-for></div>
