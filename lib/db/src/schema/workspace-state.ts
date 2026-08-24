@@ -93,8 +93,49 @@ const eventRecordSchema = z
   })
   .strict();
 
+const pricePointSchema = z
+  .object({
+    at: z.iso.datetime(),
+    packagePrice: z.number().finite().min(0).max(1_000_000),
+    packageSize: z.number().finite().min(0).max(1_000_000),
+    unit: z.string().max(10),
+    unitCost: z.number().finite().min(0).max(1_000_000),
+  })
+  .strict();
+
+const marketProductSchema = z
+  .object({
+    name: z.string().min(1).max(120),
+    price: z.number().finite().min(0).max(1_000_000),
+    localLow: z.number().finite().min(0).max(1_000_000).nullable(),
+    localHigh: z.number().finite().min(0).max(1_000_000).nullable(),
+    verdict: z.enum(["under", "in_range", "over", "unknown"]),
+    note: z.string().max(240),
+    grounded: z.boolean(),
+  })
+  .strict();
+
 export const workspaceStatePayloadSchema = z
   .object({
+    bakeryName: z.string().max(120).optional(),
+    bakeryLocation: z.string().max(160).optional(),
+    priceHistory: z
+      .record(z.string().min(1).max(80), z.array(pricePointSchema).max(12))
+      .optional(),
+    marketCheck: z
+      .object({
+        checkedAt: z.iso.datetime(),
+        location: z.string().max(160),
+        currency: z.string().max(8),
+        summary: z.string().max(400),
+        products: z.array(marketProductSchema).max(12),
+        sources: z
+          .array(z.object({ title: z.string().max(120), uri: z.string().max(400) }).strict())
+          .max(8),
+        searches: z.array(z.string().max(120)).max(6),
+      })
+      .strict()
+      .optional(),
     price: z.number().finite().min(0).max(10_000).optional(),
     chatMsgs: z
       .array(

@@ -5,6 +5,8 @@ import { applyRecipeRecordBehavior } from "./recipe-template";
 import { applyAnalyticsBehavior } from "./analytics-template";
 import { scanIngredientLabel } from "./ingredient-label-scan";
 import { applyChatBehavior } from "./chat-template";
+import { applyWatchBehavior } from "./watch-template";
+import { marketCheckIsDue, runMarketCheck } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 
 type WorkspaceState = Record<string, unknown>;
@@ -16,6 +18,11 @@ declare global {
     __baketlyServerState: WorkspaceState;
     __baketlyPersist: (state: WorkspaceState) => void;
     __baketlyApplyRecipeRecords: (template: string) => string;
+    __baketlyMarketCheck: (
+      location: string,
+      products: Array<{ name: string; price: number }>,
+    ) => Promise<import("./market-check").MarketCheck>;
+    __baketlyMarketCheckDue: (check: unknown) => boolean;
     __baketlyAsk: (
       question: string,
       context: Record<string, unknown>,
@@ -35,6 +42,10 @@ declare global {
 const durableFields = [
   "price",
   "chatMsgs",
+  "bakeryName",
+  "bakeryLocation",
+  "priceHistory",
+  "marketCheck",
   "recipeAmts",
   "recipeIngKeys",
   "recipePackKeys",
@@ -215,11 +226,16 @@ window.__baketlyApplyRecipeRecords = (template) => {
     recipeTemplate = removeKnownPackagingPlaceholders(template);
   }
 
-  return applyChatBehavior(
-    applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+  return applyWatchBehavior(
+    applyChatBehavior(
+      applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+    ),
   );
 };
 window.__baketlyScanIngredientLabel = scanIngredientLabel;
+window.__baketlyMarketCheck = runMarketCheck;
+window.__baketlyMarketCheckDue = (check) =>
+  marketCheckIsDue(check as { checkedAt?: unknown } | null);
 window.__baketlyAsk = askBaketly;
 window.__baketlyAskContext = buildAskContext;
 window.__baketlyReady = workspaceClient.hydrate();

@@ -85,7 +85,7 @@ const RESEARCH_RULES = [
 
 const STRUCTURE_RULES = [
   "You convert a price research note into JSON. Use only numbers that appear in the note.",
-  "For a product the note gives a real local range for, set localLow and localHigh from it and set grounded to true.",
+  "If the note names a real local range for a product, you MUST set localLow and localHigh to those numbers and set grounded to true. Never describe a range in the note field without also filling localLow and localHigh.",
   "For a product the note found nothing for, set localLow and localHigh to null, verdict to unknown, and grounded to false.",
   "verdict compares the baker's own price with the local range: 'under' if they charge less than the local low, 'over' if more than the local high, otherwise 'in_range'.",
   "The note field is one short plain sentence naming the local range and what it means for their price. No markdown, no bullets, no URLs.",
@@ -198,7 +198,10 @@ router.post(
             localLow: hasRange ? Math.round(low * 100) / 100 : null,
             localHigh: hasRange ? Math.round(high * 100) / 100 : null,
             verdict: hasRange && typeof entry.verdict === "string" ? entry.verdict : "unknown",
-            note: typeof entry.note === "string" ? entry.note.trim().slice(0, 240) : "",
+            // never let prose describe a range the data does not carry
+            note: hasRange && typeof entry.note === "string"
+              ? entry.note.trim().slice(0, 240)
+              : "No local prices found for this one.",
             grounded: hasRange,
           };
         });

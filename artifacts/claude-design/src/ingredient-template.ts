@@ -240,7 +240,21 @@ function addIngredientController(template: string): string {
             this.setState(st => {
               const stack = [...st.stack];
               const previous = stack.pop() || 'ingredients';
-              return { ingredientRecords: { ...(st.ingredientRecords || {}), [key]: normalized }, screen: previous, stack, activeIngredientKey: null, ingredientDraft: null, ingredientDeleteOpen: false, ingredientSaveError: '' };
+              // record the old price so "See what changed" can report the move
+              const before = (st.ingredientRecords || {})[key] || detailDefaults[key] || null;
+              const priceHistory = { ...(st.priceHistory || {}) };
+              if (before && (Number(before.packagePrice) !== normalized.packagePrice || Number(before.packageSize) !== normalized.packageSize)) {
+                const previousSize = Math.max(0, Number(before.packageSize) || 0);
+                const entry = {
+                  at: new Date().toISOString(),
+                  packagePrice: Math.max(0, Number(before.packagePrice) || 0),
+                  packageSize: previousSize,
+                  unit: String(before.unit || normalized.unit || 'g').slice(0, 10),
+                  unitCost: previousSize > 0 ? (Math.max(0, Number(before.packagePrice) || 0)) / previousSize : 0
+                };
+                priceHistory[key] = [...(priceHistory[key] || []), entry].slice(-12);
+              }
+              return { ingredientRecords: { ...(st.ingredientRecords || {}), [key]: normalized }, priceHistory, screen: previous, stack, activeIngredientKey: null, ingredientDraft: null, ingredientDeleteOpen: false, ingredientSaveError: '' };
             });
           }
         };
