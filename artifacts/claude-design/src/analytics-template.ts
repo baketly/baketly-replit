@@ -24,14 +24,17 @@ export function applyAnalyticsBehavior(template: string): string {
 .an-bar-label { position: absolute; bottom: -24px; font-size: 11px; color: var(--color-neutral-500); white-space: nowrap; }
 .an-list-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--color-divider); }
 .an-list-item:last-child { border-bottom: none; }
-.an-select { 
-  appearance: none; background: transparent; border: none; font-family: var(--font-heading); 
-  font-weight: 600; font-size: 26px; padding-right: 24px; color: var(--color-text); outline: none;
+.an-select {
+  appearance: none; background: #fff; border: 1px solid var(--color-neutral-300);
+  border-radius: 999px; font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  color: var(--color-text); padding: 9px 34px 9px 15px; outline: none; cursor: pointer;
+  min-height: 38px; box-shadow: var(--shadow-sm);
 }
+.an-select:focus-visible { border-color: var(--color-accent); }
 .an-select-wrap { position: relative; display: inline-block; margin-bottom: 16px; }
-.an-select-wrap::after { 
-  content: '▼'; position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
-  font-size: 14px; pointer-events: none; color: var(--color-accent);
+.an-select-wrap::after {
+  content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 13px; pointer-events: none; color: var(--color-accent);
 }
 
 /* breakdown screens */
@@ -591,21 +594,39 @@ export function applyAnalyticsBehavior(template: string): string {
         }));
 
         const nowMs = Date.now();
-        const pastEvents = events
+        const thisYear = now.getFullYear();
+        const allPastEvents = events
           .filter(ev => new Date(ev.occurredAt || 0).getTime() <= nowMs)
           .sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime())
           .map(buildEventStats)
           .map(ev => {
             const when = new Date(ev.occurredAt || Date.now());
             return {
+              periodKey: (ev.occurredAt || '').slice(0, 7),
               monthStr: when.toLocaleString('en-US', { month: 'short' }),
               dayStr: String(when.getDate()),
+              // only worth showing once the list spans more than this year
+              yearStr: when.getFullYear() === thisYear ? '' : String(when.getFullYear()),
               name: ev.name || 'Market',
               subStr: 'kept ' + ev.profitStr + ' · ' + ev.marginStr + ' margin',
               revStr: ev.revStr,
               open: ev.open
             };
           });
+
+        // jump straight to a month instead of scrolling a long history
+        const marketsPeriod = this.state.marketsPeriod || 'all';
+        const pastPeriodKeys = [...new Set(allPastEvents.map(ev => ev.periodKey).filter(Boolean))];
+        const pastEventPeriods = [{ value: 'all', label: 'All time' }]
+          .concat(pastPeriodKeys.map(key => ({ value: key, label: formatMonth(key) })));
+        const periodStillExists = marketsPeriod === 'all' || pastPeriodKeys.includes(marketsPeriod);
+        const activePeriod = periodStillExists ? marketsPeriod : 'all';
+        const pastEvents = activePeriod === 'all'
+          ? allPastEvents
+          : allPastEvents.filter(ev => ev.periodKey === activePeriod);
+        const pastEventsCountLabel = pastEvents.length === 1
+          ? '1 event'
+          : pastEvents.length + ' events';
 
         const tab = this.state.analyticsTab || 'overview';
 
@@ -643,6 +664,11 @@ export function applyAnalyticsBehavior(template: string): string {
           pastEvents,
           hasPastEvents: pastEvents.length > 0,
           hasNoPastEvents: pastEvents.length === 0,
+          pastEventPeriods,
+          marketsPeriod: activePeriod,
+          pastEventsCountLabel,
+          hasPastEventPeriods: pastPeriodKeys.length > 1,
+          setMarketsPeriod: e => this.setState({ marketsPeriod: e.target.value }),
           monthGroupCountStr: String(groupRows.length),
           monthProductCountStr: String(productEntries.length),
           eventDetailItemCountStr: String(eventDetailItems.reduce((sum, row) => sum + (parseInt(row.unitsStr, 10) || 0), 0)),
@@ -687,11 +713,17 @@ export function applyAnalyticsBehavior(template: string): string {
 }
 
 
-const pastEventsMarkup = `  <h6 style="margin-bottom:8px">Past events</h6>
+const pastEventsMarkup = `  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:2px">
+    <h6 style="margin:0">Past events</h6>
+    <sc-if value="{{ hasPastEventPeriods }}" hint-placeholder-val="{{ false }}">
+      <div class="an-select-wrap" style="margin-bottom:0"><select class="an-select" value="{{ marketsPeriod }}" sc-camel-on-change="{{ setMarketsPeriod }}" aria-label="Jump to a period"><sc-for list="{{ pastEventPeriods }}" as="pp" hint-placeholder-count="3"><option value="{{ pp.value }}">{{ pp.label }}</option></sc-for></select></div>
+    </sc-if>
+  </div>
+  <div class="text-muted" style="font-size:12px;margin-bottom:6px">{{ pastEventsCountLabel }}</div>
   <div style="display:flex;flex-direction:column">
     <sc-for list="{{ pastEvents }}" as="pe" hint-placeholder-count="3">
       <div class="bk-row" sc-camel-on-click="{{ pe.open }}" style="display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--color-divider);cursor:pointer">
-        <div style="text-align:center;flex:none;width:44px"><div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">{{ pe.monthStr }}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1;font-feature-settings:'tnum'">{{ pe.dayStr }}</div></div>
+        <div style="text-align:center;flex:none;width:44px"><div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">{{ pe.monthStr }}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1;font-feature-settings:'tnum'">{{ pe.dayStr }}</div><div class="text-muted" style="font-size:10px;font-feature-settings:'tnum'">{{ pe.yearStr }}</div></div>
         <div style="flex:1;min-width:0"><div style="font-family:var(--font-heading);font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ pe.name }}</div><div class="text-muted" style="font-size:12px">{{ pe.subStr }}</div></div>
         <div style="text-align:right;flex:none;font-feature-settings:'tnum';font-size:15px">{{ pe.revStr }}</div>
       </div>
@@ -700,6 +732,7 @@ const pastEventsMarkup = `  <h6 style="margin-bottom:8px">Past events</h6>
       <div class="text-muted" style="padding:18px 0;font-size:13px;border-top:1px solid var(--color-divider)">No past events yet.</div>
     </sc-if>
   </div>
+
 `;
 
 // The mockup shipped three invented past events as literal markup. Swap the
