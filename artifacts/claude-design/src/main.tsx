@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
 import { applyRecipeRecordBehavior } from "./recipe-template";
 import { applyAnalyticsBehavior } from "./analytics-template";
-import { getPhotoUrl, uploadPhoto } from "./photo-upload";
 import { scanIngredientLabel } from "./ingredient-label-scan";
 
 type WorkspaceState = Record<string, unknown>;
@@ -15,8 +14,6 @@ declare global {
     __baketlyServerState: WorkspaceState;
     __baketlyPersist: (state: WorkspaceState) => void;
     __baketlyApplyRecipeRecords: (template: string) => string;
-    __baketlyUploadPhoto: (file: File) => Promise<string>;
-    __baketlyPhotoUrl: (photoPath: unknown) => string;
     __baketlyScanIngredientLabel: (
       file: File,
     ) => Promise<import("./ingredient-label-scan").IngredientLabelScan>;
@@ -208,8 +205,6 @@ window.__baketlyApplyRecipeRecords = (template) => {
 
   return applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate));
 };
-window.__baketlyUploadPhoto = uploadPhoto;
-window.__baketlyPhotoUrl = getPhotoUrl;
 window.__baketlyScanIngredientLabel = scanIngredientLabel;
 window.__baketlyReady = workspaceClient.hydrate();
 window.__baketlyPersist = (state) => workspaceClient.queue(state);

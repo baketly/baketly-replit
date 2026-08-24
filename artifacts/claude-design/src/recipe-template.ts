@@ -245,7 +245,6 @@ const packagingListMarkup = `<sc-if value="{{ pantryOnPack }}" hint-placeholder-
   <div style="display:flex;flex-direction:column;border-bottom:1px solid var(--color-divider)">
     <sc-for list="{{ packagingItems }}" as="item" hint-placeholder-count="6">
       <div class="bk-row" sc-camel-on-click="{{ item.open }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--color-divider);cursor:pointer">
-        <span style="width:46px;height:46px;border-radius:12px;background:#fff;border:1px solid var(--color-divider);display:grid;place-items:center;color:var(--color-accent);font-family:var(--font-heading);font-weight:700;font-size:18px;flex:none;overflow:hidden;position:relative"><span>{{ item.initial }}</span>{{ item.photoEl }}</span>
         <div style="flex:1;min-width:0"><div style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.name }}</div><div class="text-muted" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.packageLine }}</div></div>
         <div style="text-align:right;font-feature-settings:'tnum';font-size:14px;flex:none">{{ item.costLine }}</div>
       </div>
@@ -259,10 +258,6 @@ const packagingEditorMarkup = `<!-- ══ ADD / EDIT PACKAGING ══ -->
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ cancelPackagingEdit }}" style="margin-left:-6px;min-height:44px">‹ Packaging</button><sc-if value="{{ packagingExisting }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ requestDeletePackaging }}" style="min-height:44px;color:#b0563e">Delete</button></sc-if></div>
   <div class="field" style="margin:6px 0 12px"><label>Packaging name</label><input class="input" value="{{ packagingName }}" sc-camel-on-change="{{ setPackagingName }}" placeholder="Name your packaging" aria-label="Packaging name" style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 12px"></div>
   <p class="text-muted" style="font-size:13px;margin-bottom:18px">Priced per unit, added to each product's cost.</p>
-  <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--color-divider);border-radius:14px;background:#fff;margin-bottom:18px">
-    <div style="width:58px;height:58px;border-radius:12px;background:var(--color-neutral-100);display:grid;place-items:center;overflow:hidden;flex:none;color:var(--color-accent);font-family:var(--font-heading);font-size:19px;font-weight:700;position:relative"><span>{{ packagingInitial }}</span>{{ packagingPhotoEl }}</div>
-    <div style="min-width:0;flex:1"><div style="font-weight:600;font-size:14px;margin-bottom:5px">Packaging photo</div><div class="text-muted" style="font-size:12px">Use the camera or choose an image.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px"><label class="btn btn-secondary" style="min-height:36px;font-size:12px;position:relative;overflow:hidden;cursor:pointer">Take photo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" sc-camel-on-change="{{ setPackagingPhoto }}" aria-label="Take packaging photo" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label><label class="btn btn-secondary" style="min-height:36px;font-size:12px;position:relative;overflow:hidden;cursor:pointer">Upload image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" sc-camel-on-change="{{ setPackagingPhoto }}" aria-label="Upload packaging photo" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label><sc-if value="{{ packagingHasPhoto }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ removePackagingPhoto }}" style="min-height:36px;font-size:12px;color:#b0563e">Remove</button></sc-if></div><sc-if value="{{ packagingPhotoUploading }}" hint-placeholder-val="{{ false }}"><div class="text-muted" style="font-size:12px;margin-top:7px">Uploading photo…</div></sc-if><sc-if value="{{ packagingPhotoError }}" hint-placeholder-val=""><div style="color:#b0563e;font-size:12px;margin-top:7px">{{ packagingPhotoError }}</div></sc-if></div>
-  </div>
   <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
     <div class="field"><label>Supplier</label><input class="input" value="{{ packagingSupplier }}" sc-camel-on-change="{{ setPackagingSupplier }}" placeholder="e.g. Uline" aria-label="Packaging supplier"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -331,11 +326,11 @@ function addPackagingController(template: string): string {
         const normalize = (key, draft) => {
           const base = defaults[key] || { name: (this.PACK_META[key] && this.PACK_META[key].name) || key, supplier: '', packPrice: 0, unitsPerPack: 1 };
           const source = { ...base, ...(saved[key] || {}), ...(draft || {}) };
-           return { name: String(source.name || key || 'Unnamed packaging').slice(0, 160), supplier: String(source.supplier || '').slice(0, 160), packPrice: Math.max(0, Number(source.packPrice) || 0), unitsPerPack: Math.max(0, Number(source.unitsPerPack) || 0), photoPath: typeof source.photoPath === 'string' ? source.photoPath.slice(0, 300) : '' };
+           return { name: String(source.name || key || 'Unnamed packaging').slice(0, 160), supplier: String(source.supplier || '').slice(0, 160), packPrice: Math.max(0, Number(source.packPrice) || 0), unitsPerPack: Math.max(0, Number(source.unitsPerPack) || 0) };
         };
         keys.forEach(key => { const item = normalize(key); this.PACK_META[key] = { ...this.PACK_META[key], name: item.name, per: item.unitsPerPack > 0 ? item.packPrice / item.unitsPerPack : 0 }; });
         const activeKey = this.state.activePackagingKey || null;
-        const active = activeKey ? normalize(activeKey, this.state.packagingDraft) : { name: '', supplier: '', packPrice: 0, unitsPerPack: 1, photoPath: '', ...(this.state.packagingDraft || {}) };
+        const active = activeKey ? normalize(activeKey, this.state.packagingDraft) : { name: '', supplier: '', packPrice: 0, unitsPerPack: 1, ...(this.state.packagingDraft || {}) };
         // See ingredient-template.ts: normalize() coerces with Number(), which would
         // strip an in-progress decimal point out of the input on every keystroke.
         const draftText = field => { const draft = this.state.packagingDraft; return draft && typeof draft[field] === 'string' ? draft[field] : String(active[field] ?? ''); };
@@ -350,16 +345,11 @@ function addPackagingController(template: string): string {
         return {
           packagingItems: keys.filter(key => defaults[key]?.visible !== false).map(key => {
             const item = normalize(key); const per = item.unitsPerPack > 0 ? item.packPrice / item.unitsPerPack : 0;
-             return { key, name: item.name || 'Unnamed packaging', initial: (item.name || 'P').slice(0, 1).toUpperCase(), photoEl: (() => { const photoUrl = window.__baketlyPhotoUrl(item.photoPath); return photoUrl && !(this.state.packagingPhotoFailures || {})[item.photoPath] ? React.createElement('img', { src: photoUrl, alt: '', onError: () => this.setState(st => ({ packagingPhotoFailures: { ...(st.packagingPhotoFailures || {}), [item.photoPath]: true } })), style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#fff' } }) : null; })(), packageLine: (item.supplier || 'No supplier') + ' · $' + item.packPrice.toFixed(2) + ' / ' + item.unitsPerPack + ' pcs', costLine: '$' + per.toFixed(2) + '/pc', open: () => this.setState(st => ({ screen: 'packagingEdit', stack: [...st.stack, st.screen], activePackagingKey: key, packagingDraft: normalize(key), packagingDeleteOpen: false, packagingSaveError: '', packagingPhotoError: '', packagingPhotoUploading: false, packagingPhotoRequest: (st.packagingPhotoRequest || 0) + 1 })), remove: () => deletePackaging(key) };
+             return { key, name: item.name || 'Unnamed packaging', packageLine: (item.supplier || 'No supplier') + ' · $' + item.packPrice.toFixed(2) + ' / ' + item.unitsPerPack + ' pcs', costLine: '$' + per.toFixed(2) + '/pc', open: () => this.setState(st => ({ screen: 'packagingEdit', stack: [...st.stack, st.screen], activePackagingKey: key, packagingDraft: normalize(key), packagingDeleteOpen: false, packagingSaveError: '' })), remove: () => deletePackaging(key) };
           }),
           packagingTitle: activeKey ? 'Edit packaging' : 'New packaging',
           packagingName: active.name, packagingSupplier: active.supplier, packagingPackPrice: draftText('packPrice'), packagingUnitsPerPack: draftText('unitsPerPack'),
           packagingCostPer: '$' + (active.unitsPerPack > 0 ? active.packPrice / active.unitsPerPack : 0).toFixed(2),
-           packagingInitial: (active.name || 'P').slice(0, 1).toUpperCase(),
-           packagingHasPhoto: !!window.__baketlyPhotoUrl(active.photoPath) && !(this.state.packagingPhotoFailures || {})[active.photoPath],
-           packagingPhotoEl: (() => { const photoUrl = window.__baketlyPhotoUrl(active.photoPath); return photoUrl && !(this.state.packagingPhotoFailures || {})[active.photoPath] ? React.createElement('img', { src: photoUrl, alt: 'Packaging photo', onError: () => this.setState(st => ({ packagingPhotoFailures: { ...(st.packagingPhotoFailures || {}), [active.photoPath]: true } })), style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#fff' } }) : null; })(),
-           packagingPhotoUploading: this.state.packagingPhotoUploading === true,
-           packagingPhotoError: this.state.packagingPhotoError || '',
           packagingSaveLabel: activeKey ? 'Save changes' : 'Save packaging',
           packagingSaveError: this.state.packagingSaveError || '',
           packagingExisting: !!activeKey,
@@ -372,24 +362,8 @@ function addPackagingController(template: string): string {
           setPackagingSupplier: e => setDraft({ supplier: e.target.value }),
           setPackagingPackPrice: e => setDraft({ packPrice: e.target.value }),
           setPackagingUnitsPerPack: e => setDraft({ unitsPerPack: e.target.value }),
-           hidePackagingPhoto: () => this.setState(st => ({ packagingPhotoFailures: { ...(st.packagingPhotoFailures || {}), [active.photoPath]: true } })),
-           removePackagingPhoto: () => this.setState(st => ({ packagingDraft: { ...active, ...(st.packagingDraft || {}), photoPath: '' }, packagingPhotoError: '', packagingPhotoRequest: (st.packagingPhotoRequest || 0) + 1 })),
-           setPackagingPhoto: async e => {
-             const file = e && e.target && e.target.files && e.target.files[0];
-             if (e && e.target) e.target.value = '';
-             if (!file) return;
-             const request = (this.state.packagingPhotoRequest || 0) + 1;
-             this.setState({ packagingPhotoRequest: request, packagingPhotoUploading: true, packagingPhotoError: '' });
-             try {
-               const photoPath = await window.__baketlyUploadPhoto(file);
-               this.setState(st => st.screen === 'packagingEdit' && st.activePackagingKey === activeKey && st.packagingPhotoRequest === request ? { packagingDraft: { ...active, ...(st.packagingDraft || {}), photoPath }, packagingPhotoUploading: false, packagingPhotoError: '' } : null);
-             } catch (error) {
-               this.setState(st => st.screen === 'packagingEdit' && st.activePackagingKey === activeKey && st.packagingPhotoRequest === request ? { packagingPhotoUploading: false, packagingPhotoError: error && error.message ? error.message : 'Could not upload the photo.' } : null);
-             }
-           },
-           cancelPackagingEdit: () => this.setState(st => { const stack = [...st.stack]; const previous = stack.pop() || 'ingredients'; return { screen: previous, stack, activePackagingKey: null, packagingDraft: null, packagingDeleteOpen: false, packagingSaveError: '', packagingPhotoError: '', packagingPhotoUploading: false, packagingPhotoRequest: (st.packagingPhotoRequest || 0) + 1 }; }),
+           cancelPackagingEdit: () => this.setState(st => { const stack = [...st.stack]; const previous = stack.pop() || 'ingredients'; return { screen: previous, stack, activePackagingKey: null, packagingDraft: null, packagingDeleteOpen: false, packagingSaveError: '' }; }),
           savePackaging: () => {
-             if (this.state.packagingPhotoUploading) { this.setState({ packagingSaveError: 'Wait for the photo upload to finish.' }); return; }
             const key = activeKey || 'pack-' + Date.now().toString(36);
             const normalized = normalize(key, this.state.packagingDraft);
             if (!normalized.name.trim() || normalized.unitsPerPack <= 0) { this.setState({ packagingSaveError: normalized.name.trim() ? 'Units per pack must be greater than zero.' : 'Packaging name is required.' }); return; }

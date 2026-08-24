@@ -14,7 +14,6 @@ const ingredientListMarkup = `<sc-if value="{{ pantryOnIng }}" hint-placeholder-
   <div style="display:flex;flex-direction:column;border-bottom:1px solid var(--color-divider)">
     <sc-for list="{{ ingredientItems }}" as="item" hint-placeholder-count="8">
       <div class="bk-row" sc-camel-on-click="{{ item.open }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--color-divider);cursor:pointer">
-        <span style="width:46px;height:46px;border-radius:12px;background:#fff;border:1px solid var(--color-divider);display:grid;place-items:center;color:var(--color-accent);font-family:var(--font-heading);font-weight:700;font-size:18px;flex:none;overflow:hidden;position:relative"><span>{{ item.initial }}</span>{{ item.photoEl }}</span>
         <div style="flex:1;min-width:0"><div style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.name }}</div><div class="text-muted" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.packageLine }}</div></div>
         <div style="text-align:right;font-feature-settings:'tnum';font-size:14px;flex:none">{{ item.costLine }}</div>
       </div>
@@ -29,10 +28,6 @@ const ingredientEditorMarkup = `<!-- ══ INGREDIENT EDIT ══ -->
   <div class="field" style="margin:6px 0 12px"><label>Ingredient name</label><input class="input" value="{{ ingredientName }}" sc-camel-on-change="{{ setIngredientName }}" placeholder="Name your ingredient" aria-label="Ingredient name" style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 12px"></div>
   <p class="text-muted" style="font-size:13px;margin-bottom:18px">Update this pantry item. Recipe costs will use the saved unit cost.</p>
   <sc-if value="{{ ingredientNew }}" hint-placeholder-val="{{ false }}"><div style="padding:12px;border:1px solid var(--color-divider);border-radius:14px;background:#fff;margin-bottom:18px"><div style="font-weight:600;font-size:14px;margin-bottom:4px">Have the package nearby?</div><div class="text-muted" style="font-size:12px;margin-bottom:9px">Let Baketly read the nutrition label and fill in what it can.</div><label class="btn btn-secondary" style="min-height:40px;position:relative;overflow:hidden;cursor:pointer">Scan label with photo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" sc-camel-on-change="{{ scanIngredientLabel }}" aria-label="Scan label with photo" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label><sc-if value="{{ ingredientScanLoading }}" hint-placeholder-val="{{ false }}"><div class="text-muted" style="font-size:12px;margin-top:8px">Reading label…</div></sc-if><sc-if value="{{ ingredientScanError }}" hint-placeholder-val=""><div style="color:#b0563e;font-size:12px;margin-top:8px">{{ ingredientScanError }}</div></sc-if><sc-if value="{{ ingredientScanComplete }}" hint-placeholder-val="{{ false }}"><div style="color:var(--color-accent);font-size:12px;margin-top:8px">Filled what I could. Please review every field before saving.</div></sc-if></div></sc-if>
-  <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--color-divider);border-radius:14px;background:#fff;margin-bottom:18px">
-    <div style="width:58px;height:58px;border-radius:12px;background:var(--color-neutral-100);display:grid;place-items:center;overflow:hidden;flex:none;color:var(--color-accent);font-family:var(--font-heading);font-size:19px;font-weight:700;position:relative"><span>{{ ingredientInitial }}</span>{{ ingredientPhotoEl }}</div>
-    <div style="min-width:0;flex:1"><div style="font-weight:600;font-size:14px;margin-bottom:5px">Ingredient photo</div><div class="text-muted" style="font-size:12px">Use the camera or choose an image.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px"><label class="btn btn-secondary" style="min-height:36px;font-size:12px;position:relative;overflow:hidden;cursor:pointer">Take photo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" sc-camel-on-change="{{ setIngredientPhoto }}" aria-label="Take ingredient photo" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label><label class="btn btn-secondary" style="min-height:36px;font-size:12px;position:relative;overflow:hidden;cursor:pointer">Upload image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" sc-camel-on-change="{{ setIngredientPhoto }}" aria-label="Upload ingredient photo" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label><sc-if value="{{ ingredientHasPhoto }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ removeIngredientPhoto }}" style="min-height:36px;font-size:12px;color:#b0563e">Remove</button></sc-if></div><sc-if value="{{ ingredientPhotoUploading }}" hint-placeholder-val="{{ false }}"><div class="text-muted" style="font-size:12px;margin-top:7px">Uploading photo…</div></sc-if><sc-if value="{{ ingredientPhotoError }}" hint-placeholder-val=""><div style="color:#b0563e;font-size:12px;margin-top:7px">{{ ingredientPhotoError }}</div></sc-if></div>
-  </div>
   <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
     <div class="field"><label>Supplier</label><input class="input" value="{{ ingredientSupplier }}" sc-camel-on-change="{{ setIngredientSupplier }}" aria-label="Ingredient supplier"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -66,7 +61,7 @@ function addIngredientState(template: string): string {
   return template.replace(
     /activeRecipeId: 'mini-chocolate-babka', recipeDraft: null,\n\s*packagingRecords: \{\},\n\s*removedPackagingKeys: \[\],\n\s*evQty:/,
     () =>
-      "activeRecipeId: 'mini-chocolate-babka', recipeDraft: null,\n    packagingRecords: {},\n    removedPackagingKeys: [],\n    ingredientRecords: {}, removedIngredientKeys: [], activeIngredientKey: 'butter', ingredientDraft: null, ingredientSaveError: '', ingredientPhotoError: '', ingredientPhotoUploading: false, ingredientPhotoRequest: 0, ingredientPhotoFailures: {}, ingredientScanRequest: 0, ingredientScanLoading: false, ingredientScanError: '', ingredientScanComplete: false,\n    evQty:",
+      "activeRecipeId: 'mini-chocolate-babka', recipeDraft: null,\n    packagingRecords: {},\n    removedPackagingKeys: [],\n    ingredientRecords: {}, removedIngredientKeys: [], activeIngredientKey: 'butter', ingredientDraft: null, ingredientSaveError: '', ingredientScanRequest: 0, ingredientScanLoading: false, ingredientScanError: '', ingredientScanComplete: false,\n    evQty:",
   );
 }
 
@@ -109,7 +104,6 @@ function addIngredientController(template: string): string {
              fat: Math.max(0, Number(source.fat) || 0),
              sugar: Math.max(0, Number(source.sugar) || 0),
              ...(Number(source.servingSize) > 0 ? { servingSize: Math.max(0, Number(source.servingSize) || 0), servingUnit: String(source.servingUnit || '').slice(0, 30) } : {}),
-            photoPath: typeof source.photoPath === 'string' ? source.photoPath.slice(0, 300) : ''
           };
         };
         ingredientKeys.forEach(key => {
@@ -118,7 +112,7 @@ function addIngredientController(template: string): string {
           this.ING_META[key] = { ...this.ING_META[key], name: effective.name, unit: effective.unit, per };
         });
         const activeKey = this.state.activeIngredientKey && ingredientKeys.includes(this.state.activeIngredientKey) ? this.state.activeIngredientKey : null;
-         const blankIngredient = { name: '', supplier: '', packagePrice: '', packageSize: '', unit: 'g', kcal: '', protein: '', carbs: '', fat: '', sugar: '', servingSize: '', servingUnit: '', photoPath: '' };
+         const blankIngredient = { name: '', supplier: '', packagePrice: '', packageSize: '', unit: 'g', kcal: '', protein: '', carbs: '', fat: '', sugar: '', servingSize: '', servingUnit: '' };
         const active = activeKey ? normalize(activeKey, this.state.ingredientDraft) : { ...blankIngredient, ...(this.state.ingredientDraft || {}) };
         // Numeric fields round-trip through normalize(), which coerces with Number().
         // Showing that coerced value back in the input erases an in-progress decimal
@@ -143,13 +137,12 @@ function addIngredientController(template: string): string {
             const item = normalize(key);
             const per = item.packageSize > 0 ? item.packagePrice / item.packageSize : 0;
             return {
-              key, name: item.name, initial: item.name.slice(0, 1).toUpperCase(),
-              photoEl: (() => { const photoUrl = window.__baketlyPhotoUrl(item.photoPath); return photoUrl && !(this.state.ingredientPhotoFailures || {})[item.photoPath] ? React.createElement('img', { src: photoUrl, alt: '', onError: () => this.setState(st => ({ ingredientPhotoFailures: { ...(st.ingredientPhotoFailures || {}), [item.photoPath]: true } })), style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#fff' } }) : null; })(),
+              key, name: item.name,
               packageLine: item.supplier + ' · $' + item.packagePrice.toFixed(2) + ' / ' + item.packageSize + ' ' + item.unit,
               costLine: '$' + per.toFixed(per < 0.01 ? 4 : 2) + '/' + item.unit,
               tag: per === 0 ? 'needs price' : 'saved',
               tagClass: per === 0 ? 'tag-accent' : 'tag-neutral',
-              open: () => this.setState(st => ({ screen: 'ingredientEdit', stack: [...st.stack, st.screen], activeIngredientKey: key, ingredientDraft: normalize(key), ingredientSaveError: '', ingredientDeleteOpen: false, ingredientPhotoError: '', ingredientPhotoUploading: false, ingredientPhotoRequest: (st.ingredientPhotoRequest || 0) + 1, fromScan: false })),
+              open: () => this.setState(st => ({ screen: 'ingredientEdit', stack: [...st.stack, st.screen], activeIngredientKey: key, ingredientDraft: normalize(key), ingredientSaveError: '', ingredientDeleteOpen: false, fromScan: false })),
               remove: () => deleteIngredient(key)
             };
           }),
@@ -168,11 +161,6 @@ function addIngredientController(template: string): string {
            ingredientServingUnit: String(active.servingUnit ?? ''),
            ingredientServingVisible: !!active.servingSize || !!active.servingUnit,
           ingredientCostPer: '$' + (active.packageSize > 0 ? active.packagePrice / active.packageSize : 0).toFixed(active.packageSize > 0 && active.packagePrice / active.packageSize < 0.01 ? 4 : 2),
-          ingredientInitial: active.name.slice(0, 1).toUpperCase() || 'I',
-          ingredientHasPhoto: !!window.__baketlyPhotoUrl(active.photoPath) && !(this.state.ingredientPhotoFailures || {})[active.photoPath],
-          ingredientPhotoEl: (() => { const photoUrl = window.__baketlyPhotoUrl(active.photoPath); return photoUrl && !(this.state.ingredientPhotoFailures || {})[active.photoPath] ? React.createElement('img', { src: photoUrl, alt: 'Ingredient photo', onError: () => this.setState(st => ({ ingredientPhotoFailures: { ...(st.ingredientPhotoFailures || {}), [active.photoPath]: true } })), style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#fff' } }) : null; })(),
-          ingredientPhotoUploading: this.state.ingredientPhotoUploading === true,
-          ingredientPhotoError: this.state.ingredientPhotoError || '',
            ingredientScanLoading: this.state.ingredientScanLoading === true,
            ingredientScanError: this.state.ingredientScanError || '',
            ingredientScanComplete: this.state.ingredientScanComplete === true,
@@ -196,21 +184,6 @@ function addIngredientController(template: string): string {
            setIngredientSugar: e => setDraft({ sugar: e.target.value }),
            setIngredientServingSize: e => setDraft({ servingSize: e.target.value }),
            setIngredientServingUnit: e => setDraft({ servingUnit: e.target.value.slice(0, 30) }),
-          hideIngredientPhoto: () => this.setState(st => ({ ingredientPhotoFailures: { ...(st.ingredientPhotoFailures || {}), [active.photoPath]: true } })),
-          removeIngredientPhoto: () => this.setState(st => ({ ingredientDraft: { ...active, ...(st.ingredientDraft || {}), photoPath: '' }, ingredientPhotoError: '', ingredientPhotoRequest: (st.ingredientPhotoRequest || 0) + 1 })),
-          setIngredientPhoto: async e => {
-            const file = e && e.target && e.target.files && e.target.files[0];
-            if (e && e.target) e.target.value = '';
-            if (!file) return;
-            const request = (this.state.ingredientPhotoRequest || 0) + 1;
-            this.setState({ ingredientPhotoRequest: request, ingredientPhotoUploading: true, ingredientPhotoError: '' });
-            try {
-              const photoPath = await window.__baketlyUploadPhoto(file);
-              this.setState(st => st.screen === 'ingredientEdit' && st.activeIngredientKey === activeKey && st.ingredientPhotoRequest === request ? { ingredientDraft: { ...active, ...(st.ingredientDraft || {}), photoPath }, ingredientPhotoUploading: false, ingredientPhotoError: '' } : null);
-            } catch (error) {
-              this.setState(st => st.screen === 'ingredientEdit' && st.activeIngredientKey === activeKey && st.ingredientPhotoRequest === request ? { ingredientPhotoUploading: false, ingredientPhotoError: error && error.message ? error.message : 'Could not upload the photo.' } : null);
-            }
-          },
            scanIngredientLabel: async e => {
              const file = e && e.target && e.target.files && e.target.files[0];
              if (e && e.target) e.target.value = '';
@@ -236,9 +209,8 @@ function addIngredientController(template: string): string {
                this.setState(st => st.ingredientScanRequest === request ? { ingredientScanLoading: false, ingredientScanError: error && error.message ? error.message : 'I couldn’t read that label. Please enter the details manually.', ingredientScanComplete: false } : null);
              }
            },
-           cancelIngredientEdit: () => this.setState(st => { const stack = [...st.stack]; const previous = stack.pop() || 'ingredients'; return { screen: previous, stack, activeIngredientKey: null, ingredientDraft: null, ingredientDeleteOpen: false, ingredientSaveError: '', ingredientPhotoError: '', ingredientPhotoUploading: false, ingredientPhotoRequest: (st.ingredientPhotoRequest || 0) + 1, ingredientScanRequest: (st.ingredientScanRequest || 0) + 1, ingredientScanLoading: false, ingredientScanError: '', ingredientScanComplete: false }; }),
+           cancelIngredientEdit: () => this.setState(st => { const stack = [...st.stack]; const previous = stack.pop() || 'ingredients'; return { screen: previous, stack, activeIngredientKey: null, ingredientDraft: null, ingredientDeleteOpen: false, ingredientSaveError: '', ingredientScanRequest: (st.ingredientScanRequest || 0) + 1, ingredientScanLoading: false, ingredientScanError: '', ingredientScanComplete: false }; }),
           saveIngredient: () => {
-            if (this.state.ingredientPhotoUploading) { this.setState({ ingredientSaveError: 'Wait for the photo upload to finish.' }); return; }
             const key = activeKey || 'ingredient-' + Date.now().toString(36);
              const normalized = normalize(key, activeKey ? this.state.ingredientDraft : { ...blankIngredient, ...(this.state.ingredientDraft || {}) });
             if (!normalized.name.trim() || normalized.packageSize <= 0) {
