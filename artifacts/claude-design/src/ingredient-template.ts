@@ -1,13 +1,28 @@
+// Shared with the recipe ingredient picker, which offers these as filters.
+export const INGREDIENT_CATEGORIES: ReadonlyArray<readonly [string, string]> = [
+  ["flour", "Flour"],
+  ["sugar", "Sugar"],
+  ["chocolate", "Chocolate"],
+  ["dairy", "Dairy"],
+  ["egg", "Eggs"],
+  ["fat", "Fats & oils"],
+  ["nut", "Nuts & seeds"],
+  ["fruit", "Fruit"],
+  ["spice", "Spices & extracts"],
+  ["other", "Other"],
+];
+const categoryKeys = INGREDIENT_CATEGORIES.map(([key]) => key);
+
 const defaultIngredientDetails = {
-  flour: { supplier: "Costco", packagePrice: 12.99, packageSize: 10000, unit: "g", kcal: 364, protein: 10.3, carbs: 76.3, fat: 1 },
-  butter: { supplier: "Costco", packagePrice: 4.28, packageSize: 454, unit: "g", kcal: 717, protein: 0.9, carbs: 0.1, fat: 81 },
-  choc: { supplier: "Costco", packagePrice: 9.65, packageSize: 2000, unit: "g", kcal: 479, protein: 4.2, carbs: 63, fat: 24 },
-  milk: { supplier: "Costco", packagePrice: 3.49, packageSize: 2000, unit: "ml", kcal: 61, protein: 3.2, carbs: 4.8, fat: 3.3 },
-  eggs: { supplier: "Costco", packagePrice: 5.93, packageSize: 12, unit: "pc", kcal: 143, protein: 12.6, carbs: 0.7, fat: 9.5 },
-  whitechoc: { supplier: "Costco", packagePrice: 11.49, packageSize: 2000, unit: "g", kcal: 539, protein: 5.9, carbs: 59, fat: 32 },
-  nutella: { supplier: "Costco", packagePrice: 9.99, packageSize: 950, unit: "g", kcal: 539, protein: 6.3, carbs: 57.5, fat: 30.9 },
-  vanilla: { supplier: "Costco", packagePrice: 14.99, packageSize: 118, unit: "ml", kcal: 288, protein: 0.1, carbs: 12.7, fat: 0.1 },
-  cheddar: { supplier: "Costco", packagePrice: 10.99, packageSize: 907, unit: "g", kcal: 403, protein: 24.9, carbs: 1.3, fat: 33.1 },
+  flour: { supplier: "Costco", category: "flour", packagePrice: 12.99, packageSize: 10000, unit: "g", kcal: 364, protein: 10.3, carbs: 76.3, fat: 1 },
+  butter: { supplier: "Costco", category: "dairy", packagePrice: 4.28, packageSize: 454, unit: "g", kcal: 717, protein: 0.9, carbs: 0.1, fat: 81 },
+  choc: { supplier: "Costco", category: "chocolate", packagePrice: 9.65, packageSize: 2000, unit: "g", kcal: 479, protein: 4.2, carbs: 63, fat: 24 },
+  milk: { supplier: "Costco", category: "dairy", packagePrice: 3.49, packageSize: 2000, unit: "ml", kcal: 61, protein: 3.2, carbs: 4.8, fat: 3.3 },
+  eggs: { supplier: "Costco", category: "egg", packagePrice: 5.93, packageSize: 12, unit: "pc", kcal: 143, protein: 12.6, carbs: 0.7, fat: 9.5 },
+  whitechoc: { supplier: "Costco", category: "chocolate", packagePrice: 11.49, packageSize: 2000, unit: "g", kcal: 539, protein: 5.9, carbs: 59, fat: 32 },
+  nutella: { supplier: "Costco", category: "chocolate", packagePrice: 9.99, packageSize: 950, unit: "g", kcal: 539, protein: 6.3, carbs: 57.5, fat: 30.9 },
+  vanilla: { supplier: "Costco", category: "spice", packagePrice: 14.99, packageSize: 118, unit: "ml", kcal: 288, protein: 0.1, carbs: 12.7, fat: 0.1 },
+  cheddar: { supplier: "Costco", category: "dairy", packagePrice: 10.99, packageSize: 907, unit: "g", kcal: 403, protein: 24.9, carbs: 1.3, fat: 33.1 },
 } as const;
 
 const ingredientListMarkup = `<sc-if value="{{ pantryOnIng }}" hint-placeholder-val="{{ false }}">
@@ -35,6 +50,7 @@ const ingredientEditorMarkup = `<!-- ══ INGREDIENT EDIT ══ -->
       <div class="field"><label>Package size</label><input class="input" value="{{ ingredientPackageSize }}" sc-camel-on-change="{{ setIngredientPackageSize }}" inputmode="decimal" aria-label="Package size"></div>
     </div>
      <div class="field"><label>Unit</label><select class="input" value="{{ ingredientUnit }}" sc-camel-on-change="{{ setIngredientUnit }}" aria-label="Ingredient unit"><option value="g">g</option><option value="kg">kg</option><option value="oz">oz</option><option value="lb">lb</option><option value="ml">ml</option><option value="pc">pc</option></select></div>
+     <div class="field"><label>Category</label><select class="input" value="{{ ingredientCategory }}" sc-camel-on-change="{{ setIngredientCategory }}" aria-label="Ingredient category"><option value="flour">Flour</option><option value="sugar">Sugar</option><option value="chocolate">Chocolate</option><option value="dairy">Dairy</option><option value="egg">Eggs</option><option value="fat">Fats &amp; oils</option><option value="nut">Nuts &amp; seeds</option><option value="fruit">Fruit</option><option value="spice">Spices &amp; extracts</option><option value="other">Other</option></select></div>
      <sc-if value="{{ ingredientServingVisible }}" hint-placeholder-val="{{ false }}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="field"><label>Serving size</label><input class="input" value="{{ ingredientServingSize }}" sc-camel-on-change="{{ setIngredientServingSize }}" inputmode="decimal" aria-label="Serving size"></div><div class="field"><label>Serving unit</label><input class="input" value="{{ ingredientServingUnit }}" sc-camel-on-change="{{ setIngredientServingUnit }}" aria-label="Serving unit" placeholder="g"></div></div></sc-if>
   </div>
   <div style="border-top:2px solid var(--color-text);padding-top:12px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:baseline">
@@ -88,6 +104,7 @@ function addIngredientController(template: string): string {
         const removedIngredientKeys = new Set(this.state.removedIngredientKeys || []);
         const ingredientKeys = [...new Set([...Object.keys(this.ING_META || {}), ...Object.keys(savedIngredients)])].filter(key => !removedIngredientKeys.has(key));
         const units = ['g', 'kg', 'oz', 'lb', 'ml', 'pc'];
+        const categories = ${JSON.stringify(categoryKeys)};
         const normalize = (key, draft) => {
           const base = this.ING_META[key] || { name: key, per: 0, unit: 'g' };
           const fallback = detailDefaults[key] || { supplier: '', packagePrice: 0, packageSize: 1, unit: base.unit || 'g', kcal: 0, protein: 0, carbs: 0, fat: 0 };
@@ -98,6 +115,7 @@ function addIngredientController(template: string): string {
             packagePrice: Math.max(0, Number(source.packagePrice) || 0),
             packageSize: Math.max(0, Number(source.packageSize) || 0),
             unit: units.includes(source.unit) ? source.unit : (base.unit || 'g'),
+            category: categories.includes(source.category) ? source.category : 'other',
             kcal: Math.max(0, Number(source.kcal) || 0),
             protein: Math.max(0, Number(source.protein) || 0),
             carbs: Math.max(0, Number(source.carbs) || 0),
@@ -109,10 +127,10 @@ function addIngredientController(template: string): string {
         ingredientKeys.forEach(key => {
           const effective = normalize(key);
           const per = effective.packageSize > 0 ? effective.packagePrice / effective.packageSize : 0;
-          this.ING_META[key] = { ...this.ING_META[key], name: effective.name, unit: effective.unit, per };
+          this.ING_META[key] = { ...this.ING_META[key], name: effective.name, unit: effective.unit, category: effective.category, per };
         });
         const activeKey = this.state.activeIngredientKey && ingredientKeys.includes(this.state.activeIngredientKey) ? this.state.activeIngredientKey : null;
-         const blankIngredient = { name: '', supplier: '', packagePrice: '', packageSize: '', unit: 'g', kcal: '', protein: '', carbs: '', fat: '', sugar: '', servingSize: '', servingUnit: '' };
+         const blankIngredient = { name: '', supplier: '', packagePrice: '', packageSize: '', unit: 'g', category: 'other', kcal: '', protein: '', carbs: '', fat: '', sugar: '', servingSize: '', servingUnit: '' };
         const active = activeKey ? normalize(activeKey, this.state.ingredientDraft) : { ...blankIngredient, ...(this.state.ingredientDraft || {}) };
         // Numeric fields round-trip through normalize(), which coerces with Number().
         // Showing that coerced value back in the input erases an in-progress decimal
@@ -151,6 +169,7 @@ function addIngredientController(template: string): string {
           ingredientPackagePrice: draftText('packagePrice'),
           ingredientPackageSize: draftText('packageSize'),
           ingredientUnit: active.unit,
+          ingredientCategory: active.category || 'other',
           ingredientNutritionUnit: active.unit === 'ml' ? 'ml' : active.unit === 'pc' ? 'pc' : 'g',
           ingredientKcal: draftText('kcal'),
           ingredientProtein: draftText('protein'),
@@ -177,6 +196,7 @@ function addIngredientController(template: string): string {
           setIngredientPackagePrice: e => setDraft({ packagePrice: e.target.value }),
           setIngredientPackageSize: e => setDraft({ packageSize: e.target.value }),
           setIngredientUnit: e => setDraft({ unit: e.target.value }),
+          setIngredientCategory: e => setDraft({ category: e.target.value }),
           setIngredientKcal: e => setDraft({ kcal: e.target.value }),
           setIngredientProtein: e => setDraft({ protein: e.target.value }),
           setIngredientCarbs: e => setDraft({ carbs: e.target.value }),

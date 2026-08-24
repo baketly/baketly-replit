@@ -40,6 +40,7 @@ const ingredientRecordSchema = z
     carbs: z.number().finite().min(0).max(100_000),
     fat: z.number().finite().min(0).max(100_000),
     sugar: z.number().finite().min(0).max(100_000).optional(),
+    category: z.string().max(40).optional(),
     servingSize: z.number().finite().positive().max(100_000).optional(),
     servingUnit: z.string().max(30).optional(),
     photoPath: z.string().max(300).optional(),

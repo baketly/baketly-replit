@@ -1,3 +1,5 @@
+import { INGREDIENT_CATEGORIES } from "./ingredient-template";
+
 const defaultRecipes = [
   {
     id: "sourdough-cheddar-loaf",
@@ -455,9 +457,9 @@ function replaceRecipeEditorLogic(template: string): string {
             };
           }),
           ingPickerOpen: this.state.ingPickerOpen === true,
-          toggleIngPicker: () => this.setState(st => ({ ingPickerOpen: !st.ingPickerOpen, ingSearch: '', ingPickerSelected: [] })),
-          cancelIngPicker: e => { if (!e || e.target === e.currentTarget) this.setState({ ingPickerOpen: false, ingSearch: '', ingPickerSelected: [] }); },
-          closeIngPicker: () => this.setState({ ingPickerOpen: false, ingSearch: '', ingPickerSelected: [] }),
+          toggleIngPicker: () => this.setState(st => ({ ingPickerOpen: !st.ingPickerOpen, ingSearch: '', ingPickerSelected: [], ingPickerCategory: 'all' })),
+          cancelIngPicker: e => { if (!e || e.target === e.currentTarget) this.setState({ ingPickerOpen: false, ingSearch: '', ingPickerSelected: [], ingPickerCategory: 'all' }); },
+          closeIngPicker: () => this.setState({ ingPickerOpen: false, ingSearch: '', ingPickerSelected: [], ingPickerCategory: 'all' }),
           ingSearch: this.state.ingSearch || '',
           setIngSearch: e => this.setState({ ingSearch: e.target.value }),
           confirmIngPicker: () => {
@@ -465,12 +467,16 @@ function replaceRecipeEditorLogic(template: string): string {
             const nextAmounts = { ...amounts };
             selected.forEach(k => { if (nextAmounts[k] == null) nextAmounts[k] = this.ING_META[k].unit ? 100 : 1; });
             updateRecipe({ ingredientKeys: [...keys, ...selected.filter(k => !keys.includes(k))], amounts: nextAmounts });
-            this.setState({ ingPickerOpen: false, ingSearch: '', ingPickerSelected: [] });
+            this.setState({ ingPickerOpen: false, ingSearch: '', ingPickerSelected: [], ingPickerCategory: 'all' });
           },
           ...(() => {
             const query = (this.state.ingSearch || '').toLowerCase();
             const selected = this.state.ingPickerSelected || [];
-            const available = Object.keys(this.ING_META).filter(k => !keys.includes(k) && (!query || this.ING_META[k].name.toLowerCase().includes(query)));
+            const removedKeys = this.state.removedIngredientKeys || [];
+            const inPantry = Object.keys(this.ING_META).filter(k => !keys.includes(k) && !removedKeys.includes(k));
+            const presentCategories = [...new Set(inPantry.map(k => this.ING_META[k].category || 'other'))];
+            const categoryFilter = this.state.ingPickerCategory || 'all';
+            const available = inPantry.filter(k => (!query || this.ING_META[k].name.toLowerCase().includes(query)) && (categoryFilter === 'all' || (this.ING_META[k].category || 'other') === categoryFilter));
             return {
               ingPickerItems: available.map(k => {
                 const m = this.ING_META[k];
@@ -479,6 +485,13 @@ function replaceRecipeEditorLogic(template: string): string {
                   toggle: () => this.setState(st => ({ ingPickerSelected: (st.ingPickerSelected || []).includes(k) ? (st.ingPickerSelected || []).filter(x => x !== k) : [...(st.ingPickerSelected || []), k] }))
                 };
               }),
+              ingCatFilters: [['all', 'All'], ...${JSON.stringify(INGREDIENT_CATEGORIES)}.filter(([key]) => presentCategories.includes(key))].map(([key, label]) => ({
+                label,
+                set: () => this.setState({ ingPickerCategory: key }),
+                border: categoryFilter === key ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+                bg: categoryFilter === key ? 'var(--color-accent)' : '#fff',
+                color: categoryFilter === key ? '#fff' : '#8a8578'
+              })),
               ingPickerEmpty: available.length === 0,
               ingPickerConfirmLabel: selected.length ? 'Add ' + selected.length + ' ingredient' + (selected.length === 1 ? '' : 's') : 'Select ingredients'
             };
@@ -501,7 +514,8 @@ function replaceRecipeEditorLogic(template: string): string {
           ...(() => {
             const query = (this.state.packSearch || '').toLowerCase();
             const selected = this.state.packPickerSelected || [];
-            const available = Object.keys(this.PACK_META).filter(k => !packs.includes(k) && (!query || this.PACK_META[k].name.toLowerCase().includes(query)));
+            const removedPackKeys = this.state.removedPackagingKeys || [];
+            const available = Object.keys(this.PACK_META).filter(k => !packs.includes(k) && !removedPackKeys.includes(k) && (!query || this.PACK_META[k].name.toLowerCase().includes(query)));
             return {
               packPickerItems: available.map(k => ({
                 name: this.PACK_META[k].name, meta: '$' + this.PACK_META[k].per.toFixed(2) + '/unit', check: selected.includes(k) ? '✓' : '',
@@ -599,12 +613,34 @@ function replaceRecipeEditorMarkup(template: string): string {
     );
 }
 
+const ingredientPickerFiltersMarkup = `    <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;overflow-x:auto;scrollbar-width:none;flex:none">
+      <sc-for list="{{ ingCatFilters }}" as="cf" hint-placeholder-count="4">
+        <button sc-camel-on-click="{{ cf.set }}" style="height:30px;padding:0 11px;flex:none;font-family:var(--font-body);font-size:11px;font-weight:600;border-radius:999px;cursor:pointer;border:1px solid {{ cf.border }};background:{{ cf.bg }};color:{{ cf.color }}">{{ cf.label }}</button>
+      </sc-for>
+    </div>
+`;
+
+// Puts the category chips between the picker's search box and its scrolling
+// list. Anchored on the list container plus the row loop, which is the one
+// place both appear together.
+function addIngredientPickerFilters(template: string): string {
+  const anchor =
+    '    <div style="flex:1;overflow:auto;min-height:0;display:flex;flex-direction:column">\n' +
+    '      <sc-for list="{{ ingPickerItems }}" as="ip"';
+  if (!template.includes(anchor)) {
+    throw new Error("Missing stable ingredient picker anchor");
+  }
+  return template.replace(anchor, () => ingredientPickerFiltersMarkup + anchor);
+}
+
 export function applyRecipeRecordBehavior(template: string): string {
   const base = replaceRecipeEditorMarkup(
     replaceRecipeNavigation(
       replacePackagingEditor(
         replacePackagingList(
-          replaceRecipeEditorLogic(replaceRecipeList(addRecipeState(template))),
+          addIngredientPickerFilters(
+            replaceRecipeEditorLogic(replaceRecipeList(addRecipeState(template))),
+          ),
         ),
       ),
     ),
