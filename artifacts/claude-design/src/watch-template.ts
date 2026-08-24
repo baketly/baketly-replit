@@ -76,6 +76,12 @@ const watchController = `      ...(() => {
           yourPrice: money(Number(product.price) || 0),
           rangeStr: product.grounded ? localMoney(Number(product.localLow) || 0) + ' – ' + localMoney(Number(product.localHigh) || 0) + ' nearby' : 'No local prices found',
           note: product.note || '',
+          competitors: (product.competitors || []).map(seller => ({
+            name: seller.name,
+            priceStr: (seller.price !== null && seller.price !== undefined) ? localMoney(Number(seller.price)) : '',
+            uri: seller.uri || ''
+          })),
+          hasCompetitors: (product.competitors || []).length > 0,
           verdictLabel: verdictLabels[product.verdict] || 'Not found',
           verdictClass: verdictClasses[product.verdict] || 'tag-neutral'
         })) : [];
@@ -107,7 +113,7 @@ const watchController = `      ...(() => {
         if (!this.__baketlyMarketChecked && (this.state.bakeryLocation || '').trim()
             && window.__baketlyMarketCheckDue(this.state.marketCheck)) {
           this.__baketlyMarketChecked = true;
-          window.setTimeout(runCheck, 1500);
+          window.setTimeout(runCheck, 4000);
         }
 
         const checkedAt = check && check.checkedAt ? new Date(check.checkedAt) : null;
@@ -185,6 +191,13 @@ function replaceWatchScreen(template: string): string {
             <div class="an-row-name">{{ loc.name }}</div>
             <div class="an-row-sub">You charge {{ loc.yourPrice }} · {{ loc.rangeStr }}</div>
             <div class="an-row-sub" style="margin-top:3px">{{ loc.note }}</div>
+            <sc-if value="{{ loc.hasCompetitors }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ loc.competitors }}" as="seller" hint-placeholder-count="2">
+                  <a href="{{ seller.uri }}" target="_blank" rel="noopener noreferrer" style="font-size:12px;text-decoration:none;border:1px solid var(--color-divider);background:#fff;border-radius:999px;padding:5px 11px;color:var(--color-accent-700)">{{ seller.name }} {{ seller.priceStr }} ↗</a>
+                </sc-for>
+              </div>
+            </sc-if>
           </div>
           <span class="tag {{ loc.verdictClass }}" style="flex:none">{{ loc.verdictLabel }}</span>
         </div>
@@ -231,7 +244,7 @@ function addLocationFields(template: string): string {
     settingsField,
     () =>
       '<div class="field"><label>Bakery name</label><input class="input" value="{{ bakeryName }}" sc-camel-on-change="{{ setBakeryName }}" aria-label="Bakery name" placeholder="e.g. Base Street Bakes"></div>' +
-      '<div class="field"><label>Where you sell</label><input class="input" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where you sell" placeholder="e.g. Tel Aviv, Israel"><div class="text-muted" style="font-size:12px;margin-top:5px">Used to compare your prices with bakeries near you.</div></div>',
+      '<div class="field"><label>Where you sell</label><input class="input" list="baketly-places" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where you sell" placeholder="Start typing a town…" autocomplete="off"><datalist id="baketly-places"><sc-for list="{{ locationSuggestions }}" as="sug" hint-placeholder-count="0"><option value="{{ sug.place }}"></option></sc-for></datalist><div class="text-muted" style="font-size:12px;margin-top:5px">Used to compare your prices with bakeries near you.</div></div>',
   );
 
   const onboardingField =
@@ -241,14 +254,27 @@ function addLocationFields(template: string): string {
     onboardingField,
     () =>
       '<div class="field" style="margin-bottom:16px"><label>Bakery name</label><input class="input" value="{{ bakeryName }}" sc-camel-on-change="{{ setBakeryName }}" aria-label="Bakery name" placeholder="e.g. Base Street Bakes"></div>' +
-      '<div class="field" style="margin-bottom:16px"><label>Where do you sell?</label><input class="input" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where do you sell" placeholder="e.g. Tel Aviv, Israel"><div class="text-muted" style="font-size:12px;margin-top:5px">So Baketly can tell you what bakeries near you charge.</div></div>',
+      '<div class="field" style="margin-bottom:16px"><label>Where do you sell?</label><input class="input" list="baketly-places-ob" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where do you sell" placeholder="Start typing a town…" autocomplete="off"><datalist id="baketly-places-ob"><sc-for list="{{ locationSuggestions }}" as="sug" hint-placeholder-count="0"><option value="{{ sug.place }}"></option></sc-for></datalist><div class="text-muted" style="font-size:12px;margin-top:5px">So Baketly can tell you what bakeries near you charge.</div></div>',
   );
 }
 
 const profileController = `      bakeryName: this.state.bakeryName || '',
       setBakeryName: e => this.setState({ bakeryName: e.target.value.slice(0, 120) }),
       bakeryLocation: this.state.bakeryLocation || '',
-      setBakeryLocation: e => this.setState({ bakeryLocation: e.target.value.slice(0, 160) }),
+      locationSuggestions: (Array.isArray(this.state.locationSuggestions) ? this.state.locationSuggestions : []).map(place => ({ place })),
+      setBakeryLocation: e => {
+        const value = e.target.value.slice(0, 160);
+        this.setState({ bakeryLocation: value });
+        // debounced: the geocoder is only asked once typing pauses
+        if (this.__baketlyPlaceTimer) window.clearTimeout(this.__baketlyPlaceTimer);
+        this.__baketlyPlaceTimer = window.setTimeout(() => {
+          const query = (this.state.bakeryLocation || '').trim();
+          if (query.length < 3) { this.setState({ locationSuggestions: [] }); return; }
+          window.__baketlySuggestPlaces(query).then(places => {
+            if ((this.state.bakeryLocation || '').trim() === query) this.setState({ locationSuggestions: places });
+          });
+        }, 400);
+      },
 `;
 
 function addProfileBindings(template: string): string {

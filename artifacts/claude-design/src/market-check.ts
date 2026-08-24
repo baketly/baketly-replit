@@ -1,9 +1,17 @@
 // Local price research. Asks the server what comparable products go for near
 // the baker, so they can see when a price is out of step with the area.
 
+export type MarketCompetitor = {
+  name: string;
+  price: number | null;
+  uri: string;
+  sourceTitle: string;
+};
+
 export type MarketProduct = {
   name: string;
   price: number;
+  competitors: MarketCompetitor[];
   localLow: number | null;
   localHigh: number | null;
   verdict: "under" | "in_range" | "over" | "unknown";
@@ -31,6 +39,28 @@ export function marketCheckIsDue(
   const checkedAt = check && typeof check.checkedAt === "string" ? Date.parse(check.checkedAt) : NaN;
   if (!Number.isFinite(checkedAt)) return true;
   return now - checkedAt >= MARKET_CHECK_INTERVAL_MS;
+}
+
+/** Place suggestions for the location field. Any failure returns nothing, so
+ *  the baker can always just type the place themselves. */
+export async function suggestPlaces(query: string): Promise<string[]> {
+  if (query.trim().length < 3) return [];
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 6_000);
+  try {
+    const response = await fetch("/api/places?q=" + encodeURIComponent(query.trim()), {
+      signal: controller.signal,
+    });
+    if (!response.ok) return [];
+    const payload = (await response.json()) as { places?: unknown };
+    return Array.isArray(payload.places)
+      ? payload.places.filter((place): place is string => typeof place === "string").slice(0, 6)
+      : [];
+  } catch {
+    return [];
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 export async function runMarketCheck(
@@ -74,6 +104,14 @@ export async function runMarketCheck(
             : "unknown",
         note: String(entry.note || ""),
         grounded: entry.grounded === true,
+        competitors: (Array.isArray(entry.competitors) ? entry.competitors : [])
+          .slice(0, 3)
+          .map((seller: Record<string, unknown>) => ({
+            name: String(seller.name || ""),
+            price: typeof seller.price === "number" ? seller.price : null,
+            uri: String(seller.uri || ""),
+            sourceTitle: String(seller.sourceTitle || ""),
+          })),
       })),
       sources: Array.isArray(payload.sources) ? payload.sources.slice(0, 8) : [],
       searches: Array.isArray(payload.searches) ? payload.searches.slice(0, 6) : [],

@@ -6,7 +6,7 @@ import { applyAnalyticsBehavior } from "./analytics-template";
 import { scanIngredientLabel } from "./ingredient-label-scan";
 import { applyChatBehavior } from "./chat-template";
 import { applyWatchBehavior } from "./watch-template";
-import { marketCheckIsDue, runMarketCheck } from "./market-check";
+import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 
 type WorkspaceState = Record<string, unknown>;
@@ -23,6 +23,7 @@ declare global {
       products: Array<{ name: string; price: number }>,
     ) => Promise<import("./market-check").MarketCheck>;
     __baketlyMarketCheckDue: (check: unknown) => boolean;
+    __baketlySuggestPlaces: (query: string) => Promise<string[]>;
     __baketlyAsk: (
       question: string,
       context: Record<string, unknown>,
@@ -236,6 +237,7 @@ window.__baketlyScanIngredientLabel = scanIngredientLabel;
 window.__baketlyMarketCheck = runMarketCheck;
 window.__baketlyMarketCheckDue = (check) =>
   marketCheckIsDue(check as { checkedAt?: unknown } | null);
+window.__baketlySuggestPlaces = suggestPlaces;
 window.__baketlyAsk = askBaketly;
 window.__baketlyAskContext = buildAskContext;
 window.__baketlyReady = workspaceClient.hydrate();

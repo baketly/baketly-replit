@@ -122,6 +122,19 @@ const marketProductSchema = z
     verdict: z.enum(["under", "in_range", "over", "unknown"]),
     note: z.string().max(240),
     grounded: z.boolean(),
+    competitors: z
+      .array(
+        z
+          .object({
+            name: z.string().max(80),
+            price: z.number().finite().min(0).max(1_000_000).nullable(),
+            uri: z.string().max(400),
+            sourceTitle: z.string().max(120),
+          })
+          .strict(),
+      )
+      .max(3)
+      .optional(),
   })
   .strict();
 

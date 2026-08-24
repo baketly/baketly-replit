@@ -29,8 +29,20 @@ const marketSchema = {
           verdict: { type: "STRING", enum: ["under", "in_range", "over", "unknown"] },
           note: { type: "STRING" },
           grounded: { type: "BOOLEAN" },
+          competitors: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING" },
+                price: { type: "NUMBER", nullable: true },
+                sourceIndex: { type: "INTEGER" },
+              },
+              required: ["name", "price", "sourceIndex"],
+            },
+          },
         },
-        required: ["name", "localLow", "localHigh", "verdict", "note", "grounded"],
+        required: ["name", "localLow", "localHigh", "verdict", "note", "grounded", "competitors"],
       },
     },
     currency: { type: "STRING" },
@@ -86,7 +98,9 @@ const RESEARCH_RULES = [
 const STRUCTURE_RULES = [
   "You convert a price research note into JSON. Use only numbers that appear in the note.",
   "If the note names a real local range for a product, you MUST set localLow and localHigh to those numbers and set grounded to true. Never describe a range in the note field without also filling localLow and localHigh.",
-  "For a product the note found nothing for, set localLow and localHigh to null, verdict to unknown, and grounded to false.",
+  "For a product the note found nothing for, set localLow and localHigh to null, verdict to unknown, grounded to false, and leave competitors empty.",
+  "competitors lists up to three named sellers the note actually mentions for that product, each with the price the note gives for that seller, or null if it gives none. Never invent a seller.",
+  "sourceIndex is the number of the source that seller came from, taken from the numbered source list. Use -1 when the seller cannot be traced to one of those sources.",
   "verdict compares the baker's own price with the local range: 'under' if they charge less than the local low, 'over' if more than the local high, otherwise 'in_range'.",
   "The note field is one short plain sentence naming the local range and what it means for their price. No markdown, no bullets, no URLs.",
   "currency is the ISO code of the local prices, such as USD, ILS or EUR.",
@@ -153,6 +167,10 @@ router.post(
       });
       const { sources, searches } = research;
 
+      const sourceList = sources
+        .map((entry, index) => index + ". " + (entry.title || entry.uri))
+        .join(String.fromCharCode(10));
+
       const { text, model } = await generateJson({
         apiKey,
         parts: [
@@ -161,6 +179,8 @@ router.post(
               STRUCTURE_RULES +
               "\n\n" +
               productBlock +
+              "\n\nNumbered sources:\n" +
+              (sourceList || "(none)") +
               "\n\nResearch note:\n" +
               research.text,
           },
@@ -193,7 +213,29 @@ router.post(
           const high = Number(entry.localHigh);
           const hasRange =
             anySearch && entry.grounded === true && Number.isFinite(low) && Number.isFinite(high);
+          // The model chooses which source a seller came from; the URL itself
+          // comes from grounding metadata, so a link can never be invented.
+          const competitors = (Array.isArray(entry.competitors) ? entry.competitors : [])
+            .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
+            .slice(0, 3)
+            .map((c) => {
+              const index = Number(c.sourceIndex);
+              const source =
+                Number.isInteger(index) && index >= 0 && index < sources.length
+                  ? sources[index]
+                  : null;
+              const price = Number(c.price);
+              return {
+                name: typeof c.name === "string" ? c.name.trim().slice(0, 80) : "",
+                price: Number.isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
+                uri: source ? source.uri.slice(0, 400) : "",
+                sourceTitle: source ? source.title.slice(0, 120) : "",
+              };
+            })
+            .filter((c) => c.name.length > 0 && c.uri.length > 0);
+
           return {
+            competitors: hasRange ? competitors : [],
             name: typeof entry.name === "string" ? entry.name.slice(0, 120) : "Product",
             localLow: hasRange ? Math.round(low * 100) / 100 : null,
             localHigh: hasRange ? Math.round(high * 100) / 100 : null,
