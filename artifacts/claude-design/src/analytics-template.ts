@@ -354,12 +354,24 @@ export function applyAnalyticsBehavior(template: string): string {
           <div class="an-row">
             <div class="an-row-main">
               <div class="an-row-name">{{ row.name }}</div>
-              <div class="an-row-sub">{{ row.unitsStr }} · {{ row.profitStr }} profit</div>
-              <div class="an-mini-bar"><span style="width:{{ row.barWidth }}"></span></div>
+              <div class="an-row-sub">{{ row.soldOfPlanned }} · {{ row.profitStr }} profit</div>
+              <div class="an-mini-bar"><span style="width:{{ row.rateWidth }}"></span></div>
             </div>
-            <div class="an-row-val">{{ row.revStr }}</div>
+            <div class="an-row-val">{{ row.revStr }}<div class="an-row-sub" style="margin-top:3px">{{ row.rateStr }} sold</div></div>
           </div>
         </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ eventSellThroughShown }}" hint-placeholder-val="{{ false }}">
+      <div class="an-section-title">Sold against what you made</div>
+      <div class="an-card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-family:var(--font-heading);font-weight:600;font-size:22px;font-feature-settings:'tnum'">{{ eventSoldTotalStr }} of {{ eventPlannedTotalStr }}</span>
+          <span style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ eventSellThroughStr }}</span>
+        </div>
+        <div class="an-mini-bar" style="height:8px"><span style="width:{{ eventSellThroughWidth }}"></span></div>
+        <div class="text-muted" style="font-size:12px;margin-top:8px">{{ eventLeftoverStr }}</div>
       </div>
     </sc-if>
 
@@ -547,7 +559,7 @@ export function applyAnalyticsBehavior(template: string): string {
             marginStr: evMargin + '%',
              roiStr: evRoi + '%',
             dateStr: new Date(ev.occurredAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            open: () => this.setState(st => ({ screen: 'analyticsEvent', stack: [...st.stack, st.screen], analyticsEventId: ev.id }))
+            open: () => this.setState(st => ({ screen: 'analyticsEvent', stack: [...st.stack, st.screen], analyticsEventId: ev.id, eventCostsOpen: false }))
           };
         };
         const eventsData = events
@@ -571,10 +583,36 @@ export function applyAnalyticsBehavior(template: string): string {
             });
           });
         }
-        const eventItemEntries = Object.values(eventDetailTotals).sort((a, b) => b.revenue - a.revenue);
+        const plannedByProduct = {};
+        if (detailEventRaw && Array.isArray(detailEventRaw.plannedItems)) {
+          detailEventRaw.plannedItems.forEach(item => {
+            const key = (item && item.productId) || (item && item.name);
+            if (key) plannedByProduct[key] = Math.max(0, Number(item.quantity) || 0);
+          });
+        }
+        // a product baked for the market but never sold still belongs in the list
+        Object.keys(plannedByProduct).forEach(key => {
+          if (!eventDetailTotals[key]) {
+            const planned = (detailEventRaw.plannedItems || []).find(item => ((item && item.productId) || (item && item.name)) === key);
+            eventDetailTotals[key] = { name: (planned && planned.name) || 'Item', items: 0, revenue: 0, cost: 0 };
+          }
+        });
+        const eventItemEntries = Object.entries(eventDetailTotals)
+          .map(([key, row]) => ({ ...row, planned: plannedByProduct[key] || 0 }))
+          .sort((a, b) => b.revenue - a.revenue);
+        const plannedTotal = eventItemEntries.reduce((sum, row) => sum + row.planned, 0);
+        const soldTotal = eventItemEntries.reduce((sum, row) => sum + row.items, 0);
+        const leftoverTotal = Math.max(0, plannedTotal - soldTotal);
+        const sellThroughPct = plannedTotal > 0 ? Math.round((soldTotal / plannedTotal) * 100) : 0;
         const maxEventItemRev = eventItemEntries.reduce((max, row) => Math.max(max, row.revenue), 0);
         const eventDetailItems = eventItemEntries.map(row => ({
           name: row.name,
+          soldOfPlanned: row.planned > 0
+            ? row.items + ' sold of ' + row.planned + ' made'
+            : row.items + (row.items === 1 ? ' unit sold' : ' units sold'),
+          rateStr: row.planned > 0 ? Math.round((row.items / row.planned) * 100) + '%' : '—',
+          rateWidth: row.planned > 0 ? Math.min(100, Math.max(3, Math.round((row.items / row.planned) * 100))) + '%' : '0%',
+          hasRate: row.planned > 0,
           unitsStr: row.items + (row.items === 1 ? ' unit' : ' units'),
           revStr: '$' + row.revenue.toFixed(2),
           profitStr: (row.revenue - row.cost < 0 ? '-$' : '$') + Math.abs(row.revenue - row.cost).toFixed(2),
@@ -746,6 +784,12 @@ export function applyAnalyticsBehavior(template: string): string {
           hasEventDetailItems: eventDetailItems.length > 0,
           hasNoEventDetailItems: !!eventDetail && eventDetailItems.length === 0,
           eventDetailItems,
+          eventSellThroughShown: !!eventDetail && plannedTotal > 0,
+          eventSoldTotalStr: String(soldTotal),
+          eventPlannedTotalStr: String(plannedTotal),
+          eventLeftoverStr: leftoverTotal + (leftoverTotal === 1 ? ' unit left over' : ' units left over'),
+          eventSellThroughStr: sellThroughPct + '%',
+          eventSellThroughWidth: Math.min(100, Math.max(3, sellThroughPct)) + '%',
           eventDetailName: eventDetail ? eventDetail.name : '',
           eventDetailDateStr: eventDetail ? eventDetail.dateStr : '',
           eventDetailRevStr: eventDetail ? eventDetail.revStr : '$0.00',
@@ -980,7 +1024,11 @@ function addCommerceBehavior(template: string): string {
             const otherCosts = (Array.isArray(st.eventOtherCosts) ? st.eventOtherCosts : [])
               .map(cost => ({ label: String((cost && cost.label) || '').trim().slice(0, 60) || 'Other cost', amount: Math.max(0, Number(cost && cost.amount) || 0) }))
               .filter(cost => cost.amount > 0);
-            const event = { id: eventId, name: st.eventName || 'Base Farmers Market', occurredAt, boothFee: Math.max(0, Number(st.eventBoothFee) || 0), ...(otherCosts.length ? { otherCosts } : {}), lineItems: lines };
+            // what was baked for this market, so sell-through can be shown later
+            const plannedItems = eventProducts
+              .map(p => ({ productId: p.productId, name: p.name, quantity: Math.max(0, Math.round(Number((st.evQty || {})[p.id]) || 0)) }))
+              .filter(item => item.quantity > 0);
+            const event = { id: eventId, name: st.eventName || 'Base Farmers Market', occurredAt, boothFee: Math.max(0, Number(st.eventBoothFee) || 0), ...(otherCosts.length ? { otherCosts } : {}), ...(plannedItems.length ? { plannedItems } : {}), lineItems: lines };
             const salesWithoutDirect = (st.saleRecords || []).filter(s => s.id !== direct.id);
             const sales = lines.length > 0 ? [...salesWithoutDirect, direct] : salesWithoutDirect;
             const actual = sales.filter(s => s.eventId === eventId).reduce((sum, s) => sum + (Number(s.total) || 0), 0);

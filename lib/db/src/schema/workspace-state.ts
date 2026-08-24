@@ -89,6 +89,16 @@ const eventRecordSchema = z
       )
       .max(20)
       .optional(),
+    plannedItems: z
+      .array(
+        z.object({
+          productId: z.string().min(1).max(120),
+          name: z.string().min(1).max(160),
+          quantity: z.number().int().min(0).max(1_000_000),
+        }),
+      )
+      .max(100)
+      .optional(),
     lineItems: z.array(saleLineItemSchema).max(100),
   })
   .strict();

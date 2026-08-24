@@ -30,11 +30,14 @@ type DemoSale = {
   lineItems: DemoLineItem[];
 };
 
+type DemoPlannedItem = { productId: string; name: string; quantity: number };
+
 type DemoEvent = {
   id: string;
   name: string;
   occurredAt: string;
   boothFee: number;
+  plannedItems: DemoPlannedItem[];
   lineItems: DemoLineItem[];
 };
 
@@ -126,11 +129,18 @@ export function buildDemoCommerce(now: Date = new Date()): {
       });
       eventRevenue += quantity * product.unitPrice;
     }
+    // a market is baked for optimistically: some of it comes home again
+    const plannedItems = eventLineItems.map((line) => ({
+      productId: line.productId,
+      name: line.name,
+      quantity: line.quantity + 1 + Math.floor(rand() * Math.max(2, Math.round(line.quantity * 0.4))),
+    }));
     events.push({
       id: eventId,
       name: MARKET_NAMES[(monthsBack - back) % MARKET_NAMES.length],
       occurredAt: eventAt.toISOString(),
       boothFee: [95, 110, 125, 140][Math.floor(rand() * 4)],
+      plannedItems,
       lineItems: eventLineItems,
     });
     sales.push({
