@@ -59,20 +59,20 @@ export function applyAnalyticsBehavior(template: string): string {
         <div class="an-stat-val">{{ monthRevStr }}</div>
         <div class="an-stat-sub">{{ monthRevDiff }}</div>
       </div>
-      <div class="an-card" style="margin-bottom:0;padding:14px;">
+      <div class="an-card" sc-camel-on-click="{{ goAnalyticsKept }}" style="margin-bottom:0;padding:14px;cursor:pointer;position:relative;">
         <div class="an-stat-label">Kept</div>
         <div class="an-stat-val">{{ monthProfitStr }}</div>
-        <div class="an-stat-sub">after production &amp; event fees</div>
+        <div class="an-stat-sub">after production &amp; event fees ›</div>
       </div>
       <div class="an-card" style="margin-bottom:0;padding:14px;">
         <div class="an-stat-label">Margin</div>
         <div class="an-stat-val">{{ monthMarginStr }}</div>
         <div class="an-stat-sub">labor not set</div>
       </div>
-      <div class="an-card" style="margin-bottom:0;padding:14px;">
+      <div class="an-card" sc-camel-on-click="{{ goAnalyticsItems }}" style="margin-bottom:0;padding:14px;cursor:pointer;position:relative;">
         <div class="an-stat-label">Items Sold</div>
         <div class="an-stat-val">{{ monthItemsStr }}</div>
-        <div class="an-stat-sub">in {{ monthSalesCount }} orders</div>
+        <div class="an-stat-sub">in {{ monthSalesCount }} orders ›</div>
       </div>
     </div>
 
@@ -175,6 +175,91 @@ export function applyAnalyticsBehavior(template: string): string {
         <div style="font-size:13px;color:var(--color-neutral-500);line-height:1.5;">Plan and complete an event to see its return on investment.</div>
       </div>
     </sc-if>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ══ ANALYTICS · KEPT BREAKDOWN ══ -->
+<sc-if value="{{ onAnalyticsKept }}" hint-placeholder-val="{{ false }}">
+<div style="padding:14px 20px 28px">
+  <button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>
+  <h2 style="font-size:26px;margin:6px 0 2px">Where it went</h2>
+  <p class="text-muted" style="font-size:13px;margin-bottom:18px">{{ detailMonthLabel }}</p>
+
+  <div class="an-card">
+    <div class="an-list-item"><span>Revenue</span><span style="font-feature-settings:'tnum'">{{ monthRevStr }}</span></div>
+    <div class="an-list-item"><span>Production cost</span><span style="font-feature-settings:'tnum';color:#b0563e">−{{ monthCostStr }}</span></div>
+    <div class="an-list-item"><span>Booth fees</span><span style="font-feature-settings:'tnum';color:#b0563e">−{{ monthBoothFeesStr }}</span></div>
+    <div class="an-list-item" style="border-top:2px solid var(--color-text);margin-top:4px"><span style="font-weight:600">Kept</span><span style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ monthProfitStr }}</span></div>
+  </div>
+
+  <sc-if value="{{ hasCostRows }}" hint-placeholder-val="{{ false }}">
+    <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">Production cost by product</h6>
+    <div class="an-card">
+      <sc-for list="{{ costRows }}" as="row" hint-placeholder-count="4">
+        <div class="an-list-item">
+          <div style="min-width:0"><div style="font-size:14px">{{ row.name }}</div><div class="text-muted" style="font-size:12px">{{ row.sub }}</div></div>
+          <span style="font-feature-settings:'tnum';flex:none">{{ row.valueStr }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasBoothRows }}" hint-placeholder-val="{{ false }}">
+    <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">Booth fees</h6>
+    <div class="an-card">
+      <sc-for list="{{ boothRows }}" as="fee" hint-placeholder-count="1">
+        <div class="an-list-item">
+          <div style="min-width:0"><div style="font-size:14px">{{ fee.name }}</div><div class="text-muted" style="font-size:12px">{{ fee.dateStr }}</div></div>
+          <span style="font-feature-settings:'tnum';flex:none">{{ fee.feeStr }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasNoCostRows }}" hint-placeholder-val="{{ false }}">
+    <div class="text-muted" style="text-align:center;padding:40px 20px;font-size:13px">No sales recorded for this month yet.</div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ══ ANALYTICS · ITEMS SOLD BREAKDOWN ══ -->
+<sc-if value="{{ onAnalyticsItems }}" hint-placeholder-val="{{ false }}">
+<div style="padding:14px 20px 28px">
+  <button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>
+  <h2 style="font-size:26px;margin:6px 0 2px">Items sold</h2>
+  <p class="text-muted" style="font-size:13px;margin-bottom:18px">{{ monthItemsStr }} items in {{ monthSalesCount }} orders · {{ detailMonthLabel }}</p>
+
+  <sc-if value="{{ hasGroupRows }}" hint-placeholder-val="{{ false }}">
+    <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">By group</h6>
+    <div class="an-card">
+      <sc-for list="{{ groupRows }}" as="grp" hint-placeholder-count="4">
+        <div style="padding:12px 0;border-bottom:1px solid var(--color-divider)">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+            <span style="font-size:14px;font-weight:500">{{ grp.label }}</span>
+            <span style="font-feature-settings:'tnum';font-size:13px">{{ grp.unitsStr }} · {{ grp.shareStr }}</span>
+          </div>
+          <div style="height:8px;background:var(--color-neutral-100);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:{{ grp.barWidth }};background:var(--color-accent);border-radius:4px"></div>
+          </div>
+          <div class="text-muted" style="font-size:12px;margin-top:5px">{{ grp.sub }} · {{ grp.revStr }} revenue</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <h6 style="margin-bottom:8px;font-size:16px;font-weight:600">By product</h6>
+    <div class="an-card">
+      <sc-for list="{{ itemProductRows }}" as="row" hint-placeholder-count="5">
+        <div class="an-list-item">
+          <div style="min-width:0"><div style="font-size:14px">{{ row.name }}</div><div class="text-muted" style="font-size:12px">{{ row.revStr }} revenue</div></div>
+          <span style="font-feature-settings:'tnum';flex:none">{{ row.unitsStr }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasNoGroupRows }}" hint-placeholder-val="{{ false }}">
+    <div class="text-muted" style="text-align:center;padding:40px 20px;font-size:13px">No items sold in this month yet.</div>
   </sc-if>
 </div>
 </sc-if>
@@ -327,6 +412,53 @@ export function applyAnalyticsBehavior(template: string): string {
           };
         }).sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime());
 
+        const groupLabels = { bread: 'Bread', babka: 'Babka', cookie: 'Cookies', treat: 'Treats', other: 'Other' };
+        const productEntries = Object.entries(monthData.products);
+
+        const costRows = productEntries
+          .map(([productId, p]) => ({ productId, ...p }))
+          .filter(p => p.cost > 0)
+          .sort((a, b) => b.cost - a.cost)
+          .map(p => ({
+            name: p.name,
+            sub: p.items + ' sold · ' + (monthCost > 0 ? Math.round((p.cost / monthCost) * 100) : 0) + '% of production cost',
+            valueStr: '$' + p.cost.toFixed(2)
+          }));
+
+        const boothRows = events
+          .filter(ev => (ev.occurredAt || '').slice(0, 7) === selectedMonth)
+          .sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime())
+          .map(ev => ({
+            name: ev.name || 'Market',
+            dateStr: new Date(ev.occurredAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            feeStr: '$' + (Number(ev.boothFee) || 0).toFixed(2)
+          }));
+
+        const groupTotals = {};
+        productEntries.forEach(([productId, p]) => {
+          const recipe = (this.state.recipeRecords || []).find(r => r.id === productId);
+          const key = recipe && groupLabels[recipe.type] ? recipe.type : 'other';
+          if (!groupTotals[key]) groupTotals[key] = { items: 0, revenue: 0, products: 0 };
+          groupTotals[key].items += p.items;
+          groupTotals[key].revenue += p.revenue;
+          groupTotals[key].products += 1;
+        });
+        const groupEntries = Object.entries(groupTotals).sort((a, b) => b[1].items - a[1].items);
+        const maxGroupItems = groupEntries.reduce((max, [, g]) => Math.max(max, g.items), 0);
+        const groupRows = groupEntries.map(([key, g]) => ({
+          label: groupLabels[key] || 'Other',
+          unitsStr: g.items + (g.items === 1 ? ' unit' : ' units'),
+          shareStr: (monthData.items > 0 ? Math.round((g.items / monthData.items) * 100) : 0) + '%',
+          barWidth: (maxGroupItems > 0 ? Math.max(4, Math.round((g.items / maxGroupItems) * 100)) : 4) + '%',
+          revStr: '$' + g.revenue.toFixed(2),
+          sub: g.products + (g.products === 1 ? ' product' : ' products')
+        }));
+
+        const itemProductRows = productEntries
+          .map(([, p]) => p)
+          .sort((a, b) => b.items - a.items)
+          .map(p => ({ name: p.name, unitsStr: String(p.items), revStr: '$' + p.revenue.toFixed(2) }));
+
         const tab = this.state.analyticsTab || 'overview';
 
         return {
@@ -348,6 +480,18 @@ export function applyAnalyticsBehavior(template: string): string {
           monthItemsStr: String(monthData.items),
           monthSalesCount: String(monthData.count),
           monthRevDiff,
+          detailMonthLabel: formatMonth(selectedMonth),
+          monthCostStr: '$' + monthCost.toFixed(2),
+          monthBoothFeesStr: '$' + monthBoothFees.toFixed(2),
+          costRows,
+          hasCostRows: costRows.length > 0,
+          hasNoCostRows: costRows.length === 0,
+          boothRows,
+          hasBoothRows: boothRows.length > 0,
+          groupRows,
+          hasGroupRows: groupRows.length > 0,
+          hasNoGroupRows: groupRows.length === 0,
+          itemProductRows,
           insightText,
           chartBars,
           allTimeProductsArr,
@@ -358,7 +502,12 @@ export function applyAnalyticsBehavior(template: string): string {
           hasNoEvents: eventsData.length === 0
         };
       })(),
-      onAnalytics: screen === 'analytics', goAnalytics: () => this.setState(st => ({ screen: 'analytics', stack: [...st.stack, st.screen], analyticsTab: 'overview' })),`;
+      onAnalytics: screen === 'analytics', goAnalytics: () => this.setState(st => ({ screen: 'analytics', stack: [...st.stack, st.screen], analyticsTab: 'overview' })),
+      onAnalyticsKept: screen === 'analyticsKept',
+      onAnalyticsItems: screen === 'analyticsItems',
+      goAnalyticsKept: () => this.setState(st => ({ screen: 'analyticsKept', stack: [...st.stack, st.screen] })),
+      goAnalyticsItems: () => this.setState(st => ({ screen: 'analyticsItems', stack: [...st.stack, st.screen] })),
+      backFromAnalyticsDetail: () => this.setState(st => { const stack = [...st.stack]; const previous = stack.pop() || 'analytics'; return { screen: previous, stack }; }),`;
 
   let out = addCommerceBehavior(template).replace(/<!-- ══ ANALYTICS ══ -->[\s\S]*?<!-- ══/, () => newMarkup);
   
