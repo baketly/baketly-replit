@@ -9,7 +9,8 @@
 // Money and margins use the same basis as Analytics (revenue is the sum of
 // sale totals, cost is quantity x unit cost) so the two screens never disagree.
 
-const WELL_PRICED = 0.65;
+// Used only until the baker sets their own target during setup.
+const DEFAULT_TARGET_MARGIN = 0.7;
 
 const homeData = `    const home = (() => {
       const money2 = value => (value < 0 ? '-$' : '$') + Math.abs(value).toFixed(2);
@@ -20,7 +21,8 @@ const homeData = `    const home = (() => {
       const events = Array.isArray(st.eventRecords) ? st.eventRecords : [];
       const history = st.priceHistory || {};
       const removed = new Set(st.removedIngredientKeys || []);
-      const WELL = ${WELL_PRICED};
+      // the target the baker set during setup, not a number Baketly picked
+      const WELL = Math.min(0.95, Math.max(0.05, (Number(st.targetMargin) || ${DEFAULT_TARGET_MARGIN} * 100) / 100));
 
       // ---- what one unit of a recipe costs to make -------------------------
       const unitCostWith = (recipe, costOf) => {

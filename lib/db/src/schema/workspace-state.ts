@@ -149,6 +149,10 @@ export const workspaceStatePayloadSchema = z
     sampleDataLoaded: z.boolean().optional(),
     bakeryName: z.string().max(120).optional(),
     bakeryLocation: z.string().max(160).optional(),
+    bakerySpecialties: z.array(z.string().min(1).max(40)).max(20).optional(),
+    hourlyRate: z.number().finite().min(0).max(10_000).optional(),
+    targetMargin: z.number().finite().min(0).max(100).optional(),
+    onboardingComplete: z.boolean().optional(),
     priceHistory: z
       .record(z.string().min(1).max(80), z.array(pricePointSchema).max(12))
       .optional(),

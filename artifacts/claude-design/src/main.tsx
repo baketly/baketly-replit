@@ -7,6 +7,7 @@ import { scanIngredientLabel } from "./ingredient-label-scan";
 import { applyChatBehavior } from "./chat-template";
 import { applyWatchBehavior } from "./watch-template";
 import { applyHomeBehavior } from "./home-template";
+import { applyOnboardingBehavior } from "./onboarding-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
@@ -57,6 +58,10 @@ const durableFields = [
   "sampleDataLoaded",
   "bakeryName",
   "bakeryLocation",
+  "bakerySpecialties",
+  "hourlyRate",
+  "targetMargin",
+  "onboardingComplete",
   "priceHistory",
   "marketCheck",
   "recipeAmts",
@@ -239,10 +244,12 @@ window.__baketlyApplyRecipeRecords = (template) => {
     recipeTemplate = removeKnownPackagingPlaceholders(template);
   }
 
-  return applyHomeBehavior(
-    applyWatchBehavior(
+  return applyOnboardingBehavior(
+    applyHomeBehavior(
+      applyWatchBehavior(
       applyChatBehavior(
-        applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+          applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+        ),
       ),
     ),
   );
