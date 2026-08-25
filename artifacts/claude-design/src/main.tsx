@@ -78,6 +78,7 @@ const durableFields = [
   "removedPackagingKeys",
   "evQty",
   "evPicked",
+  "shopNeed",
   "evSold",
   "evStatus",
   "evSaved",

@@ -148,7 +148,9 @@ const eventController = `      ...(() => {
             evEnteringResults: false,
             evPickerOpen: false,
             evPickerSel: [],
-            eventDeleteOpen: false
+            eventDeleteOpen: false,
+            shopNeed: {},
+            shopNeedText: {}
           };
         });
 
@@ -429,15 +431,18 @@ function resetDraftOnNewEvent(template: string): string {
   return template.replace(
     anchor,
     () =>
-      "evQty: {}, evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, cashQty: {}, cashPaid: '', cashOrdersArr: [], evPicked: [], evPickerOpen: false, evPickerSel: [], evEnteringResults: false, eventDeleteOpen: false, screen: 'event', stack: st.stack }))",
+      "evQty: {}, evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, cashQty: {}, cashPaid: '', cashOrdersArr: [], evPicked: [], evPickerOpen: false, evPickerSel: [], evEnteringResults: false, eventDeleteOpen: false, shopNeed: {}, shopNeedText: {}, screen: 'event', stack: st.stack }))",
   );
 }
 
 /**
  * The shopping list was two hardcoded arrays — "Bread flour 16.5 kg" and so on
  * — while the screen above it claimed to be "generated from the lineup".
- * Nothing you changed in the lineup ever reached it. Work it out from the
- * recipes planned and how many of each you mean to bake.
+ * Nothing you changed in the lineup ever reached it.
+ *
+ * It is now worked out from the recipes planned, each amount can be overridden
+ * (you may already have half the flour), and each line says how many packages
+ * that comes to, rounded up to the next half package.
  */
 function shoppingFromLineup(template: string): string {
   const anchor = "        const allShop = [...this.SHOP_ING, ...this.SHOP_PACK];";
@@ -457,28 +462,73 @@ function shoppingFromLineup(template: string): string {
               const perBatch = Number((recipe.amounts || {})[key]) || 0;
               if (perBatch <= 0) return;
               const meta = this.ING_META[key] || {};
-              if (!ing[key]) ing[key] = { name: meta.name || key, unit: meta.unit || 'g', amount: 0 };
+              if (!ing[key]) ing[key] = { key, name: meta.name || key, unit: meta.unit || 'g', amount: 0 };
               ing[key].amount += perBatch * batches;
             });
             (recipe.packagingKeys || []).forEach(key => {
               const meta = this.PACK_META[key] || {};
-              if (!pack[key]) pack[key] = { name: meta.name || key, amount: 0 };
+              if (!pack[key]) pack[key] = { key, name: meta.name || key, unit: 'pc', amount: 0 };
               pack[key].amount += wanted;
             });
           });
-          const tidy = value => String(Math.round(value * 100) / 100);
-          const amountStr = (amount, unit) => {
-            if (unit === 'g' && amount >= 1000) return tidy(amount / 1000) + ' kg';
-            if (unit === 'ml' && amount >= 1000) return tidy(amount / 1000) + ' L';
-            if (unit === 'pc') return Math.ceil(amount) + (Math.ceil(amount) === 1 ? ' pc' : ' pcs');
-            return tidy(amount) + ' ' + unit;
+
+          const savedIng = this.state.ingredientRecords || {};
+          const savedPack = this.state.packagingRecords || {};
+          const overrides = this.state.shopNeed || {};
+          const drafts = this.state.shopNeedText || {};
+          const tidy = value => String(Math.round(value * 1000) / 1000);
+
+          // kilograms read better than four digits of grams, but the unit is
+          // chosen from the computed amount so it cannot flip while typing
+          const scaleFor = (amount, unit) => {
+            if (unit === 'g' && amount >= 1000) return { label: 'kg', factor: 1000 };
+            if (unit === 'ml' && amount >= 1000) return { label: 'L', factor: 1000 };
+            return { label: unit, factor: 1 };
           };
+
+          const decorate = (entry, perPackage) => {
+            const scale = scaleFor(entry.amount, entry.unit);
+            const need = overrides[entry.key] != null ? Number(overrides[entry.key]) : entry.amount;
+            const draft = drafts[entry.key];
+            const shown = draft != null ? String(draft) : tidy(need / scale.factor);
+            // half a package up, so the trip to the shop is never short
+            const packs = perPackage > 0 ? Math.ceil((need / perPackage) * 2) / 2 : 0;
+            return {
+              key: entry.key,
+              name: entry.name,
+              unitLabel: scale.label,
+              amountInput: shown,
+              packStr: perPackage > 0
+                ? (packs === 1 ? '1 pack' : tidy(packs) + ' packs')
+                : 'no pack size',
+              setAmount: e => {
+                const raw = String(e.target.value || '').slice(0, 12);
+                const parsed = Number(raw.replace(/[^0-9.]/g, ''));
+                this.setState(st => {
+                  const text = { ...(st.shopNeedText || {}) };
+                  const need = { ...(st.shopNeed || {}) };
+                  // emptying the box goes back to the amount the lineup asks for
+                  if (raw.trim() === '') { delete text[entry.key]; delete need[entry.key]; }
+                  else { text[entry.key] = raw; need[entry.key] = isFinite(parsed) ? Math.max(0, parsed) * scale.factor : entry.amount; }
+                  return { shopNeedText: text, shopNeed: need };
+                });
+              }
+            };
+          };
+
           return {
-            ing: Object.keys(ing).map(key => [ing[key].name, amountStr(ing[key].amount, ing[key].unit)]),
-            pack: Object.keys(pack).map(key => [pack[key].name, Math.ceil(pack[key].amount) + ' pcs'])
+            ing: Object.keys(ing).map(key => decorate(ing[key], Number((savedIng[key] || {}).packageSize) || 0)),
+            pack: Object.keys(pack).map(key => decorate(pack[key], Number((savedPack[key] || {}).unitsPerPack) || 0))
           };
         })();
-        const allShop = [...shopNeeds.ing, ...shopNeeds.pack];`,
+        const allShop = [...shopNeeds.ing, ...shopNeeds.pack];
+        const shopLine = (arr, off) => arr.map((item, i) => {
+          const idx = off + i, on = !!shopChecked[idx];
+          return { ...item,
+            toggle: () => this.setState(st => ({ shopChecked: { ...st.shopChecked, [idx]: !st.shopChecked[idx] } })),
+            boxBorder: on ? 'var(--color-accent)' : 'var(--color-neutral-300)', boxBg: on ? 'var(--color-accent)' : '#fff',
+            checkStroke: on ? '#fff' : 'transparent', textColor: on ? '#8a8578' : 'var(--color-text)' };
+        });`,
   );
 }
 
@@ -488,7 +538,7 @@ function bindShoppingRows(template: string): string {
   if (!template.includes(anchor)) throw new Error("Missing shopping row anchor");
   return template.replace(
     anchor,
-    () => "shopIng: shopRow(shopNeeds.ing, 0), shopPack: shopRow(shopNeeds.pack, shopNeeds.ing.length), shopHasNothing: allShop.length === 0,",
+    () => "shopIng: shopLine(shopNeeds.ing, 0), shopPack: shopLine(shopNeeds.pack, shopNeeds.ing.length), shopHasNothing: allShop.length === 0,",
   );
 }
 
@@ -500,6 +550,21 @@ function guardShoppingProgress(template: string): string {
     anchor,
     () => "shopProgress: (allShop.length ? Math.round(checkedCount / allShop.length * 100) : 0) + '%',",
   );
+}
+
+/** Each amount becomes editable, with the package count beside it. */
+function editableShoppingRows(template: string): string {
+  const oldTail =
+    '<span class="text-muted" style="font-size:13px;font-feature-settings:\'tnum\'">{{ s.qty }}</span>';
+  const newTail =
+    '<span style="display:flex;align-items:center;gap:7px;flex:none">' +
+    '<input class="input" value="{{ s.amountInput }}" sc-camel-on-change="{{ s.setAmount }}" inputmode="decimal" aria-label="Amount needed" style="width:64px;padding:6px 8px;text-align:right;font-feature-settings:\'tnum\';font-size:13px;border-radius:10px">' +
+    '<span class="text-muted" style="font-size:12px;min-width:20px">{{ s.unitLabel }}</span>' +
+    '<span class="text-muted" style="font-size:11px;font-feature-settings:\'tnum\';min-width:62px;text-align:right">{{ s.packStr }}</span>' +
+    "</span>";
+  const count = template.split(oldTail).length - 1;
+  if (count !== 2) throw new Error(`Expected 2 shopping amount cells, found ${count}`);
+  return template.split(oldTail).join(newTail);
 }
 
 /** Delete, offered on a finished market's breakdown as well. */
@@ -533,6 +598,7 @@ export function applyEventBehavior(template: string): string {
   out = shoppingFromLineup(out);
   out = bindShoppingRows(out);
   out = guardShoppingProgress(out);
+  out = editableShoppingRows(out);
   out = addLineupPicker(out);
   out = replaceEventButtons(out);
   out = removeLegacyCompletedBlock(out);
