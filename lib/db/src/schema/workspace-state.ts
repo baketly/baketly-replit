@@ -1,8 +1,14 @@
 import { jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { usersTable } from "./users";
 import { z } from "zod/v4";
 
+// One row per baker. The primary key is the user id, so a query for someone
+// else's workspace cannot be expressed by accident: there is nothing to ask for
+// but your own row.
 export const workspaceStateTable = pgTable("workspace_state", {
-  id: text("id").primaryKey(),
+  id: text("id")
+    .primaryKey()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
   data: jsonb("data").notNull().default({}),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

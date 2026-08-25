@@ -8,6 +8,7 @@ import { applyChatBehavior } from "./chat-template";
 import { applyWatchBehavior } from "./watch-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
+import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
 
 type WorkspaceState = Record<string, unknown>;
 type PersistenceStatus = "loading" | "ready" | "offline";
@@ -24,6 +25,8 @@ declare global {
     ) => Promise<import("./market-check").MarketCheck>;
     __baketlyMarketCheckDue: (check: unknown) => boolean;
     __baketlySuggestPlaces: (query: string) => Promise<string[]>;
+    __baketlySignOut: () => Promise<void>;
+    __baketlySignedInEmail: string;
     __baketlyAsk: (
       question: string,
       context: Record<string, unknown>,
@@ -262,3 +265,45 @@ function PersistenceBridge() {
 
 const root = document.getElementById("baketly-react-client");
 if (root) createRoot(root).render(<PersistenceBridge />);
+
+// The generated page replaces the body, so it cannot be relied on to leave a
+// mount point behind. The gate gets a container of its own.
+function AuthBoundary() {
+  const [user, setUser] = useState<SignedInUser | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    fetchCurrentUser().then((found) => {
+      // the generated Settings screen reads this to show who is signed in
+      window.__baketlySignedInEmail = found ? found.email : "";
+      setUser(found);
+      setChecked(true);
+    });
+  }, []);
+
+  // Nothing is shown until the answer is known, so the app never flashes into
+  // view for someone who turns out not to be signed in.
+  if (!checked) return null;
+  if (user) return null;
+  return (
+    <AuthGate
+      onSignedIn={() => {
+        // Reload so the workspace is fetched fresh as the signed-in baker.
+        window.location.reload();
+      }}
+    />
+  );
+}
+
+const gate = document.createElement("div");
+gate.id = "baketly-auth-gate";
+// The generated page rewrites document.body once it renders, which detaches
+// anything mounted inside it. Sitting on documentElement survives that, and the
+// observer puts it back if some later render removes it anyway.
+document.documentElement.appendChild(gate);
+new MutationObserver(() => {
+  if (!gate.isConnected) document.documentElement.appendChild(gate);
+}).observe(document.documentElement, { childList: true, subtree: true });
+createRoot(gate).render(<AuthBoundary />);
+
+window.__baketlySignOut = signOut;

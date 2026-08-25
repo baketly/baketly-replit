@@ -1,47 +1,20 @@
-import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
-import {
-  db,
-  workspaceStatePayloadSchema,
-  workspaceStateTable,
-} from "@workspace/db";
+import { Router, type IRouter, type Request, type Response } from "express";
+import { workspaceStatePayloadSchema } from "@workspace/db";
+import { requireUser } from "../lib/session";
+import { workspaceStore } from "../lib/workspace-store";
 
 const router: IRouter = Router();
 
-function getSessionId(req: Parameters<typeof router.get>[1] extends (
-  req: infer Request,
-  ...args: never[]
-) => unknown
-  ? Request
-  : never, res: Parameters<typeof router.get>[1] extends (
-  ...args: infer Args
-) => unknown
-  ? Args[1]
-  : never): string {
-  const existing = req.signedCookies?.baketly_session;
-  if (typeof existing === "string" && /^[0-9a-f-]{36}$/i.test(existing)) {
-    return existing;
-  }
-
-  const sessionId = randomUUID();
-  res.cookie("baketly_session", sessionId, {
-    httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 180,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    signed: true,
-  });
-  return sessionId;
-}
-
-router.get("/workspace-state", async (req, res): Promise<void> => {
-  const sessionId = getSessionId(req, res);
-  const [record] = await db
-    .select()
-    .from(workspaceStateTable)
-    .where(eq(workspaceStateTable.id, sessionId));
-
+/**
+ * A baker's whole workspace: ingredients, packaging, recipes, sales and events.
+ *
+ * Both routes sit behind requireUser and address the row by the id on the
+ * session's user. Nothing here reads a user id or email from the request, so
+ * there is no parameter to tamper with — a signed-in baker can only ever reach
+ * their own row.
+ */
+router.get("/workspace-state", requireUser, async (req: Request, res: Response): Promise<void> => {
+  const record = await workspaceStore.get(req.user!.id);
   const parsed = workspaceStatePayloadSchema.safeParse(record?.data ?? {});
   res.json({
     state: parsed.success ? parsed.data : {},
@@ -49,8 +22,7 @@ router.get("/workspace-state", async (req, res): Promise<void> => {
   });
 });
 
-router.put("/workspace-state", async (req, res): Promise<void> => {
-  const sessionId = getSessionId(req, res);
+router.put("/workspace-state", requireUser, async (req: Request, res: Response): Promise<void> => {
   const parsed = workspaceStatePayloadSchema.safeParse(req.body?.state);
   if (!parsed.success) {
     req.log.warn({ errors: parsed.error.flatten() }, "Invalid workspace state");
@@ -58,15 +30,7 @@ router.put("/workspace-state", async (req, res): Promise<void> => {
     return;
   }
 
-  const [record] = await db
-    .insert(workspaceStateTable)
-    .values({ id: sessionId, data: parsed.data })
-    .onConflictDoUpdate({
-      target: workspaceStateTable.id,
-      set: { data: parsed.data, updatedAt: new Date() },
-    })
-    .returning();
-
+  const record = await workspaceStore.put(req.user!.id, parsed.data);
   res.json({ state: record.data, updatedAt: record.updatedAt });
 });
 
