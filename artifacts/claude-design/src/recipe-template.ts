@@ -475,7 +475,9 @@ function replaceRecipeEditorLogic(template: string): string {
             const query = (this.state.ingSearch || '').toLowerCase();
             const selected = this.state.ingPickerSelected || [];
             const removedKeys = this.state.removedIngredientKeys || [];
-            const inPantry = Object.keys(this.ING_META).filter(k => !keys.includes(k) && !removedKeys.includes(k));
+            // the picker offers what the baker has in their pantry, not the
+            // sample products the page ships metadata for
+            const inPantry = Object.keys(this.state.ingredientRecords || {}).filter(k => !keys.includes(k) && !removedKeys.includes(k) && this.ING_META[k]);
             const presentCategories = [...new Set(inPantry.map(k => this.ING_META[k].category || 'other'))];
             const categoryFilter = this.state.ingPickerCategory || 'all';
             const available = inPantry.filter(k => (!query || this.ING_META[k].name.toLowerCase().includes(query)) && (categoryFilter === 'all' || (this.ING_META[k].category || 'other') === categoryFilter));
@@ -517,7 +519,7 @@ function replaceRecipeEditorLogic(template: string): string {
             const query = (this.state.packSearch || '').toLowerCase();
             const selected = this.state.packPickerSelected || [];
             const removedPackKeys = this.state.removedPackagingKeys || [];
-            const available = Object.keys(this.PACK_META).filter(k => !packs.includes(k) && !removedPackKeys.includes(k) && (!query || this.PACK_META[k].name.toLowerCase().includes(query)));
+            const available = Object.keys(this.state.packagingRecords || {}).filter(k => !packs.includes(k) && !removedPackKeys.includes(k) && this.PACK_META[k] && (!query || this.PACK_META[k].name.toLowerCase().includes(query)));
             return {
               packPickerItems: available.map(k => ({
                 name: this.PACK_META[k].name, meta: '$' + this.PACK_META[k].per.toFixed(2) + '/unit', check: selected.includes(k) ? '✓' : '',
