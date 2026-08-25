@@ -53,7 +53,18 @@ const singleSalesController = `      ...(() => {
 
         const takings = singles.reduce((sum, sale) => sum + sale.amount, 0);
 
+        // The squares above cover the whole month, counter and market alike.
+        // Saying how it splits stops the total looking like it disagrees with
+        // the list underneath it.
+        const monthSales = sales.filter(sale => (sale.occurredAt || '').slice(0, 7) === selected);
+        const marketsWithSales = new Set(monthSales.filter(sale => sale.eventId).map(sale => sale.eventId));
+        const orderWord = count => count + (count === 1 ? ' order' : ' orders');
+        const eventWord = count => count + (count === 1 ? ' event' : ' events');
+
         return {
+          monthOrdersSplit: marketsWithSales.size
+            ? orderWord(singles.length) + ' · ' + eventWord(marketsWithSales.size)
+            : orderWord(singles.length),
           singleSales: singles,
           hasSingleSales: singles.length > 0,
           hasNoSingleSales: singles.length === 0,
@@ -128,6 +139,51 @@ function addSingleSalesList(template: string): string {
   return template.replace(anchor, () => anchor + "\n" + listMarkup);
 }
 
+/** The Items Sold square says how the month splits, rather than one total. */
+function bindOrdersSplit(template: string): string {
+  const anchor = '<div class="an-stat-sub">in {{ monthSalesCount }} orders ›</div>';
+  if (!template.includes(anchor)) throw new Error("Missing orders subtitle anchor");
+  return template.replace(anchor, () => '<div class="an-stat-sub">{{ monthOrdersSplit }} ›</div>');
+}
+
+/**
+ * Products first, then groups. What sold is the question being asked; the
+ * grouping is context for it.
+ */
+function productsBeforeGroups(template: string): string {
+  const groupBlock = `    <div class="an-section-title">By group</div>
+    <div class="an-card">
+      <sc-for list="{{ groupRows }}" as="grp" hint-placeholder-count="4">
+        <div class="an-row">
+          <div class="an-row-main">
+            <div class="an-row-name">{{ grp.label }}</div>
+            <div class="an-row-sub">{{ grp.sub }} · {{ grp.revStr }} revenue</div>
+            <div class="an-mini-bar"><span style="width:{{ grp.barWidth }}"></span></div>
+          </div>
+          <div class="an-row-val">{{ grp.unitsStr }}<div class="an-row-sub" style="margin-top:3px">{{ grp.shareStr }}</div></div>
+        </div>
+      </sc-for>
+    </div>`;
+  const productBlock = `    <div class="an-section-title">By product</div>
+    <div class="an-card">
+      <sc-for list="{{ itemProductRows }}" as="row" hint-placeholder-count="5">
+        <div class="an-row">
+          <div class="an-row-main">
+            <div class="an-row-name">{{ row.name }}</div>
+            <div class="an-row-sub">{{ row.revStr }} revenue · {{ row.shareStr }} of items</div>
+            <div class="an-mini-bar"><span style="width:{{ row.barWidth }}"></span></div>
+          </div>
+          <div class="an-row-val">{{ row.unitsStr }}</div>
+        </div>
+      </sc-for>
+    </div>`;
+  const together = groupBlock + "\n\n" + productBlock;
+  if (!template.includes(together)) throw new Error("Missing items drill-down anchor");
+  return template.replace(together, () => productBlock + "\n\n" + groupBlock);
+}
+
 export function applySingleSalesBehavior(template: string): string {
-  return addSingleSalesList(addSingleSalesController(template));
+  return productsBeforeGroups(
+    bindOrdersSplit(addSingleSalesList(addSingleSalesController(template))),
+  );
 }
