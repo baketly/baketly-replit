@@ -84,6 +84,8 @@ const chatControllerLogic = `      ...(() => {
           askQ1: () => send(defaultPrompts[0]),
           askQ2: () => send(defaultPrompts[1]),
           askQ3: () => send(defaultPrompts[2]),
+          askLabel1: '"' + defaultPrompts[0] + '"',
+          askLabel3: '"' + defaultPrompts[2] + '"',
           askGo1: () => { this.go('chat'); send(defaultPrompts[0]); },
           askGo3: () => { this.go('chat'); send(defaultPrompts[2]); },
         };

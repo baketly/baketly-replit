@@ -6,6 +6,7 @@ import { applyAnalyticsBehavior } from "./analytics-template";
 import { scanIngredientLabel } from "./ingredient-label-scan";
 import { applyChatBehavior } from "./chat-template";
 import { applyWatchBehavior } from "./watch-template";
+import { applyHomeBehavior } from "./home-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
@@ -238,9 +239,11 @@ window.__baketlyApplyRecipeRecords = (template) => {
     recipeTemplate = removeKnownPackagingPlaceholders(template);
   }
 
-  return applyWatchBehavior(
-    applyChatBehavior(
-      applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+  return applyHomeBehavior(
+    applyWatchBehavior(
+      applyChatBehavior(
+        applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+      ),
     ),
   );
 };
