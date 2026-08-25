@@ -95,6 +95,7 @@ const eventRecordSchema = z
       )
       .max(20)
       .optional(),
+    status: z.enum(["planned", "completed"]).optional(),
     plannedItems: z
       .array(
         z.object({
@@ -197,6 +198,7 @@ export const workspaceStatePayloadSchema = z
     removedIngredientKeys: z.array(z.string().min(1).max(80)).max(100).optional(),
     removedPackagingKeys: z.array(z.string().min(1).max(80)).max(100).optional(),
     evQty: quantityRecordSchema.optional(),
+    evPicked: z.array(z.string().min(1).max(120)).max(200).optional(),
     evSold: quantityRecordSchema.optional(),
     evStatus: z.enum(["planned", "completed"]).optional(),
     evSaved: z.boolean().optional(),

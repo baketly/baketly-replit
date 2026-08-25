@@ -9,6 +9,7 @@ import { applyWatchBehavior } from "./watch-template";
 import { applyHomeBehavior } from "./home-template";
 import { applyOnboardingBehavior } from "./onboarding-template";
 import { applyCurrencyBehavior } from "./currency";
+import { applyEventBehavior } from "./event-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
@@ -76,6 +77,7 @@ const durableFields = [
   "removedIngredientKeys",
   "removedPackagingKeys",
   "evQty",
+  "evPicked",
   "evSold",
   "evStatus",
   "evSaved",
@@ -251,7 +253,9 @@ window.__baketlyApplyRecipeRecords = (template) => {
       applyHomeBehavior(
         applyWatchBehavior(
           applyChatBehavior(
-            applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+            applyEventBehavior(
+              applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+            ),
           ),
         ),
       ),

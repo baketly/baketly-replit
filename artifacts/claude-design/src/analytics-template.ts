@@ -676,8 +676,10 @@ export function applyAnalyticsBehavior(template: string): string {
 
         const nowMs = Date.now();
         const thisYear = now.getFullYear();
+        // History is what has been completed. Events with no status predate this
+        // screen and all have sales behind them, so they count as history too.
         const allPastEventStats = events
-          .filter(ev => new Date(ev.occurredAt || 0).getTime() <= nowMs)
+          .filter(ev => ev.status !== 'planned')
           .sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime())
           .map(buildEventStats);
         const allPastEvents = allPastEventStats
@@ -996,7 +998,13 @@ function addCommerceBehavior(template: string): string {
         const recipeCost = r => ((r.ingredientKeys || []).reduce((sum, key) => sum + (Number((r.amounts || {})[key]) || 0) * (this.ING_META[key] ? this.ING_META[key].per : 0), 0) / Math.max(1, Number(r.yield) || 1)) + (r.packagingKeys || []).reduce((sum, key) => sum + (this.PACK_META[key] ? this.PACK_META[key].per : 0), 0);
         const productFor = p => recipes.find(r => r.id === p.k || r.name === p.name);
         const eventProduct = p => { const r = productFor(p); return r ? { id: p.k, productId: r.id, name: r.name, price: Number(r.price) || 0, cost: recipeCost(r) } : { id: p.k, productId: p.k, name: p.name, price: Number(p.price) || 0, cost: Number(p.cost) || 0 }; };
-        const eventProducts = this.EV_META.map(eventProduct);
+        // The lineup used to be a fixed five products from the page's own
+        // metadata. It is now whatever the baker picked for this market.
+        const eventPicked = Array.isArray(this.state.evPicked) ? this.state.evPicked : [];
+        const eventProducts = eventPicked.map(id => {
+          const r = recipes.find(x => x.id === id);
+          return r ? { id: r.id, productId: r.id, name: r.name, price: Number(r.price) || 0, cost: recipeCost(r) } : null;
+        }).filter(Boolean);
         const eventId = this.state.eventCurrentId || 'event-base-farmers-market-2026-09-12';`,
   );
   out = out.replace(
