@@ -15,6 +15,7 @@ const eventController = `      ...(() => {
         const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
         const recipes = Array.isArray(this.state.recipeRecords) ? this.state.recipeRecords : [];
         const events = Array.isArray(this.state.eventRecords) ? this.state.eventRecords : [];
+        const sales = Array.isArray(this.state.saleRecords) ? this.state.saleRecords : [];
         const picked = Array.isArray(this.state.evPicked) ? this.state.evPicked : [];
         const eventId = this.state.eventCurrentId || '';
         const saved = events.find(ev => ev.id === eventId) || null;
@@ -96,6 +97,15 @@ const eventController = `      ...(() => {
         });
 
         // ---- completing -------------------------------------------------
+        // Sales rung up at this market are already recorded, so the results
+        // step starts from them rather than from a blank column.
+        const directSaleId = 'sale-' + eventId + '-direct';
+        const soldAlready = {};
+        sales.filter(sale => sale.eventId === eventId && sale.id !== directSaleId)
+          .forEach(sale => (sale.lineItems || []).forEach(line => {
+            soldAlready[line.productId] = (soldAlready[line.productId] || 0) + (Number(line.quantity) || 0);
+          }));
+
         const entering = this.state.evEnteringResults === true;
         const completed = (saved && saved.status === 'completed') || this.state.evStatus === 'completed';
 
@@ -104,7 +114,10 @@ const eventController = `      ...(() => {
           const day = event.occurredAt;
           const lines = (Array.isArray(st.evPicked) ? st.evPicked : []).map(id => {
             const recipe = recipes.find(r => r.id === id);
-            const quantity = Math.max(0, Math.round(Number((st.evSold || {})[id]) || 0));
+            // only what the till has not already recorded, or the market
+            // would count those sales twice
+            const entered = Math.max(0, Math.round(Number((st.evSold || {})[id]) || 0));
+            const quantity = Math.max(0, entered - (soldAlready[id] || 0));
             if (!recipe || quantity <= 0) return null;
             return {
               productId: recipe.id,
@@ -114,7 +127,7 @@ const eventController = `      ...(() => {
               unitCost: unitCost(recipe)
             };
           }).filter(Boolean);
-          const saleId = 'sale-' + event.id + '-direct';
+          const saleId = directSaleId;
           const others = (st.saleRecords || []).filter(sale => sale.id !== saleId);
           const total = lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
           return {
@@ -217,7 +230,7 @@ const eventController = `      ...(() => {
 
           // only offered once the market exists and is still ahead of you
           evCanComplete: !!saved && saved.status === 'planned' && !entering,
-          startCompleting: () => this.setState({ evEnteringResults: true }),
+          startCompleting: () => this.setState({ evEnteringResults: true, evSold: { ...soldAlready } }),
           evEnteringResults: entering,
           evNotEnteringResults: !entering,
           cancelCompleting: () => this.setState({ evEnteringResults: false }),

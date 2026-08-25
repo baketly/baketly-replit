@@ -200,6 +200,7 @@ export const workspaceStatePayloadSchema = z
     evQty: quantityRecordSchema.optional(),
     evPicked: z.array(z.string().min(1).max(120)).max(200).optional(),
     shopNeed: quantityRecordSchema.optional(),
+    saleEventId: z.string().max(120).optional(),
     evSold: quantityRecordSchema.optional(),
     evStatus: z.enum(["planned", "completed"]).optional(),
     evSaved: z.boolean().optional(),
