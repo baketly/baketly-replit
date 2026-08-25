@@ -30,7 +30,13 @@ const eventController = `      ...(() => {
 
         // ---- the picker ------------------------------------------------
         const staged = Array.isArray(this.state.evPickerSel) ? this.state.evPickerSel : [];
-        const available = recipes.filter(recipe => !picked.includes(recipe.id));
+        const query = (this.state.evPickerSearch || '').toLowerCase();
+        const notPicked = recipes.filter(recipe => !picked.includes(recipe.id));
+        const presentTypes = [...new Set(notPicked.map(recipe => recipe.type || 'treat'))];
+        const typeFilter = this.state.evPickerCategory || 'all';
+        const available = notPicked.filter(recipe =>
+          (!query || String(recipe.name || '').toLowerCase().includes(query))
+          && (typeFilter === 'all' || (recipe.type || 'treat') === typeFilter));
         const pickerItems = available.map(recipe => ({
           name: recipe.name || 'Untitled recipe',
           meta: CUR + (Number(recipe.price) || 0).toFixed(2) + ' · costs ' + CUR + unitCost(recipe).toFixed(2),
@@ -170,20 +176,37 @@ const eventController = `      ...(() => {
 
         return {
           evPickerOpen: this.state.evPickerOpen === true,
-          openEvPicker: () => this.setState({ evPickerOpen: true, evPickerSel: [] }),
-          closeEvPicker: () => this.setState({ evPickerOpen: false, evPickerSel: [] }),
+          openEvPicker: () => this.setState({ evPickerOpen: true, evPickerSel: [], evPickerSearch: '', evPickerCategory: 'all' }),
+          closeEvPicker: () => this.setState({ evPickerOpen: false, evPickerSel: [], evPickerSearch: '', evPickerCategory: 'all' }),
+          dismissEvPicker: e => { if (!e || e.target === e.currentTarget) this.setState({ evPickerOpen: false, evPickerSel: [], evPickerSearch: '', evPickerCategory: 'all' }); },
+          swallowClick: e => { if (e && e.stopPropagation) e.stopPropagation(); },
+          evPickerSearch: this.state.evPickerSearch || '',
+          setEvPickerSearch: e => this.setState({ evPickerSearch: e.target.value }),
+          evPickerCats: [['all', 'All'], ['bread', 'Bread'], ['babka', 'Babka'], ['cookie', 'Cookies'], ['treat', 'Treats']]
+            .filter(([key]) => key === 'all' || presentTypes.includes(key))
+            .map(([key, label]) => ({
+              label,
+              set: () => this.setState({ evPickerCategory: key }),
+              border: typeFilter === key ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+              bg: typeFilter === key ? 'var(--color-accent)' : '#fff',
+              color: typeFilter === key ? '#fff' : '#8a8578'
+            })),
           evPickerItems: pickerItems,
           evPickerHasItems: pickerItems.length > 0,
           evPickerEmpty: pickerItems.length === 0,
           evPickerEmptyText: recipes.length === 0
             ? 'No recipes yet. Add one in the Pantry and it will show up here.'
             : 'Every recipe is already in this lineup.',
-          evPickerAddLabel: staged.length === 1 ? 'Add 1 product' : 'Add ' + staged.length + ' products',
+          evPickerAddLabel: staged.length === 0
+            ? 'Select recipes'
+            : (staged.length === 1 ? 'Add 1 product' : 'Add ' + staged.length + ' products'),
           evPickerCanAdd: staged.length > 0,
           addPickedRecipes: () => this.setState(st => ({
             evPicked: [...(Array.isArray(st.evPicked) ? st.evPicked : []), ...(Array.isArray(st.evPickerSel) ? st.evPickerSel : [])],
             evPickerOpen: false,
-            evPickerSel: []
+            evPickerSel: [],
+            evPickerSearch: '',
+            evPickerCategory: 'all'
           })),
           evLineupEmpty: picked.length === 0,
 
@@ -208,6 +231,19 @@ const eventController = `      ...(() => {
             saleRecords: (st.saleRecords || []).filter(sale => sale.eventId !== st.eventCurrentId),
             eventDeleteOpen: false,
             evSaved: false,
+            screen: 'markets',
+            stack: []
+          })),
+
+          // the same removal, reachable from a finished market's breakdown
+          pastDeleteOpen: this.state.pastDeleteOpen === true,
+          askDeletePastEvent: () => this.setState({ pastDeleteOpen: true }),
+          cancelDeletePastEvent: () => this.setState({ pastDeleteOpen: false }),
+          pastDeleteName: (events.find(ev => ev.id === (this.state.analyticsEventId || '')) || {}).name || 'this event',
+          confirmDeletePastEvent: () => this.setState(st => ({
+            eventRecords: (st.eventRecords || []).filter(e => e.id !== st.analyticsEventId),
+            saleRecords: (st.saleRecords || []).filter(sale => sale.eventId !== st.analyticsEventId),
+            pastDeleteOpen: false,
             screen: 'markets',
             stack: []
           })),
@@ -247,30 +283,36 @@ function addLineupPicker(template: string): string {
 }
 
 const pickerMarkup = `<sc-if value="{{ evPickerOpen }}" hint-placeholder-val="{{ false }}">
-<div style="position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:rgba(38,34,28,0.38)">
-  <div style="width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;background:var(--color-bg);border-radius:20px 20px 0 0;padding:18px 20px 22px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <h6 style="margin:0">Add from recipes</h6>
-      <button class="btn btn-ghost" sc-camel-on-click="{{ closeEvPicker }}" style="min-height:40px;padding:4px 10px">×</button>
+<div sc-camel-on-click="{{ dismissEvPicker }}" style="position:absolute;inset:0;background:color-mix(in srgb,var(--color-neutral-900) 45%,transparent);display:flex;align-items:center;justify-content:center;padding:18px;z-index:40">
+  <div sc-camel-on-click="{{ swallowClick }}" style="width:min(100%, 380px);max-height:78%;display:flex;flex-direction:column;background:var(--color-bg);border:1px solid var(--color-divider);border-radius:20px;padding:20px;box-shadow:var(--shadow-lg);box-sizing:border-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex:none">
+      <h4>Add from recipes</h4>
+      <button sc-camel-on-click="{{ closeEvPicker }}" aria-label="Close recipe picker" style="width:30px;height:30px;border:0;background:transparent;color:var(--color-text);font-size:24px;line-height:1;cursor:pointer">×</button>
     </div>
-    <p class="text-muted" style="font-size:12px;margin-bottom:10px">Pick what you plan to bake. You set the quantities next.</p>
-    <div style="flex:1;overflow:auto;min-height:0;margin-bottom:12px">
+    <div style="background:#fff;border:1px solid var(--color-neutral-300);border-radius:14px;padding:0 12px;display:flex;align-items:center;gap:9px;margin-bottom:10px;flex:none">
+      <svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="#b9b4a8" stroke-width="2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+      <input value="{{ evPickerSearch }}" sc-camel-on-change="{{ setEvPickerSearch }}" placeholder="Search your recipes" style="flex:1;border:0;outline:none;background:none;font-family:var(--font-body);font-size:13px;color:var(--color-text);padding:11px 0">
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;overflow-x:auto;scrollbar-width:none;flex:none">
+      <sc-for list="{{ evPickerCats }}" as="cf" hint-placeholder-count="3">
+        <button sc-camel-on-click="{{ cf.set }}" style="height:30px;padding:0 11px;flex:none;font-family:var(--font-body);font-size:11px;font-weight:600;border-radius:999px;cursor:pointer;border:1px solid {{ cf.border }};background:{{ cf.bg }};color:{{ cf.color }}">{{ cf.label }}</button>
+      </sc-for>
+    </div>
+    <div style="flex:1;overflow:auto;min-height:0;display:flex;flex-direction:column">
       <sc-if value="{{ evPickerEmpty }}" hint-placeholder-val="{{ false }}">
-        <div class="text-muted" style="font-size:13px;padding:14px 0">{{ evPickerEmptyText }}</div>
+        <div class="text-muted" style="font-size:13px;padding:14px 4px">{{ evPickerEmptyText }}</div>
       </sc-if>
-      <sc-for list="{{ evPickerItems }}" as="pick" hint-placeholder-count="3">
-        <div class="bk-row" sc-camel-on-click="{{ pick.toggle }}" style="display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--color-divider);border-radius:12px;margin-bottom:8px;cursor:pointer;background:{{ pick.rowBg }}">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px">{{ pick.name }}</div>
-            <div class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">{{ pick.meta }}</div>
-          </div>
-          <span style="flex:none;color:var(--color-accent-700);font-weight:600">{{ pick.check }}</span>
+      <sc-for list="{{ evPickerItems }}" as="ip" hint-placeholder-count="4">
+        <div class="bk-row" sc-camel-on-click="{{ ip.toggle }}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 4px;border-top:1px solid var(--color-divider);cursor:pointer;font-size:14px;min-height:44px;box-sizing:border-box">
+          <span>{{ ip.name }}</span>
+          <span style="display:flex;align-items:center;gap:10px">
+            <span class="text-muted" style="font-feature-settings:'tnum';font-size:12px">{{ ip.meta }}</span>
+            <span style="width:20px;height:20px;border:1px solid var(--color-accent);border-radius:6px;display:grid;place-items:center;color:var(--color-accent);font-weight:700">{{ ip.check }}</span>
+          </span>
         </div>
       </sc-for>
     </div>
-    <sc-if value="{{ evPickerCanAdd }}" hint-placeholder-val="{{ false }}">
-      <button class="btn btn-primary btn-block" sc-camel-on-click="{{ addPickedRecipes }}" style="min-height:48px">{{ evPickerAddLabel }}</button>
-    </sc-if>
+    <button class="btn btn-primary btn-block" sc-camel-on-click="{{ addPickedRecipes }}" style="margin-top:14px;min-height:44px">{{ evPickerAddLabel }}</button>
   </div>
 </div>
 </sc-if>
@@ -391,8 +433,106 @@ function resetDraftOnNewEvent(template: string): string {
   );
 }
 
+/**
+ * The shopping list was two hardcoded arrays — "Bread flour 16.5 kg" and so on
+ * — while the screen above it claimed to be "generated from the lineup".
+ * Nothing you changed in the lineup ever reached it. Work it out from the
+ * recipes planned and how many of each you mean to bake.
+ */
+function shoppingFromLineup(template: string): string {
+  const anchor = "        const allShop = [...this.SHOP_ING, ...this.SHOP_PACK];";
+  if (!template.includes(anchor)) throw new Error("Missing shopping list anchor");
+  return template.replace(
+    anchor,
+    () => `        const shopNeeds = (() => {
+          const ing = {}, pack = {};
+          eventProducts.forEach(product => {
+            const recipe = recipes.find(r => r.id === product.id);
+            const wanted = Math.max(0, Number(evQty[product.id]) || 0);
+            if (!recipe || wanted <= 0) return;
+            const made = Math.max(1, Number(recipe.yield) || 1);
+            // you cannot bake half a batch, so shop for whole ones
+            const batches = Math.ceil(wanted / made);
+            (recipe.ingredientKeys || []).forEach(key => {
+              const perBatch = Number((recipe.amounts || {})[key]) || 0;
+              if (perBatch <= 0) return;
+              const meta = this.ING_META[key] || {};
+              if (!ing[key]) ing[key] = { name: meta.name || key, unit: meta.unit || 'g', amount: 0 };
+              ing[key].amount += perBatch * batches;
+            });
+            (recipe.packagingKeys || []).forEach(key => {
+              const meta = this.PACK_META[key] || {};
+              if (!pack[key]) pack[key] = { name: meta.name || key, amount: 0 };
+              pack[key].amount += wanted;
+            });
+          });
+          const tidy = value => String(Math.round(value * 100) / 100);
+          const amountStr = (amount, unit) => {
+            if (unit === 'g' && amount >= 1000) return tidy(amount / 1000) + ' kg';
+            if (unit === 'ml' && amount >= 1000) return tidy(amount / 1000) + ' L';
+            if (unit === 'pc') return Math.ceil(amount) + (Math.ceil(amount) === 1 ? ' pc' : ' pcs');
+            return tidy(amount) + ' ' + unit;
+          };
+          return {
+            ing: Object.keys(ing).map(key => [ing[key].name, amountStr(ing[key].amount, ing[key].unit)]),
+            pack: Object.keys(pack).map(key => [pack[key].name, Math.ceil(pack[key].amount) + ' pcs'])
+          };
+        })();
+        const allShop = [...shopNeeds.ing, ...shopNeeds.pack];`,
+  );
+}
+
+/** Point the two lists at the computed needs. */
+function bindShoppingRows(template: string): string {
+  const anchor = "shopIng: shopRow(this.SHOP_ING, 0), shopPack: shopRow(this.SHOP_PACK, this.SHOP_ING.length),";
+  if (!template.includes(anchor)) throw new Error("Missing shopping row anchor");
+  return template.replace(
+    anchor,
+    () => "shopIng: shopRow(shopNeeds.ing, 0), shopPack: shopRow(shopNeeds.pack, shopNeeds.ing.length), shopHasNothing: allShop.length === 0,",
+  );
+}
+
+/** Progress over an empty list is NaN%. */
+function guardShoppingProgress(template: string): string {
+  const anchor = "shopProgress: Math.round(checkedCount / allShop.length * 100) + '%',";
+  if (!template.includes(anchor)) throw new Error("Missing shopping progress anchor");
+  return template.replace(
+    anchor,
+    () => "shopProgress: (allShop.length ? Math.round(checkedCount / allShop.length * 100) : 0) + '%',",
+  );
+}
+
+/** Delete, offered on a finished market's breakdown as well. */
+function addPastEventDelete(template: string): string {
+  const anchor =
+    '  <sc-if value="{{ hasNoEventDetail }}" hint-placeholder-val="{{ false }}">\n    <div class="text-muted" style="text-align:center;padding:44px 20px;font-size:13px">That event is no longer available.</div>\n  </sc-if>';
+  if (!template.includes(anchor)) throw new Error("Missing event breakdown end anchor");
+  return template.replace(
+    anchor,
+    () =>
+      '  <sc-if value="{{ hasEventDetail }}" hint-placeholder-val="{{ false }}">\n' +
+      '    <button class="btn btn-ghost btn-block" sc-camel-on-click="{{ askDeletePastEvent }}" style="margin-top:18px;min-height:44px;color:#b0563e">Delete event</button>\n' +
+      "  </sc-if>\n" +
+      anchor +
+      "\n" +
+      '<sc-if value="{{ pastDeleteOpen }}" hint-placeholder-val="{{ false }}">\n' +
+      '<div style="position:absolute;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:24px;background:color-mix(in srgb,var(--color-neutral-900) 45%,transparent)">\n' +
+      '  <div style="width:100%;max-width:360px;background:var(--color-bg);border-radius:18px;padding:20px;box-shadow:var(--shadow-lg)">\n' +
+      '    <h6 style="margin:0 0 6px">Delete this event?</h6>\n' +
+      '    <p style="font-size:14px;line-height:1.5;margin-bottom:16px">{{ pastDeleteName }} and any sales recorded against it will be removed. This cannot be undone.</p>\n' +
+      '    <div style="display:flex;gap:10px">\n' +
+      '      <button class="btn btn-secondary" sc-camel-on-click="{{ cancelDeletePastEvent }}" style="flex:1;min-height:46px">Keep it</button>\n' +
+      '      <button class="btn btn-primary" sc-camel-on-click="{{ confirmDeletePastEvent }}" style="flex:1;min-height:46px;background:#b0563e;border-color:#b0563e">Delete</button>\n' +
+      "    </div>\n  </div>\n</div>\n</sc-if>",
+  );
+}
+
 export function applyEventBehavior(template: string): string {
   let out = addEventController(template);
+  out = addPastEventDelete(out);
+  out = shoppingFromLineup(out);
+  out = bindShoppingRows(out);
+  out = guardShoppingProgress(out);
   out = addLineupPicker(out);
   out = replaceEventButtons(out);
   out = removeLegacyCompletedBlock(out);

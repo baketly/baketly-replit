@@ -955,15 +955,14 @@ function onlyPlusAddsToSale(template: string): string {
   );
 }
 
+// Costs belong low on the screen but still above the buttons that act on
+// them, so the save button stays the last thing you reach.
 function moveEventCostsToBottom(template: string): string {
-  const anchor = "  </sc-if>\n</div>\n</sc-if>\n\n<!-- ══ SHOPPING LIST ══ -->";
+  const anchor = '  <sc-if value="{{ evPlanned }}" hint-placeholder-val="{{ true }}">';
   if (!template.includes(anchor)) {
-    throw new Error("Missing stable event screen end anchor");
+    throw new Error("Missing stable event button anchor");
   }
-  return template.replace(
-    anchor,
-    () => "  </sc-if>\n" + eventCostEditorMarkup + "</div>\n</sc-if>\n\n<!-- ══ SHOPPING LIST ══ -->",
-  );
+  return template.replace(anchor, () => eventCostEditorMarkup + anchor);
 }
 
 function linkNoticedCards(template: string): string {
