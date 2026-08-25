@@ -9,6 +9,7 @@ import { applyWatchBehavior } from "./watch-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
+import { buildSampleWorkspace, emptyWorkspace } from "./sample-data";
 
 type WorkspaceState = Record<string, unknown>;
 type PersistenceStatus = "loading" | "ready" | "offline";
@@ -27,6 +28,11 @@ declare global {
     __baketlySuggestPlaces: (query: string) => Promise<string[]>;
     __baketlySignOut: () => Promise<void>;
     __baketlySignedInEmail: string;
+    __baketlySampleWorkspace: (
+      ingredientMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
+      packagingMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
+    ) => Record<string, unknown>;
+    __baketlyEmptyWorkspace: () => Record<string, unknown>;
     __baketlyAsk: (
       question: string,
       context: Record<string, unknown>,
@@ -47,6 +53,7 @@ declare global {
 const durableFields = [
   "price",
   "chatMsgs",
+  "sampleDataLoaded",
   "bakeryName",
   "bakeryLocation",
   "priceHistory",
@@ -307,3 +314,5 @@ new MutationObserver(() => {
 createRoot(gate).render(<AuthBoundary />);
 
 window.__baketlySignOut = signOut;
+window.__baketlySampleWorkspace = buildSampleWorkspace;
+window.__baketlyEmptyWorkspace = emptyWorkspace;

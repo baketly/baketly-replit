@@ -1,6 +1,6 @@
 import { INGREDIENT_CATEGORIES } from "./ingredient-template";
 
-const defaultRecipes = [
+export const defaultRecipes = [
   {
     id: "sourdough-cheddar-loaf",
     name: "Sourdough Cheddar Loaf",
@@ -116,7 +116,7 @@ const defaultRecipes = [
 const blankRecipeSource =
   "{ name: '', type: 'treat', icon: 'cake', price: 0, yield: 12, ingredientKeys: [], packagingKeys: [], amounts: {} }";
 
-const packagingDefaults = {
+export const packagingDefaults = {
   babkabag: { name: "Mini babka bag", supplier: "Uline", packPrice: 11, unitsPerPack: 50 },
   breadbag: { name: "Bread bag", supplier: "Uline", packPrice: 17, unitsPerPack: 100 },
   caketainer: { name: "Cake-Tainer", supplier: "Amazon", packPrice: 8.5, unitsPerPack: 50 },
@@ -279,7 +279,7 @@ function addRecipeState(template: string): string {
   return template.replace(
     "recipeAmts: { flour: 500, butter: 200, choc: 250, milk: 250, eggs: 3 },\n    evQty:",
     `recipeAmts: { flour: 500, butter: 200, choc: 250, milk: 250, eggs: 3 },
-     recipeRecords: ${JSON.stringify(defaultRecipes)},
+     recipeRecords: [],
      activeRecipeId: 'mini-chocolate-babka', recipeDraft: null,
      packagingRecords: {},
       removedPackagingKeys: [],
@@ -324,7 +324,8 @@ function addPackagingController(template: string): string {
         this.PACK_META = this.PACK_META || {};
         const saved = this.state.packagingRecords || {};
         const removedPackagingKeys = new Set(this.state.removedPackagingKeys || []);
-        const keys = [...new Set([...Object.keys(defaults), ...Object.keys(this.PACK_META || {}), ...Object.keys(saved)])].filter(key => !removedPackagingKeys.has(key));
+        // as with ingredients: only packaging this baker has saved
+        const keys = Object.keys(saved).filter(key => !removedPackagingKeys.has(key));
         const normalize = (key, draft) => {
           const base = defaults[key] || { name: (this.PACK_META[key] && this.PACK_META[key].name) || key, supplier: '', packPrice: 0, unitsPerPack: 1 };
           const source = { ...base, ...(saved[key] || {}), ...(draft || {}) };
@@ -408,8 +409,9 @@ function replaceRecipeList(template: string): string {
             open: () => this.setState(st => ({ screen: 'recipeEditor', stack: [...st.stack, st.screen], activeRecipeId: r.id, recipeDraft: null, recipeDeleteOpen: false, ingPickerOpen: false, packPickerOpen: false }))
           };
         });
-        const ingredientCount = [...new Set([...Object.keys(this.ING_META || {}), ...Object.keys(this.state.ingredientRecords || {})])].filter(key => !(this.state.removedIngredientKeys || []).includes(key)).length;
-        const packagingCount = Object.keys(this.PACK_META || {}).filter(key => key !== 'sticker' && !(this.state.removedPackagingKeys || []).includes(key)).length;
+        // count what the baker has saved, matching the list below it
+        const ingredientCount = Object.keys(this.state.ingredientRecords || {}).filter(key => !(this.state.removedIngredientKeys || []).includes(key)).length;
+        const packagingCount = Object.keys(this.state.packagingRecords || {}).filter(key => key !== 'sticker' && !(this.state.removedPackagingKeys || []).includes(key)).length;
         const recFilters =`,
     )
     .replace(

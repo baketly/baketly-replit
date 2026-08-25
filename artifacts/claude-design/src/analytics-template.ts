@@ -1,5 +1,3 @@
-import { buildDemoCommerce } from "./demo-data";
-
 export function applyAnalyticsBehavior(template: string): string {
   const newMarkup = `<!-- ══ ANALYTICS ══ -->
 <style>
@@ -979,7 +977,7 @@ function linkNoticedCards(template: string): string {
 function addCommerceBehavior(template: string): string {
   let out = template.replace(
     "evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0,",
-    () => { const demo = buildDemoCommerce(); return "evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, saleRecords: " + JSON.stringify(demo.sales) + ", eventRecords: " + JSON.stringify(demo.events) + ", analyticsTab: 'overview', analyticsMonth: '', eventCurrentId: 'event-base-farmers-market-2026-09-12', eventName: 'Base Farmers Market', eventDate: '2026-09-12', eventBoothFee: 125,"; },
+    () => { return "evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, saleRecords: [], eventRecords: [], analyticsTab: 'overview', analyticsMonth: '', eventCurrentId: 'event-base-farmers-market-2026-09-12', eventName: 'Base Farmers Market', eventDate: '2026-09-12', eventBoothFee: 125,"; },
   );
   out = out.replace(
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px"><h2 style="font-size:28px;margin:0">Markets &amp; orders</h2><button class="btn btn-primary" sc-camel-on-click="{{ goEventNew }}" style="min-height:44px">+ New event</button></div>',

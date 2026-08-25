@@ -146,6 +146,7 @@ const marketProductSchema = z
 
 export const workspaceStatePayloadSchema = z
   .object({
+    sampleDataLoaded: z.boolean().optional(),
     bakeryName: z.string().max(120).optional(),
     bakeryLocation: z.string().max(160).optional(),
     priceHistory: z

@@ -13,7 +13,7 @@ export const INGREDIENT_CATEGORIES: ReadonlyArray<readonly [string, string]> = [
 ];
 const categoryKeys = INGREDIENT_CATEGORIES.map(([key]) => key);
 
-const defaultIngredientDetails = {
+export const defaultIngredientDetails = {
   flour: { supplier: "Costco", category: "flour", packagePrice: 12.99, packageSize: 10000, unit: "g", kcal: 364, protein: 10.3, carbs: 76.3, fat: 1 },
   butter: { supplier: "Costco", category: "dairy", packagePrice: 4.28, packageSize: 454, unit: "g", kcal: 717, protein: 0.9, carbs: 0.1, fat: 81 },
   choc: { supplier: "Costco", category: "chocolate", packagePrice: 9.65, packageSize: 2000, unit: "g", kcal: 479, protein: 4.2, carbs: 63, fat: 24 },
@@ -102,7 +102,10 @@ function addIngredientController(template: string): string {
         const detailDefaults = ${defaults};
         const savedIngredients = this.state.ingredientRecords || {};
         const removedIngredientKeys = new Set(this.state.removedIngredientKeys || []);
-        const ingredientKeys = [...new Set([...Object.keys(this.ING_META || {}), ...Object.keys(savedIngredients)])].filter(key => !removedIngredientKeys.has(key));
+        // Only what this baker has saved. The page ships with product metadata
+        // for the sample bakery, and treating those keys as pantry items is what
+        // used to put nine ingredients in a brand new account.
+        const ingredientKeys = Object.keys(savedIngredients).filter(key => !removedIngredientKeys.has(key));
         const units = ['g', 'kg', 'oz', 'lb', 'ml', 'pc'];
         const categories = ${JSON.stringify(categoryKeys)};
         const normalize = (key, draft) => {

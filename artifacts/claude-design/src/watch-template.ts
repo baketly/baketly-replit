@@ -246,6 +246,9 @@ function addWatchController(template: string): string {
 
 // Where the baker sells, asked for once during onboarding and editable later.
 function addLocationFields(template: string): string {
+  const sampleBlock =
+    '<div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;padding:13px 14px;margin-bottom:16px"><div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">Sample bakery</div><sc-if value="{{ sampleNotLoaded }}" hint-placeholder-val="{{ true }}"><div class="text-muted" style="font-size:12px;line-height:1.5;margin-bottom:10px">Fill the app with a demo pantry, recipes and six months of sales, to try things out. It replaces what is here.</div><button class="btn btn-secondary" sc-camel-on-click="{{ loadSampleData }}" style="min-height:38px;font-size:12px">Load sample data</button></sc-if><sc-if value="{{ sampleLoaded }}" hint-placeholder-val="{{ false }}"><div class="text-muted" style="font-size:12px;line-height:1.5;margin-bottom:10px">Sample data is loaded. Clearing it empties the pantry, recipes, sales and events.</div><button class="btn btn-secondary" sc-camel-on-click="{{ clearSampleData }}" style="min-height:38px;font-size:12px;color:#b0563e">Clear everything</button></sc-if></div>';
+
   const accountBlock =
     '<sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}"><div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;padding:13px 14px;margin-bottom:16px"><div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">Signed in as</div><div style="font-size:14px;font-weight:500;overflow-wrap:anywhere;margin-bottom:10px">{{ signedInEmail }}</div><button class="btn btn-secondary" sc-camel-on-click="{{ signOutNow }}" style="min-height:38px;font-size:12px">Sign out</button></div></sc-if>';
 
@@ -256,6 +259,7 @@ function addLocationFields(template: string): string {
     settingsField,
     () =>
       accountBlock +
+      sampleBlock +
       '<div class="field"><label>Bakery name</label><input class="input" value="{{ bakeryName }}" sc-camel-on-change="{{ setBakeryName }}" aria-label="Bakery name" placeholder="e.g. Base Street Bakes"></div>' +
       '<div class="field"><label>Where you sell</label><input class="input" value="{{ bakeryLocation }}" sc-camel-on-change="{{ setBakeryLocation }}" aria-label="Where you sell" placeholder="Start typing a town or address…" autocomplete="off"><sc-if value="{{ hasLocationSuggestions }}" hint-placeholder-val="{{ false }}"><div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;margin-top:6px;overflow:hidden;box-shadow:var(--shadow-sm)"><sc-for list="{{ locationSuggestions }}" as="sug" hint-placeholder-count="0"><div class="bk-row" sc-camel-on-click="{{ sug.choose }}" style="padding:11px 13px;font-size:13px;border-top:1px solid var(--color-divider);cursor:pointer">{{ sug.place }}</div></sc-for></div></sc-if><div class="text-muted" style="font-size:12px;margin-top:5px">Used to compare your prices with bakeries near you.</div></div>',
   );
@@ -276,6 +280,10 @@ const profileController = `      bakeryName: this.state.bakeryName || '',
       signedInEmail: window.__baketlySignedInEmail || '',
       signedIn: !!window.__baketlySignedInEmail,
       signOutNow: () => window.__baketlySignOut(),
+      sampleLoaded: this.state.sampleDataLoaded === true,
+      sampleNotLoaded: this.state.sampleDataLoaded !== true,
+      loadSampleData: () => this.setState(window.__baketlySampleWorkspace(this.ING_META || {}, this.PACK_META || {})),
+      clearSampleData: () => this.setState(window.__baketlyEmptyWorkspace()),
       bakeryLocation: this.state.bakeryLocation || '',
       locationSuggestions: (Array.isArray(this.state.locationSuggestions) ? this.state.locationSuggestions : []).map(place => ({
         place,
