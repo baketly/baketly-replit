@@ -57,8 +57,9 @@ const chatControllerLogic = `      ...(() => {
           });
         };
 
+        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
         const gettingStartedPrompts = ['What can Baketly do for me?', 'What should I add first?', 'How should I price what I bake?'];
-        const workingPrompts = ['Which product earns the least?', 'Where am I losing margin?', 'How do I hit $1,500 at the next market?'];
+        const workingPrompts = ['Which product earns the least?', 'Where am I losing margin?', 'How do I hit ' + CUR + '1,500 at the next market?'];
         const defaultPrompts = justStarting ? gettingStartedPrompts : workingPrompts;
         const followUps = Array.isArray(this.state.chatFollowUps) && this.state.chatFollowUps.length
           ? this.state.chatFollowUps

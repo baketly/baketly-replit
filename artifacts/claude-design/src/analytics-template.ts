@@ -1,4 +1,5 @@
 export function applyAnalyticsBehavior(template: string): string {
+  template = bindUpcomingRow(template);
   const newMarkup = `<!-- ══ ANALYTICS ══ -->
 <style>
 .an-tabs { display: flex; margin: 0 -20px 16px; padding: 0 10px; border-bottom: 1px solid var(--color-divider); }
@@ -386,6 +387,7 @@ export function applyAnalyticsBehavior(template: string): string {
 <!-- ══`;
 
   const newLogic = `      ...(() => {
+        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
         const events = Array.isArray(this.state.eventRecords) ? this.state.eventRecords : [];
         const sales = Array.isArray(this.state.saleRecords) ? this.state.saleRecords : [];
 
@@ -511,11 +513,11 @@ export function applyAnalyticsBehavior(template: string): string {
            const target = currentCost > 0 ? currentCost / .4 : 0;
           return {
             ...p,
-            revStr: '$' + p.revenue.toFixed(2),
-             costStr: '$' + p.cost.toFixed(2),
-              profitStr: (p.revenue - p.cost < 0 ? '-$' : '$') + Math.abs(p.revenue - p.cost).toFixed(2),
+            revStr: CUR + p.revenue.toFixed(2),
+             costStr: CUR + p.cost.toFixed(2),
+              profitStr: (p.revenue - p.cost < 0 ? ('-' + CUR) : CUR) + Math.abs(p.revenue - p.cost).toFixed(2),
              mixStr: monthRev > 0 ? Math.round(p.revenue / monthRev * 100) + '% of sales' : '0% of sales',
-             guidance: recipe && Number(recipe.price) < target ? 'Current price is below a 60% margin target (~$' + target.toFixed(2) + ').' : (recipe ? 'Current saved price supports the 60% margin target.' : 'Historical product; no saved recipe price to compare.'),
+             guidance: recipe && Number(recipe.price) < target ? ('Current price is below a 60% margin target (~' + CUR) + target.toFixed(2) + ').' : (recipe ? 'Current saved price supports the 60% margin target.' : 'Historical product; no saved recipe price to compare.'),
             marginStr: margin + '%',
             marginColor: margin >= 60 ? 'var(--color-neutral-700)' : '#b0563e'
           };
@@ -533,26 +535,26 @@ export function applyAnalyticsBehavior(template: string): string {
             const evRoi = evCost > 0 ? Math.round((evProfit / evCost) * 100) : 0;
           return {
             ...ev,
-            revStr: '$' + evRev.toFixed(2),
-           costStr: '$' + evCost.toFixed(2),
-             productionCostStr: '$' + productionCost.toFixed(2),
-             boothFeeStr: '$' + boothFee.toFixed(2),
-             allCostsStr: '$' + (boothFee + otherCosts).toFixed(2),
-             costLines: [{ label: 'Booth fee', amountStr: '$' + boothFee.toFixed(2) }].concat(
+            revStr: CUR + evRev.toFixed(2),
+           costStr: CUR + evCost.toFixed(2),
+             productionCostStr: CUR + productionCost.toFixed(2),
+             boothFeeStr: CUR + boothFee.toFixed(2),
+             allCostsStr: CUR + (boothFee + otherCosts).toFixed(2),
+             costLines: [{ label: 'Booth fee', amountStr: CUR + boothFee.toFixed(2) }].concat(
                (Array.isArray(ev.otherCosts) ? ev.otherCosts : []).map(cost => ({
                  label: String((cost && cost.label) || 'Other cost'),
-                 amountStr: '$' + (Number(cost && cost.amount) || 0).toFixed(2)
+                 amountStr: CUR + (Number(cost && cost.amount) || 0).toFixed(2)
                }))
              ),
-             otherCostsStr: '$' + otherCosts.toFixed(2),
+             otherCostsStr: CUR + otherCosts.toFixed(2),
              hasOtherCosts: otherCosts > 0,
              otherCostRows: (Array.isArray(ev.otherCosts) ? ev.otherCosts : []).map(cost => ({
                label: String((cost && cost.label) || 'Other cost'),
-               amountStr: '$' + (Number(cost && cost.amount) || 0).toFixed(2)
+               amountStr: CUR + (Number(cost && cost.amount) || 0).toFixed(2)
              })),
             revenueValue: evRev,
             profitValue: evProfit,
-            profitStr: (evProfit >= 0 ? '$' : '-$') + Math.abs(evProfit).toFixed(2),
+            profitStr: (evProfit >= 0 ? CUR : ('-' + CUR)) + Math.abs(evProfit).toFixed(2),
             profitColor: evProfit >= 0 ? 'var(--color-text)' : '#b0563e',
             marginStr: evMargin + '%',
              roiStr: evRoi + '%',
@@ -612,8 +614,8 @@ export function applyAnalyticsBehavior(template: string): string {
           rateWidth: row.planned > 0 ? Math.min(100, Math.max(3, Math.round((row.items / row.planned) * 100))) + '%' : '0%',
           hasRate: row.planned > 0,
           unitsStr: row.items + (row.items === 1 ? ' unit' : ' units'),
-          revStr: '$' + row.revenue.toFixed(2),
-          profitStr: (row.revenue - row.cost < 0 ? '-$' : '$') + Math.abs(row.revenue - row.cost).toFixed(2),
+          revStr: CUR + row.revenue.toFixed(2),
+          profitStr: (row.revenue - row.cost < 0 ? ('-' + CUR) : CUR) + Math.abs(row.revenue - row.cost).toFixed(2),
           barWidth: (maxEventItemRev > 0 ? Math.max(3, Math.round((row.revenue / maxEventItemRev) * 100)) : 3) + '%'
         }));
 
@@ -626,8 +628,8 @@ export function applyAnalyticsBehavior(template: string): string {
           .map(ev => ({
             name: ev.name || 'Market',
             dateStr: new Date(ev.occurredAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              + (otherCostTotal(ev) > 0 ? ' · booth $' + (Number(ev.boothFee) || 0).toFixed(2) + ' + other $' + otherCostTotal(ev).toFixed(2) : ''),
-            feeStr: '$' + ((Number(ev.boothFee) || 0) + otherCostTotal(ev)).toFixed(2)
+              + (otherCostTotal(ev) > 0 ? (' · booth ' + CUR) + (Number(ev.boothFee) || 0).toFixed(2) + (' + other ' + CUR) + otherCostTotal(ev).toFixed(2) : ''),
+            feeStr: CUR + ((Number(ev.boothFee) || 0) + otherCostTotal(ev)).toFixed(2)
           }));
 
         const groupTotals = {};
@@ -646,7 +648,7 @@ export function applyAnalyticsBehavior(template: string): string {
           unitsStr: g.items + (g.items === 1 ? ' unit' : ' units'),
           shareStr: (monthData.items > 0 ? Math.round((g.items / monthData.items) * 100) : 0) + '%',
           barWidth: (maxGroupItems > 0 ? Math.max(4, Math.round((g.items / maxGroupItems) * 100)) : 4) + '%',
-          revStr: '$' + g.revenue.toFixed(2),
+          revStr: CUR + g.revenue.toFixed(2),
           sub: g.products + (g.products === 1 ? ' product' : ' products')
         }));
 
@@ -656,9 +658,9 @@ export function applyAnalyticsBehavior(template: string): string {
         const maxProductRevenue = revenueEntries.reduce((max, product) => Math.max(max, product.revenue), 0);
         const monthProductRows = revenueEntries.map(product => ({
           name: product.name,
-          sub: product.items + ' sold · ' + '$' + product.cost.toFixed(2) + ' to make · '
+          sub: product.items + ' sold · ' + CUR + product.cost.toFixed(2) + ' to make · '
             + (product.revenue > 0 ? Math.round(((product.revenue - product.cost) / product.revenue) * 100) : 0) + '% margin',
-          valueStr: '$' + product.revenue.toFixed(2),
+          valueStr: CUR + product.revenue.toFixed(2),
           barWidth: (maxProductRevenue > 0 ? Math.max(3, Math.round((product.revenue / maxProductRevenue) * 100)) : 3) + '%'
         }));
 
@@ -667,7 +669,7 @@ export function applyAnalyticsBehavior(template: string): string {
         const itemProductRows = itemEntries.map(p => ({
           name: p.name,
           unitsStr: String(p.items),
-          revStr: '$' + p.revenue.toFixed(2),
+          revStr: CUR + p.revenue.toFixed(2),
           shareStr: (monthData.items > 0 ? Math.round((p.items / monthData.items) * 100) : 0) + '%',
           barWidth: (maxProductItems > 0 ? Math.max(3, Math.round((p.items / maxProductItems) * 100)) : 3) + '%'
         }));
@@ -728,7 +730,7 @@ export function applyAnalyticsBehavior(template: string): string {
           const worst = rankedPastEvents[rankedPastEvents.length - 1];
           const gap = best.profitValue - worst.profitValue;
           marketsInsightText = best.name + ' is your most profitable market, keeping ' + best.profitStr + ' at a ' + best.roiStr + ' return'
-            + (gap > 0 ? ' — about $' + gap.toFixed(2) + ' more than ' + worst.name + '.' : '.');
+            + (gap > 0 ? (' — about ' + CUR) + gap.toFixed(2) + ' more than ' + worst.name + '.' : '.');
         }
 
         const tab = this.state.analyticsTab || 'overview';
@@ -746,15 +748,15 @@ export function applyAnalyticsBehavior(template: string): string {
           analyticsMonth: selectedMonth,
           setAnalyticsMonth: (e) => this.setState({ analyticsMonth: e.target.value }),
           monthOptions,
-          monthRevStr: '$' + monthRev.toFixed(2),
-           monthProfitStr: (monthProfit < 0 ? '-$' : '$') + Math.abs(monthProfit).toFixed(2),
+          monthRevStr: CUR + monthRev.toFixed(2),
+           monthProfitStr: (monthProfit < 0 ? ('-' + CUR) : CUR) + Math.abs(monthProfit).toFixed(2),
           monthMarginStr: monthMargin + '%',
           monthItemsStr: String(monthData.items),
           monthSalesCount: String(monthData.count),
           monthRevDiff,
           detailMonthLabel: formatMonth(selectedMonth),
-          monthCostStr: '$' + monthCost.toFixed(2),
-          monthBoothFeesStr: '$' + monthBoothFees.toFixed(2),
+          monthCostStr: CUR + monthCost.toFixed(2),
+          monthBoothFeesStr: CUR + monthBoothFees.toFixed(2),
           monthProductRows,
           hasMonthProductRows: monthProductRows.length > 0,
           hasNoMonthProductRows: monthProductRows.length === 0,
@@ -790,14 +792,14 @@ export function applyAnalyticsBehavior(template: string): string {
           eventSellThroughWidth: Math.min(100, Math.max(3, sellThroughPct)) + '%',
           eventDetailName: eventDetail ? eventDetail.name : '',
           eventDetailDateStr: eventDetail ? eventDetail.dateStr : '',
-          eventDetailRevStr: eventDetail ? eventDetail.revStr : '$0.00',
-          eventDetailProductionStr: eventDetail ? eventDetail.productionCostStr : '$0.00',
-          eventDetailCostsStr: eventDetail ? eventDetail.allCostsStr : '$0.00',
+          eventDetailRevStr: eventDetail ? eventDetail.revStr : (CUR + '0.00'),
+          eventDetailProductionStr: eventDetail ? eventDetail.productionCostStr : (CUR + '0.00'),
+          eventDetailCostsStr: eventDetail ? eventDetail.allCostsStr : (CUR + '0.00'),
           eventDetailCostLines: eventDetail ? eventDetail.costLines : [],
           eventCostsOpen: this.state.eventCostsOpen === true,
           eventCostsToggleLabel: this.state.eventCostsOpen === true ? 'Hide the breakdown' : 'Show the breakdown',
           toggleEventCosts: () => this.setState(st => ({ eventCostsOpen: !st.eventCostsOpen })),
-          eventDetailProfitStr: eventDetail ? eventDetail.profitStr : '$0.00',
+          eventDetailProfitStr: eventDetail ? eventDetail.profitStr : (CUR + '0.00'),
           eventDetailProfitColor: eventDetail ? eventDetail.profitColor : 'var(--color-text)',
           eventDetailRoiStr: eventDetail ? eventDetail.roiStr : '0%',
           eventDetailMarginStr: eventDetail ? eventDetail.marginStr : '0%',
@@ -1027,7 +1029,14 @@ function addCommerceBehavior(template: string): string {
              remove: () => this.setState(st => ({ eventOtherCosts: (st.eventOtherCosts || []).filter((_, i) => i !== index) }))
            })),
            hasEventOtherCosts: draftOtherCosts.length > 0,
-           eventOtherCostTotalStr: '$' + draftOtherCostTotal.toFixed(2),
+           evCardMonth: (() => { const d = new Date(this.state.eventDate || Date.now()); return isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { month: 'short' }); })(),
+           evCardDay: (() => { const d = new Date(this.state.eventDate || Date.now()); return isNaN(d.getTime()) ? '' : String(d.getDate()); })(),
+           evCardSub: (() => {
+             const planned = Object.keys(this.state.evQty || {}).filter(key => (Number((this.state.evQty || {})[key]) || 0) > 0).length;
+             const booth = Number(this.state.eventBoothFee) || 0;
+             return planned + (planned === 1 ? ' product' : ' products') + ' · booth ' + (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$') + booth.toFixed(2);
+           })(),
+           eventOtherCostTotalStr: (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$') + draftOtherCostTotal.toFixed(2),
            addEventOtherCost: () => this.setState(st => ({ eventOtherCosts: [...(Array.isArray(st.eventOtherCosts) ? st.eventOtherCosts : []), { label: '', amount: '' }].slice(0, 20) })),
            setEventName: e => this.setState({ eventName: e.target.value.slice(0, 160) }), setEventDate: e => this.setState({ eventDate: e.target.value }), setEventBoothFee: e => this.setState({ eventBoothFee: Math.max(0, Number(e.target.value) || 0) }),
            startNewEvent: () => this.setState(st => ({ eventOtherCosts: [], eventCurrentId: 'event-' + Date.now().toString(36), eventName: 'New market', eventDate: new Date().toISOString().slice(0, 10), eventBoothFee: 0, evQty: {}, evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, cashQty: {}, cashPaid: '', cashOrdersArr: [], screen: 'event', stack: st.stack })),
@@ -1108,5 +1117,20 @@ function addCommerceBehavior(template: string): string {
   );
   return onlyPlusAddsToSale(
     moveEventCostsToBottom(linkNoticedCards(replacePastEvents(removeCashTracker(out)))),
+  );
+}
+
+// The Upcoming row on Markets was fixed text: a Sep 12 date, "Base Farmers
+// Market", and "Saturday Market Prep · 5 products · booth $125". Only the
+// estimate beside it was ever bound, so the row described a market nobody had
+// planned and its booth fee stayed in dollars whatever the currency was set to.
+function bindUpcomingRow(template: string): string {
+  const anchor =
+    "<div style=\"text-align:center;flex:none;width:44px\"><div style=\"font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent)\">Sep</div><div style=\"font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1;font-feature-settings:'tnum'\">12</div></div>\n    <div style=\"flex:1\"><div style=\"font-family:var(--font-heading);font-weight:600;font-size:17px\">Base Farmers Market</div><div class=\"text-muted\" style=\"font-size:12px\">Saturday Market Prep · 5 products · booth $125</div></div>";
+  if (!template.includes(anchor)) throw new Error("Missing Markets upcoming row anchor");
+  return template.replace(
+    anchor,
+    () =>
+      "<div style=\"text-align:center;flex:none;width:44px\"><div style=\"font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent)\">{{ evCardMonth }}</div><div style=\"font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1;font-feature-settings:'tnum'\">{{ evCardDay }}</div></div>\n    <div style=\"flex:1\"><div style=\"font-family:var(--font-heading);font-weight:600;font-size:17px\">{{ eventName }}</div><div class=\"text-muted\" style=\"font-size:12px\">{{ evCardSub }}</div></div>",
   );
 }

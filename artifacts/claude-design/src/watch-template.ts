@@ -7,7 +7,8 @@
 // grounded /api/market-check research.
 
 const watchController = `      ...(() => {
-        const money = value => (value < 0 ? '-$' : '$') + Math.abs(value).toFixed(2);
+        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
+        const money = value => (value < 0 ? ('-' + CUR) : CUR) + Math.abs(value).toFixed(2);
         const history = this.state.priceHistory || {};
         const removed = new Set(this.state.removedIngredientKeys || []);
 
@@ -59,7 +60,7 @@ const watchController = `      ...(() => {
           .map(row => ({
             name: row.name,
             costLine: money(row.before) + ' → ' + money(row.now),
-            deltaStr: (row.delta > 0 ? '+' : '−') + '$' + Math.abs(row.delta).toFixed(2),
+            deltaStr: (row.delta > 0 ? '+' : '−') + CUR + Math.abs(row.delta).toFixed(2),
             deltaColor: row.delta > 0 ? '#b0563e' : 'var(--color-accent-700)'
           }));
 

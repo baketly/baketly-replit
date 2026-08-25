@@ -320,6 +320,7 @@ function replacePackagingDeleteDialog(template: string): string {
 function addPackagingController(template: string): string {
   const defaults = JSON.stringify(packagingDefaults);
   const controller = `      ...(() => {
+        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
         const defaults = ${defaults};
         this.PACK_META = this.PACK_META || {};
         const saved = this.state.packagingRecords || {};
@@ -348,11 +349,11 @@ function addPackagingController(template: string): string {
         return {
           packagingItems: keys.filter(key => defaults[key]?.visible !== false).map(key => {
             const item = normalize(key); const per = item.unitsPerPack > 0 ? item.packPrice / item.unitsPerPack : 0;
-             return { key, name: item.name || 'Unnamed packaging', packageLine: (item.supplier || 'No supplier') + ' · $' + item.packPrice.toFixed(2) + ' / ' + item.unitsPerPack + ' pcs', costLine: '$' + per.toFixed(2) + '/pc', open: () => this.setState(st => ({ screen: 'packagingEdit', stack: [...st.stack, st.screen], activePackagingKey: key, packagingDraft: normalize(key), packagingDeleteOpen: false, packagingSaveError: '' })), remove: () => deletePackaging(key) };
+             return { key, name: item.name || 'Unnamed packaging', packageLine: (item.supplier || 'No supplier') + (' · ' + CUR) + item.packPrice.toFixed(2) + ' / ' + item.unitsPerPack + ' pcs', costLine: CUR + per.toFixed(2) + '/pc', open: () => this.setState(st => ({ screen: 'packagingEdit', stack: [...st.stack, st.screen], activePackagingKey: key, packagingDraft: normalize(key), packagingDeleteOpen: false, packagingSaveError: '' })), remove: () => deletePackaging(key) };
           }),
           packagingTitle: activeKey ? 'Edit packaging' : 'New packaging',
           packagingName: active.name, packagingSupplier: active.supplier, packagingPackPrice: draftText('packPrice'), packagingUnitsPerPack: draftText('unitsPerPack'),
-          packagingCostPer: '$' + (active.unitsPerPack > 0 ? active.packPrice / active.unitsPerPack : 0).toFixed(2),
+          packagingCostPer: CUR + (active.unitsPerPack > 0 ? active.packPrice / active.unitsPerPack : 0).toFixed(2),
           packagingSaveLabel: activeKey ? 'Save changes' : 'Save packaging',
           packagingSaveError: this.state.packagingSaveError || '',
           packagingExisting: !!activeKey,
@@ -387,7 +388,8 @@ function replaceRecipeList(template: string): string {
   return template
     .replace(
       /        let list = this\.RECIPES[\s\S]*?        const recFilters =/,
-      () => `        const records = Array.isArray(this.state.recipeRecords) ? this.state.recipeRecords : [];
+      () => `        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
+        const records = Array.isArray(this.state.recipeRecords) ? this.state.recipeRecords : [];
         const recipeUnitCost = r => {
           const yieldCount = Math.max(1, Number(r.yield) || 1);
           const ingredientCost = (r.ingredientKeys || []).reduce((sum, key) => sum + (Number((r.amounts || {})[key]) || 0) * (this.ING_META[key] ? this.ING_META[key].per : 0), 0);
@@ -400,8 +402,8 @@ function replaceRecipeList(template: string): string {
         const recipeList = list.map(r => {
           const cost = recipeUnitCost(r);
           return {
-            name: r.name, sell: '$' + Number(r.price).toFixed(2),
-            costLine: 'costs $' + cost.toFixed(2),
+            name: r.name, sell: CUR + Number(r.price).toFixed(2),
+            costLine: 'costs ' + CUR + cost.toFixed(2),
             tag: cost < r.price * 0.35 ? 'healthy' : 'review price',
             tagCls: cost < r.price * 0.35 ? 'tag-neutral' : 'tag-accent',
             slot: 'rc-' + r.id,
@@ -422,6 +424,7 @@ function replaceRecipeList(template: string): string {
 
 function replaceRecipeEditorLogic(template: string): string {
   const editorLogic = `      ...(() => {
+        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
         const records = Array.isArray(this.state.recipeRecords) ? this.state.recipeRecords : [];
         const blankRecipe = ${blankRecipeSource};
         const isNewRecipe = !this.state.activeRecipeId;
@@ -453,7 +456,7 @@ function replaceRecipeEditorLogic(template: string): string {
           recipeIngs: keys.map(k => {
             const m = this.ING_META[k];
             return {
-              name: m.name, unit: m.unit, amt: String(amt(k)), costStr: '$' + (amt(k) * m.per).toFixed(2),
+              name: m.name, unit: m.unit, amt: String(amt(k)), costStr: CUR + (amt(k) * m.per).toFixed(2),
               set: e => { const value = parseFloat(e.target.value); updateRecipe({ amounts: { ...amounts, [k]: isNaN(value) || value < 0 ? 0 : value } }); },
               remove: () => updateRecipe({ ingredientKeys: keys.filter(x => x !== k) })
             };
@@ -485,7 +488,7 @@ function replaceRecipeEditorLogic(template: string): string {
               ingPickerItems: available.map(k => {
                 const m = this.ING_META[k];
                 return {
-                  name: m.name, meta: '$' + m.per.toFixed(m.per < 0.05 ? 4 : 2) + '/' + (m.unit || 'unit'), check: selected.includes(k) ? '✓' : '',
+                  name: m.name, meta: CUR + m.per.toFixed(m.per < 0.05 ? 4 : 2) + '/' + (m.unit || 'unit'), check: selected.includes(k) ? '✓' : '',
                   toggle: () => this.setState(st => ({ ingPickerSelected: (st.ingPickerSelected || []).includes(k) ? (st.ingPickerSelected || []).filter(x => x !== k) : [...(st.ingPickerSelected || []), k] }))
                 };
               }),
@@ -501,7 +504,7 @@ function replaceRecipeEditorLogic(template: string): string {
             };
           })(),
           recipePacks: packs.map(k => ({
-            label: this.PACK_META[k].name + ' $' + this.PACK_META[k].per.toFixed(2),
+            label: this.PACK_META[k].name + (' ' + CUR) + this.PACK_META[k].per.toFixed(2),
             remove: e => { if (e && e.stopPropagation) e.stopPropagation(); updateRecipe({ packagingKeys: packs.filter(x => x !== k) }); }
           })),
           packPickerOpen: this.state.packPickerOpen === true,
@@ -522,7 +525,7 @@ function replaceRecipeEditorLogic(template: string): string {
             const available = Object.keys(this.state.packagingRecords || {}).filter(k => !packs.includes(k) && !removedPackKeys.includes(k) && this.PACK_META[k] && (!query || this.PACK_META[k].name.toLowerCase().includes(query)));
             return {
               packPickerItems: available.map(k => ({
-                name: this.PACK_META[k].name, meta: '$' + this.PACK_META[k].per.toFixed(2) + '/unit', check: selected.includes(k) ? '✓' : '',
+                name: this.PACK_META[k].name, meta: CUR + this.PACK_META[k].per.toFixed(2) + '/unit', check: selected.includes(k) ? '✓' : '',
                 toggle: () => this.setState(st => ({ packPickerSelected: (st.packPickerSelected || []).includes(k) ? (st.packPickerSelected || []).filter(x => x !== k) : [...(st.packPickerSelected || []), k] }))
               })),
               packPickerEmpty: available.length === 0,
@@ -531,11 +534,11 @@ function replaceRecipeEditorLogic(template: string): string {
           })(),
           newRecipeMode: isNewRecipe,
           existingRecipeMode: !isNewRecipe,
-          recipeSell: '$' + Number(recipe.price || 0).toFixed(2),
+          recipeSell: CUR + Number(recipe.price || 0).toFixed(2),
           recipeSellInput: Number(recipe.price || 0).toFixed(2),
           setRecipeSell: e => { const value = parseFloat(e.target.value); updateRecipe({ price: isNaN(value) || value < 0 ? 0 : value }); },
-          recipeCostPer: '$' + per.toFixed(2),
-          recipeBatch: '$' + (ingTotal + packPer * y).toFixed(2),
+          recipeCostPer: CUR + per.toFixed(2),
+          recipeBatch: CUR + (ingTotal + packPer * y).toFixed(2),
           recipeMargin: Math.round((Number(recipe.price || 0) - per) / Math.max(Number(recipe.price || 0), 1) * 100) + '%',
           macroKcal: keys.length ? '402' : '0',
           macroProtein: keys.length ? '9g' : '0g',
@@ -608,8 +611,8 @@ function replaceRecipeEditorMarkup(template: string): string {
       '',
     )
     .replace(
-      '<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Sells today</div><sc-if value="{{ newRecipeMode }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:3px;font-family:var(--font-heading);font-weight:600;font-size:26px"><span>$</span><input class="input" value="{{ recipeSellInput }}" sc-camel-on-change="{{ setRecipeSell }}" inputmode="decimal" aria-label="Selling price" style="width:82px;padding:3px 4px;font:inherit;text-align:right;border-radius:8px"></div></sc-if><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ true }}"><div style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:\'tnum\'">{{ recipeSell }}</div></sc-if></div>',
-      '<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Sells for</div><div style="display:flex;align-items:center;gap:3px;font-family:var(--font-heading);font-weight:600;font-size:26px"><span>$</span><input class="input" value="{{ recipeSellInput }}" sc-camel-on-change="{{ setRecipeSell }}" inputmode="decimal" aria-label="Selling price" style="width:82px;padding:3px 4px;font:inherit;text-align:right;border-radius:8px"></div></div>',
+      '<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Sells today</div><sc-if value="{{ newRecipeMode }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:3px;font-family:var(--font-heading);font-weight:600;font-size:26px"><span>{{ currencySymbol }}</span><input class="input" value="{{ recipeSellInput }}" sc-camel-on-change="{{ setRecipeSell }}" inputmode="decimal" aria-label="Selling price" style="width:82px;padding:3px 4px;font:inherit;text-align:right;border-radius:8px"></div></sc-if><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ true }}"><div style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:\'tnum\'">{{ recipeSell }}</div></sc-if></div>',
+      '<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Sells for</div><div style="display:flex;align-items:center;gap:3px;font-family:var(--font-heading);font-weight:600;font-size:26px"><span>{{ currencySymbol }}</span><input class="input" value="{{ recipeSellInput }}" sc-camel-on-change="{{ setRecipeSell }}" inputmode="decimal" aria-label="Selling price" style="width:82px;padding:3px 4px;font:inherit;text-align:right;border-radius:8px"></div></div>',
     )
     .replace(
       '<div class="text-muted" style="font-size:12px;margin-top:6px">Margin = what you keep of the {{ recipeSell }} price after ingredients and packaging.</div>',

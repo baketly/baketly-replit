@@ -8,6 +8,7 @@ import { applyChatBehavior } from "./chat-template";
 import { applyWatchBehavior } from "./watch-template";
 import { applyHomeBehavior } from "./home-template";
 import { applyOnboardingBehavior } from "./onboarding-template";
+import { applyCurrencyBehavior } from "./currency";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
@@ -59,6 +60,7 @@ const durableFields = [
   "bakeryName",
   "bakeryLocation",
   "bakerySpecialties",
+  "currency",
   "hourlyRate",
   "targetMargin",
   "onboardingComplete",
@@ -244,11 +246,13 @@ window.__baketlyApplyRecipeRecords = (template) => {
     recipeTemplate = removeKnownPackagingPlaceholders(template);
   }
 
-  return applyOnboardingBehavior(
-    applyHomeBehavior(
-      applyWatchBehavior(
-      applyChatBehavior(
-          applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+  return applyCurrencyBehavior(
+    applyOnboardingBehavior(
+      applyHomeBehavior(
+        applyWatchBehavior(
+          applyChatBehavior(
+            applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+          ),
         ),
       ),
     ),

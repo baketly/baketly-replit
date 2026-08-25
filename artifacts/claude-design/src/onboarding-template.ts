@@ -23,6 +23,7 @@ const SPECIALTIES = [
 const DEFAULT_TARGET_MARGIN = 70;
 
 const onboardingController = `      ...(() => {
+        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
         const options = ${JSON.stringify(SPECIALTIES)};
         const chosen = Array.isArray(this.state.bakerySpecialties) ? this.state.bakerySpecialties : [];
 
@@ -70,7 +71,7 @@ const onboardingController = `      ...(() => {
           targetMarginText: draft('targetMarginText', 'targetMargin'),
           setTargetMargin: setNumber('targetMarginText', 'targetMargin', 100),
           obRateSummary: rate > 0
-            ? 'Your time is set at $' + rate.toFixed(2) + ' an hour.'
+            ? 'Your time is set at ' + CUR + rate.toFixed(2) + ' an hour.'
             : 'No hourly rate yet — margins will count ingredients and packaging only.',
           obTargetSummary: 'Baketly will flag any recipe keeping less than ' + Math.round(target) + '% of its price.',
           obBakeryName: (this.state.bakeryName || '').trim() || 'your bakery',

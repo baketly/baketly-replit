@@ -13,8 +13,9 @@
 const DEFAULT_TARGET_MARGIN = 0.7;
 
 const homeData = `    const home = (() => {
-      const money2 = value => (value < 0 ? '-$' : '$') + Math.abs(value).toFixed(2);
-      const money0 = value => (value < 0 ? '-$' : '$') + Math.abs(Math.round(value)).toLocaleString('en-US');
+        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
+      const money2 = value => (value < 0 ? ('-' + CUR) : CUR) + Math.abs(value).toFixed(2);
+      const money0 = value => (value < 0 ? ('-' + CUR) : CUR) + Math.abs(Math.round(value)).toLocaleString('en-US');
       const st = this.state;
       const recipes = Array.isArray(st.recipeRecords) ? st.recipeRecords : [];
       const sales = Array.isArray(st.saleRecords) ? st.saleRecords : [];

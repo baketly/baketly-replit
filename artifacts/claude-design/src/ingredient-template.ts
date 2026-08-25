@@ -99,6 +99,7 @@ function replaceIngredientEditor(template: string): string {
 function addIngredientController(template: string): string {
   const defaults = JSON.stringify(defaultIngredientDetails);
   const controller = `      ...(() => {
+        const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
         const detailDefaults = ${defaults};
         const savedIngredients = this.state.ingredientRecords || {};
         const removedIngredientKeys = new Set(this.state.removedIngredientKeys || []);
@@ -159,8 +160,8 @@ function addIngredientController(template: string): string {
             const per = item.packageSize > 0 ? item.packagePrice / item.packageSize : 0;
             return {
               key, name: item.name,
-              packageLine: item.supplier + ' · $' + item.packagePrice.toFixed(2) + ' / ' + item.packageSize + ' ' + item.unit,
-              costLine: '$' + per.toFixed(per < 0.01 ? 4 : 2) + '/' + item.unit,
+              packageLine: item.supplier + (' · ' + CUR) + item.packagePrice.toFixed(2) + ' / ' + item.packageSize + ' ' + item.unit,
+              costLine: CUR + per.toFixed(per < 0.01 ? 4 : 2) + '/' + item.unit,
               tag: per === 0 ? 'needs price' : 'saved',
               tagClass: per === 0 ? 'tag-accent' : 'tag-neutral',
               open: () => this.setState(st => ({ screen: 'ingredientEdit', stack: [...st.stack, st.screen], activeIngredientKey: key, ingredientDraft: normalize(key), ingredientSaveError: '', ingredientDeleteOpen: false, fromScan: false })),
@@ -182,7 +183,7 @@ function addIngredientController(template: string): string {
            ingredientServingSize: draftText('servingSize'),
            ingredientServingUnit: String(active.servingUnit ?? ''),
            ingredientServingVisible: !!active.servingSize || !!active.servingUnit,
-          ingredientCostPer: '$' + (active.packageSize > 0 ? active.packagePrice / active.packageSize : 0).toFixed(active.packageSize > 0 && active.packagePrice / active.packageSize < 0.01 ? 4 : 2),
+          ingredientCostPer: CUR + (active.packageSize > 0 ? active.packagePrice / active.packageSize : 0).toFixed(active.packageSize > 0 && active.packagePrice / active.packageSize < 0.01 ? 4 : 2),
            ingredientScanLoading: this.state.ingredientScanLoading === true,
            ingredientScanError: this.state.ingredientScanError || '',
            ingredientScanComplete: this.state.ingredientScanComplete === true,
