@@ -11,6 +11,7 @@ import { applyOnboardingBehavior } from "./onboarding-template";
 import { applyCurrencyBehavior } from "./currency";
 import { applyEventBehavior } from "./event-template";
 import { applySaleBehavior } from "./sale-template";
+import { applySingleSalesBehavior } from "./single-sales-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
@@ -256,9 +257,11 @@ window.__baketlyApplyRecipeRecords = (template) => {
       applyHomeBehavior(
         applyWatchBehavior(
           applyChatBehavior(
-            applySaleBehavior(
+            applySingleSalesBehavior(
+              applySaleBehavior(
               applyEventBehavior(
-                applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+                  applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+                ),
               ),
             ),
           ),
