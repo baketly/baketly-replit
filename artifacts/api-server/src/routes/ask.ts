@@ -4,6 +4,13 @@ import {
   GeminiProviderError,
   MissingGeminiKeyError,
 } from "../lib/gemini";
+import {
+  buildTargetPlan,
+  describePlan,
+  findTarget,
+  looksLikePlanning,
+  type PlanProduct,
+} from "../lib/plan";
 
 const router: IRouter = Router();
 
@@ -40,7 +47,9 @@ const SYSTEM_RULES = [
   "Money is US dollars, written like $12.99. Percentages are whole numbers.",
   "Write plainly, as if to a smart person who does not use spreadsheets. Short sentences. No jargon, no headings, no markdown, no bullet characters.",
   "Never repeat a field name from the snapshot. Say margin, return, cost or revenue in plain words; never write marginPct, roiPct, unitCost or similar.",
-  "Keep 'answer' under 90 words.",
+  "TARGETS AND PLANS: when the baker asks how to reach an amount, or what to bake, do the work rather than remarking on whether the figure is realistic. Start from what is already planned if the snapshot has a lineup, work out the gap, then propose actual quantities of their own products and add them up to the target. Favour the ones that keep the most per unit and take the fewest ingredients, and say why those. Give the arithmetic in plain lines, one product per line, ending with the total. If the target is far above anything they have taken before, still give the plan, then say plainly what it would take compared with their best market so far.",
+  "In a plan, add up the lines you actually wrote and state that sum, even if it does not land exactly on the target. Do not restate the target as the total. If the sum overshoots, either say so or reduce a quantity so it lands.",
+  "Keep 'answer' under 90 words, except for a plan, which may run to 160 and may use one short line per product. Never use bullet characters, asterisks or markdown.",
   "'wins' holds AT MOST ONE finding the baker did NOT ask about: an underpriced product, a margin that slipped, an ingredient driving cost, a market that is not worth its costs, a product worth baking more of. Pick the single most useful one and name the real figure that makes it true. Return an empty list rather than a weak or unsupported finding.",
   "'followUps' holds up to three short questions the baker could ask next, phrased in their words, each answerable from the snapshot.",
   "GETTING STARTED: if the snapshot has no sales and no recipes, or the pantry is empty, the baker is new. Do not report findings about data that is not there. Instead explain, in their terms, what Baketly does for them: it turns what they pay for ingredients and packaging into the true cost of one bake, suggests a price that keeps a margin, reads a nutrition label from a photo, and tracks what each market actually kept after booth and travel costs. Say plainly which one thing to add first and where. Keep 'wins' empty, and make every entry in 'followUps' a question about learning or setting up the app rather than about numbers they do not have yet.",
@@ -142,12 +151,34 @@ router.post(
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new MissingGeminiKeyError();
 
+      // Work a revenue target out here; the model's own sums were unreliable.
+      const context = body.context as {
+        recipes?: PlanProduct[];
+        upcomingEvent?: { plannedLineup?: Array<{ name: string; quantity: number; price: number }> } | null;
+      };
+      const target = findTarget(question);
+      const plan =
+        target && looksLikePlanning(question)
+          ? buildTargetPlan(
+              target,
+              Array.isArray(context.recipes) ? context.recipes : [],
+              context.upcomingEvent?.plannedLineup ?? [],
+            )
+          : null;
+
       const prompt = [
         SYSTEM_RULES,
         "",
         "Bakery snapshot (JSON):",
         contextText,
         "",
+        ...(plan
+          ? [
+              "A plan for the target in the question has already been worked out. Every number below is correct: use them exactly and never recalculate. But write the plan in your own plain sentences, the way you would say it out loud. Do not copy these labels, and never print words like Target, Gap to cover, Added or Chosen because. Say where the lineup stands, what it still needs, then one short line per product, then what the lineup comes to. Mention the overshoot only if there is one, and give the reason as a sentence.",
+              describePlan(plan),
+              "",
+            ]
+          : []),
         ...(history.length ? ["Earlier in this conversation:", ...history, ""] : []),
         `The baker asks: ${question}`,
       ].join("\n");
@@ -158,8 +189,8 @@ router.post(
         responseSchema: answerSchema,
         temperature: 0.4,
         maxOutputTokens: 2048,
-        attemptTimeoutMs: 15_000,
-        budgetMs: 30_000,
+        attemptTimeoutMs: 22_000,
+        budgetMs: 48_000,
         onModelSkipped: (skipped, error) =>
           req.log.warn(
             {

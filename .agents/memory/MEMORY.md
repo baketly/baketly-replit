@@ -1,3 +1,3 @@
 - [API Zod codegen barrel](api-zod-codegen-barrel.md) — generated schema/type names can collide; use explicit type exports after codegen.
 - [Bundled-template replacements](bundled-template-replacements.md) — use replacement callbacks when injected template code contains dollar signs.
-- [Gemini label model availability](gemini-label-model-availability.md) — never hard-code one Gemini model; order the LABEL_MODELS chain and fall through on provider errors only.
+- [Gemini label model availability](gemini-label-model-availability.md) — which models this key can actually reach; 2.5-flash is retired, 3.6-flash is real, never collapse the chain to one name.

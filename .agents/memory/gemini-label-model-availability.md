@@ -1,27 +1,29 @@
 ---
 name: Gemini label model availability
-description: Live Gemini model availability constraint for the ingredient label scanner.
+description: Live Gemini model availability constraint for the label scanner and Ask Baketly.
 ---
 
-Do not hard-code a single Gemini model for label scanning. The scanner tries an
-ordered list of Flash models and falls through to the next one on provider-level
-failures only (403, 404, 429, 5xx, network error, per-attempt timeout).
+Do not hard-code a single Gemini model. Both features walk an ordered list and
+fall through on provider failures only (403, 404, 429, 5xx, network, timeout).
 
-**Why:** An earlier note here claimed the configured key rejected Gemini 2.5 Flash
-and mandated a "Gemini 3.6 Flash" model. No such model is served by the Generative
-Language API, so every scan failed the provider call and returned the generic
-manual-entry error. That note was wrong, and a single hard-coded model name is
-what let one wrong belief break the whole feature.
+**Model availability on this key, checked 2026-08-25 against the live API:**
 
-Verified 2026-08-24 against the live API with the project key: an end-to-end scan
-of a Hebrew nutrition label succeeded on `gemini-flash-lite-latest`, first
-attempt, in ~1.6s, extracting product name, package size and unit, and all five
-macros. The later candidates were never reached, so their availability on this
-key is untested.
+- `gemini-flash-lite-latest` — works, first choice, answers a label scan in ~1.6s
+- `gemini-2.5-flash-lite` — in the chain, rarely reached
+- `gemini-3.6-flash` — works
+- `gemini-flash-latest` — works, but has returned 503 "high demand"
+- `gemini-2.5-flash` — **retired**. Returns 404: "no longer available to new
+  users. Please update your code to use models/gemini-3.6-flash"
 
-**How to apply:** Change the ordering in `LABEL_MODELS` rather than replacing the
-list with one name. A response that parses but carries no usable label data is a
-real answer, not a provider fault, and must return 422 without consuming the rest
-of the chain. Keep the key in `GEMINI_API_KEY`; never expose it to the browser.
-The server logs `Gemini label model responded` with the model that answered, which
-is the fastest way to see what the key can actually reach.
+**A correction worth keeping.** An earlier version of this note said the key
+required "Gemini 3.6 Flash". That was then overwritten with a note calling it
+wrong, because the code was calling `gemini-3.6-flash` while the scanner was
+broken and flash-lite worked once the chain was added. The overwrite was the
+mistake: `gemini-3.6-flash` is real and does work here. The original scanner
+failure had a different cause. Do not remove `gemini-3.6-flash` from the chain
+on the assumption it does not exist.
+
+**How to apply:** change the ordering in `GEMINI_MODELS` rather than replacing
+the list with one name, and check a model against the live API before deciding
+it is unavailable. The server logs which model answered. Keep the key in
+`GEMINI_API_KEY` and never expose it to the browser.

@@ -32,7 +32,7 @@ const chatControllerLogic = `      ...(() => {
           }));
           let context;
           try {
-            context = window.__baketlyAskContext(this.state, this.ING_META || {}, this.PACK_META || {});
+            context = window.__baketlyAskContext(this.state, this.ING_META || {}, this.PACK_META || {}, this.EV_META || []);
           } catch (error) {
             this.setState({ chatPending: false, chatError: 'I could not read your bakery data just now.' });
             return;

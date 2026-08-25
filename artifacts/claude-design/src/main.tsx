@@ -33,6 +33,7 @@ declare global {
       state: Record<string, unknown>,
       ingredientMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
       packagingMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
+      eventMeta?: Array<{ k?: string; name?: string; price?: number }>,
     ) => Record<string, unknown>;
     __baketlyScanIngredientLabel: (
       file: File,

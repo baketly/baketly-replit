@@ -9,8 +9,8 @@
 export const GEMINI_MODELS = [
   "gemini-flash-lite-latest",
   "gemini-2.5-flash-lite",
+  "gemini-3.6-flash",
   "gemini-flash-latest",
-  "gemini-2.5-flash",
 ] as const;
 
 export class MissingGeminiKeyError extends Error {}

@@ -41,10 +41,13 @@ function leadersOf(rows: Tally[]): {
   };
 }
 
+type EventMetaEntry = { k?: string; name?: string; price?: number };
+
 export function buildAskContext(
   state: Record<string, unknown>,
   ingredientMeta: Meta,
   packagingMeta: Meta,
+  eventMeta: EventMetaEntry[] = [],
 ): Record<string, unknown> {
   const recipes = (Array.isArray(state.recipeRecords) ? state.recipeRecords : []) as Recipe[];
   const sales = (Array.isArray(state.saleRecords) ? state.saleRecords : []) as Sale[];
@@ -76,6 +79,9 @@ export function buildAskContext(
       unitCost,
       marginPct: price > 0 ? Math.round(((price - unitCost) / price) * 100) : 0,
       batchYield: Number(recipe.yield) || 1,
+      // a rough stand-in for effort: how many things go into one bake
+      ingredientCount: (recipe.ingredientKeys || []).length,
+      profitPerUnit: round2(price - unitCost),
     };
   });
 
@@ -206,6 +212,25 @@ export function buildAskContext(
       };
     });
 
+  // Planned quantities are keyed by the event lineup's own key, not the recipe
+  // id, so resolve through the lineup metadata the way the event screen does.
+  const plannedQuantities = (state.evQty || {}) as Record<string, unknown>;
+  const plannedLineup = { items: [] as Array<{ name: string; quantity: number; price: number }>, revenue: 0 };
+  for (const [key, value] of Object.entries(plannedQuantities)) {
+    const quantity = Math.max(0, Math.round(Number(value) || 0));
+    if (quantity <= 0) continue;
+    const meta = eventMeta.find((entry) => entry.k === key);
+    const recipe = recipes.find(
+      (entry) => entry.id === key || (!!meta?.name && entry.name === meta.name),
+    );
+    const name = recipe?.name || meta?.name || "";
+    const price = Number(recipe?.price ?? meta?.price ?? 0) || 0;
+    if (!name || price <= 0) continue;
+    plannedLineup.items.push({ name, quantity, price });
+    plannedLineup.revenue += quantity * price;
+  }
+  plannedLineup.revenue = round2(plannedLineup.revenue);
+
   const ingredientKeys = Object.keys(ingredientMeta).filter((key) => !removedIngredients.has(key));
   const costliest = ingredientKeys
     .map((key) => ({ name: ingredientMeta[key]?.name || key, costPerUnit: round2((ingredientMeta[key]?.per || 0) * 1000) / 1000, unit: ingredientMeta[key]?.unit || "g" }))
@@ -232,6 +257,9 @@ export function buildAskContext(
           name: state.eventName,
           date: state.eventDate,
           boothFee: Number(state.eventBoothFee) || 0,
+          // what is already in the lineup, so a target question starts from the gap
+          plannedLineup: plannedLineup.items,
+          plannedRevenue: plannedLineup.revenue,
         }
       : null,
   };
