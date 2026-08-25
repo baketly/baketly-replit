@@ -168,7 +168,7 @@ function fileSaleAgainstEvent(template: string): string {
   return template.replace(
     anchor,
     () =>
-      "{ id: 'sale-pos-' + Date.now().toString(36), occurredAt: new Date().toISOString(), source: st.saleEventId ? 'event' : 'pos', ...(st.saleEventId ? { eventId: st.saleEventId } : {}), total: final,",
+      "{ id: 'sale-pos-' + Date.now().toString(36), occurredAt: new Date().toISOString(), source: st.saleEventId ? 'event' : (String(method).toLowerCase() === 'cash' ? 'cash' : 'pos'), ...(st.saleEventId ? { eventId: st.saleEventId } : {}), total: final,",
   );
 }
 

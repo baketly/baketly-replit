@@ -16,7 +16,8 @@ const singleSalesController = `      ...(() => {
         const selected = this.state.analyticsMonth || monthKey(now);
         const openId = this.state.openSaleId || '';
 
-        const paidAs = source => (source === 'cash' ? 'Cash' : 'Counter');
+        // a sale is either taken on the card reader or in cash
+        const paidAs = source => (source === 'cash' ? 'Cash' : 'Card');
 
         // a market's takings belong to the market, not here
         const singles = sales
