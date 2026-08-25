@@ -929,6 +929,30 @@ const eventCostEditorMarkup = `
 
 // Costs sit at the end of the event screen, after the lineup and results,
 // rather than interrupting the header.
+// On the new sale screen the whole product row added a unit, so brushing a row
+// while scrolling a price list put things in the order. Only the + adds now.
+// The plus shown at zero was a decorative span with no handler, relying on that
+// row click, so it becomes a real button at the same time.
+function onlyPlusAddsToSale(template: string): string {
+  const row =
+    '<div sc-camel-on-click="{{ p.add }}" style="display:flex;align-items:center;gap:11px;padding:8px 0;border-top:1px solid var(--color-divider);cursor:pointer">';
+  if (!template.includes(row)) throw new Error("Missing stable sale row anchor");
+  let out = template.replace(
+    row,
+    () =>
+      '<div style="display:flex;align-items:center;gap:11px;padding:8px 0;border-top:1px solid var(--color-divider)">',
+  );
+
+  const decorativePlus =
+    '<span style="display:{{ p.addDisplay }};flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--color-accent-300);color:var(--color-accent);place-items:center;font-size:16px">+</span>';
+  if (!out.includes(decorativePlus)) throw new Error("Missing stable sale add anchor");
+  return out.replace(
+    decorativePlus,
+    () =>
+      '<button sc-camel-on-click="{{ p.add }}" aria-label="Add one" style="display:{{ p.addDisplay }};flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--color-accent-300);background:#fff;color:var(--color-accent);place-items:center;font-size:16px;cursor:pointer;padding:0">+</button>',
+  );
+}
+
 function moveEventCostsToBottom(template: string): string {
   const anchor = "  </sc-if>\n</div>\n</sc-if>\n\n<!-- ══ SHOPPING LIST ══ -->";
   if (!template.includes(anchor)) {
@@ -1084,5 +1108,7 @@ function addCommerceBehavior(template: string): string {
     "todayArr: [...st.todayArr, final],",
     () => "todayArr: [...st.todayArr, final], saleRecords: [...(st.saleRecords || []), { id: 'sale-pos-' + Date.now().toString(36), occurredAt: new Date().toISOString(), source: 'pos', total: final, lineItems: posRecipes.filter(r => (st.posQty || {})[r.id] > 0).map(r => ({ productId: r.id, name: r.name, quantity: (st.posQty || {})[r.id], unitPrice: ((Number(r.sell) || 0) * (total > 0 ? final / total : 1)), unitCost: r.cost })) }],",
   );
-  return moveEventCostsToBottom(linkNoticedCards(replacePastEvents(removeCashTracker(out))));
+  return onlyPlusAddsToSale(
+    moveEventCostsToBottom(linkNoticedCards(replacePastEvents(removeCashTracker(out)))),
+  );
 }
