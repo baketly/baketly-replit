@@ -263,13 +263,45 @@ const eventController = `      ...(() => {
           // A market marked completed by accident should not need rebuilding:
           // putting it back to planned returns it to Upcoming with its plan and
           // its takings intact.
-          pastIsCompleted: (events.find(ev => ev.id === (this.state.analyticsEventId || '')) || {}).status === 'completed',
-          uncompleteEvent: () => this.setState(st => ({
-            eventRecords: (st.eventRecords || []).map(ev =>
-              ev.id === st.analyticsEventId ? { ...ev, status: 'planned' } : ev),
-            screen: 'markets',
-            stack: []
-          })),
+          // Anything in Past events can be reopened, including markets saved
+          // before this screen existed, which carry no status at all — the
+          // history is "not planned", not "completed" specifically.
+          pastIsCompleted: (() => {
+            const found = events.find(ev => ev.id === (this.state.analyticsEventId || ''));
+            return !!found && found.status !== 'planned';
+          })(),
+          uncompleteEvent: () => this.setState(st => {
+            const event = (st.eventRecords || []).find(ev => ev.id === st.analyticsEventId);
+            if (!event) return { screen: 'markets', stack: [] };
+            const quantities = {};
+            (event.plannedItems || []).forEach(item => { quantities[item.productId] = item.quantity; });
+            return {
+              eventRecords: (st.eventRecords || []).map(ev =>
+                ev.id === st.analyticsEventId ? { ...ev, status: 'planned' } : ev),
+              screen: 'event',
+              stack: [],
+              eventCurrentId: event.id,
+              eventName: event.name || 'Market',
+              eventDate: (event.occurredAt || '').slice(0, 10),
+              eventBoothFee: Number(event.boothFee) || 0,
+              eventOtherCosts: (event.otherCosts || []).map(cost => ({ label: cost.label, amount: String(cost.amount) })),
+              evPicked: (event.plannedItems || []).map(item => item.productId),
+              evQty: quantities,
+              evSold: {},
+              evStatus: 'planned',
+              evSaved: true,
+              evEnteringResults: false,
+              evPickerOpen: false,
+              evPickerSel: [],
+              eventDeleteOpen: false,
+              shopNeed: {},
+              shopNeedText: {},
+              // reopening is something you do in order to change it, so this
+              // lands in the planner. Last key wins over the reset injected
+              // alongside screen: 'event'.
+              editingKey: 'ev:' + event.id
+            };
+          }),
 
           // the same removal, reachable from a finished market's breakdown
           pastDeleteOpen: this.state.pastDeleteOpen === true,
