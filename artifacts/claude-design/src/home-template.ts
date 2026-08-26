@@ -76,9 +76,37 @@ const homeController = `      ...(() => {
           : pickedDate.toLocaleDateString('en-US', { weekday: 'long' })
             + ', ' + pickedDate.getDate() + ' ' + pickedDate.toLocaleDateString('en-US', { month: 'long' });
 
-        const openEvent = event => () => this.setState(s => ({
-          screen: 'analyticsEvent', stack: [...s.stack, s.screen], analyticsEventId: event.id, eventCostsOpen: false
-        }));
+        // A market that has happened opens its breakdown; one still to come
+        // opens its own preview, loaded the same way the Upcoming list loads it.
+        const openEvent = event => () => {
+          if (event.status === 'completed') {
+            return this.setState(s => ({
+              screen: 'analyticsEvent', stack: [...s.stack, s.screen], analyticsEventId: event.id, eventCostsOpen: false
+            }));
+          }
+          const quantities = {};
+          (event.plannedItems || []).forEach(item => { quantities[item.productId] = item.quantity; });
+          return this.setState(s => ({
+            screen: 'event',
+            stack: [...s.stack, s.screen],
+            eventCurrentId: event.id,
+            eventName: event.name || 'Market',
+            eventDate: (event.occurredAt || '').slice(0, 10),
+            eventBoothFee: Number(event.boothFee) || 0,
+            eventOtherCosts: (event.otherCosts || []).map(cost => ({ label: cost.label, amount: String(cost.amount) })),
+            evPicked: (event.plannedItems || []).map(item => item.productId),
+            evQty: quantities,
+            evSold: {},
+            evStatus: 'planned',
+            evSaved: true,
+            evEnteringResults: false,
+            evPickerOpen: false,
+            evPickerSel: [],
+            eventDeleteOpen: false,
+            shopNeed: {},
+            shopNeedText: {}
+          }));
+        };
 
         const dayItems = (eventsByDay[dayKey(pickedDate)] || []).map(event => {
           const planned = (event.plannedItems || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
