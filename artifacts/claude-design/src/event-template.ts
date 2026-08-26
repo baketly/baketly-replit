@@ -250,6 +250,17 @@ const eventController = `      ...(() => {
             stack: []
           })),
 
+          // A market marked completed by accident should not need rebuilding:
+          // putting it back to planned returns it to Upcoming with its plan and
+          // its takings intact.
+          pastIsCompleted: (events.find(ev => ev.id === (this.state.analyticsEventId || '')) || {}).status === 'completed',
+          uncompleteEvent: () => this.setState(st => ({
+            eventRecords: (st.eventRecords || []).map(ev =>
+              ev.id === st.analyticsEventId ? { ...ev, status: 'planned' } : ev),
+            screen: 'markets',
+            stack: []
+          })),
+
           // the same removal, reachable from a finished market's breakdown
           pastDeleteOpen: this.state.pastDeleteOpen === true,
           askDeletePastEvent: () => this.setState({ pastDeleteOpen: true }),
@@ -431,7 +442,7 @@ function replaceUpcomingList(template: string): string {
     "      </div>\n" +
     "    </sc-for>\n" +
     '    <sc-if value="{{ hasNoUpcomingEvents }}" hint-placeholder-val="{{ false }}">\n' +
-    '      <div class="text-muted" style="padding:16px 0;font-size:13px;border-top:1px solid var(--color-divider)">No markets planned yet. Tap + New event to plan one.</div>\n' +
+    '      <div class="text-muted" style="padding:16px 0;font-size:13px;border-top:1px solid var(--color-divider)">No markets planned yet. Tap New event to plan one.</div>\n' +
     "    </sc-if>\n" +
     "  </div>\n";
   return template.slice(0, start) + markup + template.slice(end);
@@ -582,14 +593,33 @@ function editableShoppingRows(template: string): string {
 
 /** Delete, offered on a finished market's breakdown as well. */
 function addPastEventDelete(template: string): string {
+  const backButton =
+    '<button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>';
+  const headerRow =
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+    backButton +
+    '<sc-if value="{{ hasEventDetail }}" hint-placeholder-val="{{ false }}">' +
+    '<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ askDeletePastEvent }}" aria-label="Delete event" style="width:38px;height:38px;color:#b0563e">' +
+    '<svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="12" cy="12" r="9"></circle><path d="M8.5 12h7"></path></svg></button></sc-if></div>';
+  // Several breakdown screens share this back button, so the swap is scoped to
+  // the event one — a delete on the Kept or Items screen would act on whatever
+  // event id happened to be in state.
+  const blockStart = template.indexOf('<sc-if value="{{ onAnalyticsEvent }}"');
+  if (blockStart === -1) throw new Error("Missing event breakdown block");
+  const at = template.indexOf(backButton, blockStart);
+  if (at === -1) throw new Error("Missing breakdown back anchor");
+  template = template.slice(0, at) + headerRow + template.slice(at + backButton.length);
+
   const anchor =
     '  <sc-if value="{{ hasNoEventDetail }}" hint-placeholder-val="{{ false }}">\n    <div class="text-muted" style="text-align:center;padding:44px 20px;font-size:13px">That event is no longer available.</div>\n  </sc-if>';
   if (!template.includes(anchor)) throw new Error("Missing event breakdown end anchor");
   return template.replace(
     anchor,
     () =>
-      '  <sc-if value="{{ hasEventDetail }}" hint-placeholder-val="{{ false }}">\n' +
-      '    <button class="btn btn-ghost btn-block" sc-camel-on-click="{{ askDeletePastEvent }}" style="margin-top:18px;min-height:44px;color:#b0563e">Delete event</button>\n' +
+      '  <sc-if value="{{ pastIsCompleted }}" hint-placeholder-val="{{ false }}">\n' +
+      '    <button class="btn btn-secondary btn-block" sc-camel-on-click="{{ uncompleteEvent }}" style="margin-top:18px;min-height:46px">Mark as not completed</button>\n' +
+      '    <p class="text-muted" style="font-size:12px;line-height:1.5;margin:8px 2px 0">Puts this market back with the upcoming ones. Its plan and anything already sold stay as they are.</p>\n' +
       "  </sc-if>\n" +
       anchor +
       "\n" +
