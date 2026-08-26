@@ -46,6 +46,13 @@ const modeController = `      ...(() => {
         const pack = mode('pack', this.state.activePackagingKey || '');
         const rec = mode('rec', this.state.activeRecipeId || '');
 
+        // A market exists once it has been saved; until then there is nothing
+        // to preview.
+        const evSavedAlready = this.state.evSaved === true;
+        const evOpenFor = openFor === 'ev:' + (this.state.eventCurrentId || '');
+        const evEditing = !evSavedAlready || evOpenFor;
+        const evWhen = new Date(this.state.eventDate || Date.now());
+
         return {
           ingEditing: ing.editing,
           ingPreviewing: ing.previewing,
@@ -59,6 +66,15 @@ const modeController = `      ...(() => {
           recEditing: rec.editing,
           recPreviewing: rec.previewing,
           editRecipe: rec.start,
+
+          evEditing,
+          evPreviewing: evSavedAlready && !evOpenFor,
+          editEvent: () => this.setState({ editingKey: 'ev:' + (this.state.eventCurrentId || '') }),
+          evDateLabel: isNaN(evWhen.getTime())
+            ? ''
+            : evWhen.toLocaleDateString('en-US', { weekday: 'long' }) + ', ' + evWhen.getDate()
+              + ' ' + evWhen.toLocaleDateString('en-US', { month: 'long' }),
+          evBoothLabel: CUR + (Number(this.state.eventBoothFee) || 0).toFixed(2),
         };
       })(),
 `;
@@ -245,6 +261,65 @@ function resetRecipeOnOpen(template: string): string {
     .join("screen: 'recipeEditor', editingKey: '', stack: [...st.stack, st.screen], activeRecipeId:");
 }
 
+const eventPreview =
+  `<sc-if value="{{ evPreviewing }}" hint-placeholder-val="{{ false }}">` +
+  `<h2 style="font-size:28px;margin:6px 0 2px">{{ eventName }}</h2>` +
+  `<p class="text-muted" style="font-size:13px;margin:0 0 18px">{{ evDateLabel }} · booth {{ evBoothLabel }}</p>` +
+  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Baking for this market</div>` +
+  `<div style="display:flex;flex-direction:column;margin-bottom:18px">` +
+  `<sc-for list="{{ evLineup }}" as="line" hint-placeholder-count="3">` +
+  `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider)">` +
+  `<span style="font-size:14px">{{ line.name }}</span>` +
+  `<span class="text-muted" style="font-size:13px;font-feature-settings:'tnum'">{{ line.qty }} × {{ line.priceStr }} · {{ line.revStr }}</span>` +
+  `</div></sc-for>` +
+  `<sc-if value="{{ evLineupEmpty }}" hint-placeholder-val="{{ false }}">` +
+  `<div class="text-muted" style="font-size:13px;padding:14px 0">Nothing planned to bake yet.</div>` +
+  `</sc-if>` +
+  `</div>` +
+  `<div style="display:flex;flex-direction:column;margin-bottom:18px">` +
+  row("Units planned", "{{ evUnits }}") +
+  row("Expected revenue", "{{ evRevenue }}") +
+  row("Expected cost", "{{ evCost }}") +
+  row("Expected profit", "{{ evProfit }}") +
+  row("Expected margin", "{{ evMargin }}") +
+  `</div>` +
+  `<button class="btn btn-secondary btn-block" sc-camel-on-click="{{ goShopping }}" style="min-height:46px;margin-bottom:8px">Shopping list · {{ shopProgress }} collected</button>` +
+  `</sc-if>`;
+
+/**
+ * The market screen. Its delete moves from a ghost button at the very bottom
+ * up to the header, beside the pencil, so it sits where every other item's
+ * does.
+ */
+function eventScreen(template: string): string {
+  const backButton =
+    '<button class="btn btn-ghost" sc-camel-on-click="{{ goMarkets }}" style="margin-left:-6px;min-height:44px">‹ Markets</button>';
+  const pickerStart = '<sc-if value="{{ evPickerOpen }}" hint-placeholder-val="{{ false }}">';
+  const bottomDelete =
+    '  <sc-if value="{{ evCanDelete }}" hint-placeholder-val="{{ false }}">\n    <button class="btn btn-ghost btn-block" sc-camel-on-click="{{ askDeleteEvent }}" style="min-height:44px;color:#b0563e">Delete event</button>\n  </sc-if>\n';
+  if (!template.includes(backButton)) throw new Error("Missing event back anchor");
+  if (!template.includes(pickerStart)) throw new Error("Missing event picker anchor");
+  if (!template.includes(bottomDelete)) throw new Error("Missing event bottom delete anchor");
+
+  const header =
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+    backButton +
+    itemActions("editEvent", "askDeleteEvent", "event", "evPreviewing", "evCanDelete") +
+    "</div>";
+
+  return template
+    .replace(backButton, () => header + eventPreview + '<sc-if value="{{ evEditing }}" hint-placeholder-val="{{ true }}">')
+    .replace(bottomDelete, () => "")
+    .replace(pickerStart, () => "</sc-if>" + pickerStart);
+}
+
+/** Opening a saved market starts in preview. */
+function resetEventOnOpen(template: string): string {
+  const anchor = "screen: 'event',";
+  if (template.split(anchor).length - 1 === 0) throw new Error("Missing event open anchor");
+  return template.split(anchor).join("screen: 'event', editingKey: '',");
+}
+
 export function applyItemModeBehavior(template: string): string {
   let out = addModeController(template);
   out = ingredientHeader(out);
@@ -253,5 +328,7 @@ export function applyItemModeBehavior(template: string): string {
   out = packagingScreen(out);
   out = resetPackagingOnOpen(out);
   out = recipeScreen(out);
-  return resetRecipeOnOpen(out);
+  out = resetRecipeOnOpen(out);
+  out = eventScreen(out);
+  return resetEventOnOpen(out);
 }
