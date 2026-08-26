@@ -546,7 +546,7 @@ function replaceRecipeEditorLogic(template: string): string {
           macroFat: keys.length ? '22g' : '0g',
           macroNote: keys.length ? 'Computed from your recipe ingredients.' : 'Add ingredients to calculate nutrition.',
           recipeSaveError: this.state.recipeSaveError || '',
-          saveRecipeLabel: isNewRecipe ? 'Save recipe' : 'Done',
+          saveRecipeLabel: isNewRecipe ? 'Save recipe' : 'Save changes',
           recipeDeleteOpen: this.state.recipeDeleteOpen === true && !isNewRecipe,
           requestDeleteRecipe: () => this.setState({ recipeDeleteOpen: true }),
           cancelDeleteRecipe: () => this.setState({ recipeDeleteOpen: false }),

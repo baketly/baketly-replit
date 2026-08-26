@@ -43,12 +43,22 @@ const modeController = `      ...(() => {
         };
 
         const ing = mode('ing', this.state.activeIngredientKey || '');
+        const pack = mode('pack', this.state.activePackagingKey || '');
+        const rec = mode('rec', this.state.activeRecipeId || '');
 
         return {
           ingEditing: ing.editing,
           ingPreviewing: ing.previewing,
           editIngredient: ing.start,
           ingSaveLabel: ing.exists ? 'Save changes' : 'Save ingredient',
+
+          packEditing: pack.editing,
+          packPreviewing: pack.previewing,
+          editPackaging: pack.start,
+
+          recEditing: rec.editing,
+          recPreviewing: rec.previewing,
+          editRecipe: rec.start,
         };
       })(),
 `;
@@ -84,6 +94,47 @@ const ingredientPreview =
   row("Fat", "{{ ingredientFat }} g") +
   `</div>` +
   `</sc-if>`;
+
+const packagingPreview =
+  `<sc-if value="{{ packPreviewing }}" hint-placeholder-val="{{ false }}">` +
+  `<h2 style="font-size:26px;margin:8px 0 2px">{{ packagingName }}</h2>` +
+  `<p class="text-muted" style="font-size:13px;margin:0 0 18px">{{ packagingSupplier }}</p>` +
+  `<div style="display:flex;flex-direction:column;margin-bottom:8px">` +
+  row("Pack price", "{{ currencySymbol }}{{ packagingPackPrice }}") +
+  row("Units per pack", "{{ packagingUnitsPerPack }}") +
+  row("Costs you", "{{ packagingCostPer }} each") +
+  `</div>` +
+  `</sc-if>`;
+
+/** Packaging, same shape as an ingredient. */
+function packagingScreen(template: string): string {
+  const deleteWord =
+    '<sc-if value="{{ packagingExisting }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ requestDeletePackaging }}" style="min-height:44px;color:#b0563e">Delete</button></sc-if>';
+  const formStart = '<div class="field" style="margin:6px 0 12px"><label>Packaging name</label>';
+  const saveButton =
+    '<button class="btn btn-primary btn-block" sc-camel-on-click="{{ savePackaging }}" style="min-height:48px">{{ packagingSaveLabel }}</button>';
+  if (!template.includes(deleteWord)) throw new Error("Missing packaging delete anchor");
+  if (!template.includes(formStart)) throw new Error("Missing packaging form anchor");
+  if (!template.includes(saveButton)) throw new Error("Missing packaging save anchor");
+  return template
+    .replace(deleteWord, () =>
+      itemActions("editPackaging", "requestDeletePackaging", "packaging", "packPreviewing", "packagingExisting"),
+    )
+    .replace(
+      formStart,
+      () => packagingPreview + '<sc-if value="{{ packEditing }}" hint-placeholder-val="{{ true }}">' + formStart,
+    )
+    .replace(saveButton, () => saveButton + "</sc-if>");
+}
+
+/** Every route into the packaging editor starts in preview. */
+function resetPackagingOnOpen(template: string): string {
+  const anchor = "screen: 'packagingEdit', stack: [...st.stack, st.screen], activePackagingKey:";
+  if (template.split(anchor).length - 1 === 0) throw new Error("Missing packaging open anchor");
+  return template
+    .split(anchor)
+    .join("screen: 'packagingEdit', editingKey: '', stack: [...st.stack, st.screen], activePackagingKey:");
+}
 
 /** Swaps the header's Delete word for the two round buttons. */
 function ingredientHeader(template: string): string {
@@ -131,6 +182,76 @@ function resetModeOnOpen(template: string): string {
     .join("screen: 'ingredientEdit', editingKey: '', stack: [...st.stack, st.screen], activeIngredientKey:");
 }
 
+const recipePreview =
+  `<sc-if value="{{ recPreviewing }}" hint-placeholder-val="{{ false }}">` +
+  `<h2 style="font-size:28px;margin:6px 0 2px">{{ recipeTitle }}</h2>` +
+  `<p class="text-muted" style="font-size:13px;margin:0 0 18px">Makes {{ recipeYield }} per batch</p>` +
+  `<div style="display:flex;flex-direction:column;margin-bottom:20px">` +
+  row("Sells for", "{{ recipeSell }}") +
+  row("Costs to make", "{{ recipeCostPer }} each") +
+  row("Whole batch", "{{ recipeBatch }}") +
+  row("Margin", "{{ recipeMargin }}") +
+  `</div>` +
+  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Ingredients</div>` +
+  `<div style="display:flex;flex-direction:column;margin-bottom:18px">` +
+  `<sc-for list="{{ recipeIngs }}" as="ing" hint-placeholder-count="3">` +
+  `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider)">` +
+  `<span style="font-size:14px">{{ ing.name }}</span>` +
+  `<span class="text-muted" style="font-size:13px;font-feature-settings:'tnum'">{{ ing.amt }} {{ ing.unit }} · {{ ing.costStr }}</span>` +
+  `</div></sc-for></div>` +
+  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Packaging</div>` +
+  `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">` +
+  `<sc-for list="{{ recipePacks }}" as="pk" hint-placeholder-count="2">` +
+  `<span class="tag tag-neutral">{{ pk.label }}</span>` +
+  `</sc-for></div>` +
+  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Macros · per unit</div>` +
+  `<div style="display:flex;flex-direction:column;margin-bottom:8px">` +
+  row("Calories", "{{ macroKcal }}") +
+  row("Protein", "{{ macroProtein }}") +
+  row("Carbs", "{{ macroCarbs }}") +
+  row("Fat", "{{ macroFat }}") +
+  `</div>` +
+  `<p class="text-muted" style="font-size:12px;line-height:1.5">{{ macroNote }}</p>` +
+  `</sc-if>`;
+
+/** A recipe is worth reading before it is edited: costs, lines and margin. */
+function recipeScreen(template: string): string {
+  const headerRow =
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ back }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ requestDeleteRecipe }}" style="min-height:44px;color:#b0563e">Delete</button></sc-if></div>';
+  const saveButton =
+    '<button class="btn btn-primary btn-block" sc-camel-on-click="{{ saveRecipe }}" style="margin-top:16px;min-height:48px">{{ saveRecipeLabel }}</button>';
+  if (!template.includes(headerRow)) throw new Error("Missing recipe header anchor");
+  if (!template.includes(saveButton)) throw new Error("Missing recipe save anchor");
+
+  const newHeader =
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ back }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button>' +
+    itemActions("editRecipe", "requestDeleteRecipe", "recipe", "recPreviewing", "existingRecipeMode") +
+    "</div>";
+
+  return template
+    .replace(
+      headerRow,
+      () => newHeader + recipePreview + '<sc-if value="{{ recEditing }}" hint-placeholder-val="{{ true }}">',
+    )
+    .replace(saveButton, () => saveButton + "</sc-if>");
+}
+
+/** Every route into the recipe editor starts in preview. */
+function resetRecipeOnOpen(template: string): string {
+  const anchor = "screen: 'recipeEditor', stack: [...st.stack, st.screen], activeRecipeId:";
+  if (template.split(anchor).length - 1 === 0) throw new Error("Missing recipe open anchor");
+  return template
+    .split(anchor)
+    .join("screen: 'recipeEditor', editingKey: '', stack: [...st.stack, st.screen], activeRecipeId:");
+}
+
 export function applyItemModeBehavior(template: string): string {
-  return resetModeOnOpen(ingredientForm(ingredientHeader(addModeController(template))));
+  let out = addModeController(template);
+  out = ingredientHeader(out);
+  out = ingredientForm(out);
+  out = resetModeOnOpen(out);
+  out = packagingScreen(out);
+  out = resetPackagingOnOpen(out);
+  out = recipeScreen(out);
+  return resetRecipeOnOpen(out);
 }
