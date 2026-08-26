@@ -12,6 +12,7 @@ import { applyCurrencyBehavior } from "./currency";
 import { applyEventBehavior } from "./event-template";
 import { applySaleBehavior } from "./sale-template";
 import { applySingleSalesBehavior } from "./single-sales-template";
+import { applyNavBehavior } from "./nav-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
@@ -252,15 +253,17 @@ window.__baketlyApplyRecipeRecords = (template) => {
     recipeTemplate = removeKnownPackagingPlaceholders(template);
   }
 
-  return applyCurrencyBehavior(
-    applyOnboardingBehavior(
-      applyHomeBehavior(
-        applyWatchBehavior(
-          applyChatBehavior(
-            applySingleSalesBehavior(
-              applySaleBehavior(
-              applyEventBehavior(
-                  applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+  return applyNavBehavior(
+    applyCurrencyBehavior(
+      applyOnboardingBehavior(
+        applyHomeBehavior(
+          applyWatchBehavior(
+            applyChatBehavior(
+              applySingleSalesBehavior(
+                applySaleBehavior(
+                  applyEventBehavior(
+                    applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+                  ),
                 ),
               ),
             ),

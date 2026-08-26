@@ -418,7 +418,7 @@ function replaceRecipeList(template: string): string {
     )
     .replace(
       /pantrySubtitle: pt === 'pack' \? '6 packaging items · priced per unit from the pack price\.' : \(pt === 'rec' \? '[^']*' : '43 ingredients · Baketly turns package prices into unit costs\.'\)/,
-      "pantrySubtitle: pt === 'pack' ? packagingCount + ' packaging item' + (packagingCount === 1 ? '' : 's') + ' · priced per unit from the pack price.' : (pt === 'rec' ? records.length + ' recipe' + (records.length === 1 ? '' : 's') + ' · costs update as pantry prices change.' : ingredientCount + ' ingredient' + (ingredientCount === 1 ? '' : 's') + ' · Baketly turns package prices into unit costs.')",
+      "pantrySubtitle: pt === 'pack' ? 'You have ' + packagingCount + ' packaging item' + (packagingCount === 1 ? '' : 's') + '. Boxes, bags and stickers — Baketly prices each one per unit from what a pack costs.' : (pt === 'rec' ? 'You have ' + records.length + ' recipe' + (records.length === 1 ? '' : 's') + '. These are what you sell — each one costs itself from your pantry, so margins follow your prices.' : 'You have ' + ingredientCount + ' ingredient' + (ingredientCount === 1 ? '' : 's') + '. These are what you bake with — Baketly turns each package price into a cost per unit.')",
     );
 }
 
