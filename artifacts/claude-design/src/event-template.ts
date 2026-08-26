@@ -106,6 +106,16 @@ const eventController = `      ...(() => {
             soldAlready[line.productId] = (soldAlready[line.productId] || 0) + (Number(line.quantity) || 0);
           }));
 
+        // What was entered the last time this market was completed: the till
+        // sales plus whatever was typed on top of them. Marking it not
+        // completed leaves that record alone, so completing it again starts
+        // from the same numbers rather than from the till alone.
+        const soldEntered = {};
+        sales.filter(sale => sale.eventId === eventId)
+          .forEach(sale => (sale.lineItems || []).forEach(line => {
+            soldEntered[line.productId] = (soldEntered[line.productId] || 0) + (Number(line.quantity) || 0);
+          }));
+
         const entering = this.state.evEnteringResults === true;
         const completed = (saved && saved.status === 'completed') || this.state.evStatus === 'completed';
 
@@ -230,7 +240,7 @@ const eventController = `      ...(() => {
 
           // only offered once the market exists and is still ahead of you
           evCanComplete: !!saved && saved.status === 'planned' && !entering,
-          startCompleting: () => this.setState({ evEnteringResults: true, evSold: { ...soldAlready } }),
+          startCompleting: () => this.setState({ evEnteringResults: true, evSold: { ...soldEntered } }),
           evEnteringResults: entering,
           evNotEnteringResults: !entering,
           cancelCompleting: () => this.setState({ evEnteringResults: false }),
