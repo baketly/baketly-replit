@@ -73,7 +73,8 @@ const homeController = `      ...(() => {
         const pickedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + selected);
         const pickedLabel = selected === 0
           ? 'Today'
-          : pickedDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+          : pickedDate.toLocaleDateString('en-US', { weekday: 'long' })
+            + ', ' + pickedDate.getDate() + ' ' + pickedDate.toLocaleDateString('en-US', { month: 'long' });
 
         const openEvent = event => () => this.setState(s => ({
           screen: 'analyticsEvent', stack: [...s.stack, s.screen], analyticsEventId: event.id, eventCostsOpen: false
@@ -268,7 +269,7 @@ const homeMarkup = `
 ${quickAction("goIngredientNew", "New<br>ingredient", '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path>')}
 ${quickAction("goPackagingNew", "New<br>packaging", '<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M3 11h18M12 7v13"></path>')}
 ${quickAction("goNewRecipe", "New<br>recipe", '<path d="M6 3h9l4 4v14H6z"></path><path d="M9 12h7M9 16h5"></path>')}
-${quickAction("goScan", "Scan<br>label", '<path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"></path><path d="M7 12h10"></path>')}
+${quickAction("startNewEvent", "New<br>event", '<rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"></path>')}
   </div>
 
 </div>
