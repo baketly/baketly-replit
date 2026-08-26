@@ -422,6 +422,13 @@ function replaceRecipeList(template: string): string {
     );
 }
 
+/** The macros heading named one sample product: every recipe is per unit. */
+function macrosPerUnit(template: string): string {
+  const anchor = '<h6 style="margin-bottom:8px">Macros · per babka</h6>';
+  if (!template.includes(anchor)) throw new Error("Missing macros heading anchor");
+  return template.replace(anchor, () => '<h6 style="margin-bottom:8px">Macros · per unit</h6>');
+}
+
 function replaceRecipeEditorLogic(template: string): string {
   const editorLogic = `      ...(() => {
         const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
@@ -641,6 +648,7 @@ function addIngredientPickerFilters(template: string): string {
 }
 
 export function applyRecipeRecordBehavior(template: string): string {
+  template = macrosPerUnit(template);
   const base = replaceRecipeEditorMarkup(
     replaceRecipeNavigation(
       replacePackagingEditor(

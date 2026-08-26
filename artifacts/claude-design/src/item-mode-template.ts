@@ -43,6 +43,13 @@ const modeController = `      ...(() => {
         };
 
         const ing = mode('ing', this.state.activeIngredientKey || '');
+        // "Cost per g" reads as a fact; "Costs you" reads as a warning
+        const ingKey = this.state.activeIngredientKey || '';
+        const ingUnit = String(
+          (this.state.ingredientDraft && this.state.ingredientDraft.unit)
+          || ((this.state.ingredientRecords || {})[ingKey] || {}).unit
+          || 'g'
+        );
         const pack = mode('pack', this.state.activePackagingKey || '');
         const rec = mode('rec', this.state.activeRecipeId || '');
 
@@ -58,6 +65,8 @@ const modeController = `      ...(() => {
           ingPreviewing: ing.previewing,
           editIngredient: ing.start,
           ingSaveLabel: ing.exists ? 'Save changes' : 'Save ingredient',
+          ingCostLabel: 'Cost per ' + (ingUnit === 'pc' ? 'unit' : ingUnit),
+          ingPer100Label: 'Per 100 ' + (ingUnit === 'pc' ? 'units' : ingUnit),
 
           packEditing: pack.editing,
           packPreviewing: pack.previewing,
@@ -100,9 +109,9 @@ const ingredientPreview =
   `<div style="display:flex;flex-direction:column;margin-bottom:18px">` +
   row("Package price", "{{ currencySymbol }}{{ ingredientPackagePrice }}") +
   row("Package size", "{{ ingredientPackageSize }} {{ ingredientUnit }}") +
-  row("Costs you", "{{ ingredientCostPer }}") +
+  row("{{ ingCostLabel }}", "{{ ingredientCostPer }}") +
   `</div>` +
-  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Per 100 {{ ingredientUnit }}</div>` +
+  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">{{ ingPer100Label }}</div>` +
   `<div style="display:flex;flex-direction:column;margin-bottom:8px">` +
   row("Calories", "{{ ingredientKcal }}") +
   row("Protein", "{{ ingredientProtein }} g") +
@@ -118,7 +127,7 @@ const packagingPreview =
   `<div style="display:flex;flex-direction:column;margin-bottom:8px">` +
   row("Pack price", "{{ currencySymbol }}{{ packagingPackPrice }}") +
   row("Units per pack", "{{ packagingUnitsPerPack }}") +
-  row("Costs you", "{{ packagingCostPer }} each") +
+  row("Cost per unit", "{{ packagingCostPer }}") +
   `</div>` +
   `</sc-if>`;
 
@@ -284,6 +293,7 @@ const eventPreview =
   row("Expected margin", "{{ evMargin }}") +
   `</div>` +
   `<button class="btn btn-secondary btn-block" sc-camel-on-click="{{ goShopping }}" style="min-height:46px;margin-bottom:8px">Shopping list · {{ shopProgress }} collected</button>` +
+  "<!--finish-here-->" +
   `</sc-if>`;
 
 /**
@@ -307,10 +317,51 @@ function eventScreen(template: string): string {
     itemActions("editEvent", "askDeleteEvent", "event", "evPreviewing", "evCanDelete") +
     "</div>";
 
-  return template
+  let out = template
     .replace(backButton, () => header + eventPreview + '<sc-if value="{{ evEditing }}" hint-placeholder-val="{{ true }}">')
     .replace(bottomDelete, () => "")
     .replace(pickerStart, () => "</sc-if>" + pickerStart);
+
+  // Marking a market completed is something you do to a finished market, not
+  // while editing its plan — so the button and the "what sold" step it opens
+  // both move out of the planner and into the preview.
+  const markButton =
+    '  <sc-if value="{{ evCanComplete }}" hint-placeholder-val="{{ false }}">\n    <button class="btn btn-secondary btn-block" sc-camel-on-click="{{ startCompleting }}" style="min-height:46px;margin-bottom:10px">Mark completed</button>\n  </sc-if>\n';
+  if (!out.includes(markButton)) throw new Error("Missing mark-completed anchor");
+  out = out.replace(markButton, () => "");
+
+  const results = liftBlock(out, '<sc-if value="{{ evEnteringResults }}"');
+  out = results.without;
+
+  const marker = "<!--finish-here-->";
+  if (!out.includes(marker)) throw new Error("Missing preview finish marker");
+  return out.replace(marker, () => results.block + markButton.trim());
+}
+
+/** Cuts one whole sc-if block out of the template, nesting included. */
+function liftBlock(template: string, open: string): { block: string; without: string } {
+  const start = template.indexOf(open);
+  if (start === -1) throw new Error("Missing block " + open);
+  const innerStart = template.indexOf(">", start) + 1;
+  let depth = 1;
+  let cursor = innerStart;
+  while (depth > 0) {
+    const nextOpen = template.indexOf("<sc-if", cursor);
+    const nextClose = template.indexOf("</sc-if>", cursor);
+    if (nextClose === -1) throw new Error("Unclosed block " + open);
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth += 1;
+      cursor = nextOpen + 6;
+    } else {
+      depth -= 1;
+      if (depth === 0) {
+        const end = nextClose + 8;
+        return { block: template.slice(start, end), without: template.slice(0, start) + template.slice(end) };
+      }
+      cursor = nextClose + 8;
+    }
+  }
+  throw new Error("Unclosed block " + open);
 }
 
 /** Opening a saved market starts in preview. */
