@@ -151,6 +151,11 @@ export const workspaceStatePayloadSchema = z
     bakeryName: z.string().max(120).optional(),
     bakeryLocation: z.string().max(160).optional(),
     bakerySpecialties: z.array(z.string().min(1).max(40)).max(20).optional(),
+    ownerName: z.string().max(60).optional(),
+    todoItems: z
+      .array(z.object({ text: z.string().min(1).max(120), done: z.boolean() }).strict())
+      .max(100)
+      .optional(),
     currency: z.enum(["USD", "EUR", "GBP"]).optional(),
     hourlyRate: z.number().finite().min(0).max(10_000).optional(),
     targetMargin: z.number().finite().min(0).max(100).optional(),

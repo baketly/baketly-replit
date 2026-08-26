@@ -1,495 +1,332 @@
-// The home screen, computed from the baker's own records.
+// The home screen: a greeting, the week ahead, and what to do next.
 //
-// Every module here shipped as static mockup copy: an invented $2,810 month,
-// an invented butter rise, a pricing-health score of 74 and four sample
-// products. The plumbing was real — modules can be reordered and hidden — but
-// no value was ever read from state, so a brand new account opened onto
-// somebody else's bakery.
+// It used to be a dashboard — eight rearrangeable modules of numbers, every
+// one of them a report you could already get from Analytics. A baker opening
+// the app in the morning does not want a report; they want to know what day it
+// is, what is coming, and what to do next.
 //
-// Money and margins use the same basis as Analytics (revenue is the sum of
-// sale totals, cost is quantity x unit cost) so the two screens never disagree.
+// The whole screen is replaced in one piece rather than patched module by
+// module: fewer exact-string anchors to break, and the layout is readable in
+// one file.
 
-// Used only until the baker sets their own target during setup.
-const DEFAULT_TARGET_MARGIN = 0.7;
+const GREETING_HOURS = { morning: 12, afternoon: 18 };
 
-const homeData = `    const home = (() => {
+const homeController = `      ...(() => {
         const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
-      const money2 = value => (value < 0 ? ('-' + CUR) : CUR) + Math.abs(value).toFixed(2);
-      const money0 = value => (value < 0 ? ('-' + CUR) : CUR) + Math.abs(Math.round(value)).toLocaleString('en-US');
-      const st = this.state;
-      const recipes = Array.isArray(st.recipeRecords) ? st.recipeRecords : [];
-      const sales = Array.isArray(st.saleRecords) ? st.saleRecords : [];
-      const events = Array.isArray(st.eventRecords) ? st.eventRecords : [];
-      const history = st.priceHistory || {};
-      const removed = new Set(st.removedIngredientKeys || []);
-      // the target the baker set during setup, not a number Baketly picked
-      const WELL = Math.min(0.95, Math.max(0.05, (Number(st.targetMargin) || ${DEFAULT_TARGET_MARGIN} * 100) / 100));
+        const st = this.state;
+        const recipes = Array.isArray(st.recipeRecords) ? st.recipeRecords : [];
+        const events = Array.isArray(st.eventRecords) ? st.eventRecords : [];
+        const ingredients = st.ingredientRecords || {};
+        const packaging = st.packagingRecords || {};
+        const removedIng = new Set(st.removedIngredientKeys || []);
+        const removedPack = new Set(st.removedPackagingKeys || []);
 
-      // ---- what one unit of a recipe costs to make -------------------------
-      const unitCostWith = (recipe, costOf) => {
-        const made = Math.max(1, Number(recipe.yield) || 1);
-        const ingredients = (recipe.ingredientKeys || []).reduce(
-          (sum, key) => sum + (Number((recipe.amounts || {})[key]) || 0) * costOf(key), 0);
-        const packaging = (recipe.packagingKeys || []).reduce(
-          (sum, key) => sum + ((this.PACK_META[key] && Number(this.PACK_META[key].per)) || 0), 0);
-        return ingredients / made + packaging;
-      };
-      const costNow = key => (this.ING_META[key] && Number(this.ING_META[key].per)) || 0;
-      const costWas = key => {
-        const entries = history[key] || [];
-        const last = entries[entries.length - 1];
-        const before = last ? Number(last.unitCost) || 0 : 0;
-        return before > 0 ? before : costNow(key);
-      };
-      const unitCost = recipe => unitCostWith(recipe, costNow);
+        const hasIngredients = Object.keys(ingredients).filter(k => !removedIng.has(k)).length > 0;
+        const hasPackaging = Object.keys(packaging).filter(k => !removedPack.has(k)).length > 0;
+        const hasRecipes = recipes.length > 0;
 
-      const openRecipe = recipe => () => this.setState(s => ({
-        screen: 'recipeEditor', stack: [...s.stack, s.screen], activeRecipeId: recipe.id,
-        recipeDraft: null, recipeDeleteOpen: false, ingPickerOpen: false, packPickerOpen: false
-      }));
-      const openEvent = event => () => this.setState(s => ({
-        screen: 'analyticsEvent', stack: [...s.stack, s.screen], analyticsEventId: event.id, eventCostsOpen: false
-      }));
+        // ---- greeting ---------------------------------------------------
+        const now = new Date();
+        const hour = now.getHours();
+        const partOfDay = hour < ${GREETING_HOURS.morning} ? 'Good morning'
+          : (hour < ${GREETING_HOURS.afternoon} ? 'Good afternoon' : 'Good evening');
+        const name = String(st.ownerName || '').trim();
+        const greeting = name ? partOfDay + ', ' + name : partOfDay;
+        // day before month, the way a date is spoken: 'Thursday, 27 August'
+        const todayLine = now.toLocaleDateString('en-US', { weekday: 'long' })
+          + ', ' + now.getDate() + ' ' + now.toLocaleDateString('en-US', { month: 'long' });
 
-      // ---- month totals, on the same basis Analytics uses ------------------
-      const now = new Date();
-      const monthKey = date => date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
-      const thisMonth = monthKey(now);
-      const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const prevMonth = monthKey(prevDate);
-      const otherCostsOf = event => (Array.isArray(event && event.otherCosts) ? event.otherCosts : [])
-        .reduce((sum, cost) => sum + (Number(cost && cost.amount) || 0), 0);
-      const byMonth = {};
-      sales.forEach(sale => {
-        if (!sale.occurredAt) return;
-        const when = new Date(sale.occurredAt);
-        if (isNaN(when.getTime())) return;
-        const key = monthKey(when);
-        if (!byMonth[key]) byMonth[key] = { revenue: 0, cost: 0, items: 0 };
-        byMonth[key].revenue += Number(sale.total) || 0;
-        (sale.lineItems || []).forEach(line => {
-          const quantity = Number(line.quantity) || 0;
-          byMonth[key].cost += quantity * (Number(line.unitCost) || 0);
-          byMonth[key].items += quantity;
+        // ---- the week ahead ---------------------------------------------
+        const startOfDay = date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const today = startOfDay(now);
+        const dayKey = date => date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+
+        const eventsByDay = {};
+        events.forEach(event => {
+          const when = new Date(event.occurredAt || 0);
+          if (isNaN(when.getTime())) return;
+          const key = dayKey(startOfDay(when));
+          if (!eventsByDay[key]) eventsByDay[key] = [];
+          eventsByDay[key].push(event);
         });
-      });
-      const current = byMonth[thisMonth] || { revenue: 0, cost: 0, items: 0 };
-      const feesIn = month => events
-        .filter(event => (event.occurredAt || '').slice(0, 7) === month)
-        .reduce((sum, event) => sum + (Number(event.boothFee) || 0) + otherCostsOf(event), 0);
-      const currentKept = current.revenue - current.cost - feesIn(thisMonth);
-      const previous = byMonth[prevMonth] || null;
-      const monthName = date => date.toLocaleString('en-US', { month: 'long' });
-      const changeVsPrev = previous && previous.revenue > 0
-        ? Math.round(((current.revenue - previous.revenue) / previous.revenue) * 100)
-        : null;
 
-      const dateLabel = 'Baketly · ' + now.toLocaleString('en-US', { month: 'short', day: 'numeric' });
-      let monthLine;
-      if (!sales.length) monthLine = 'No sales recorded yet';
-      else {
-        monthLine = monthName(now) + ' so far: ' + money0(current.revenue);
-        if (changeVsPrev !== null) {
-          monthLine += ' · ' + (changeVsPrev >= 0 ? '↑' : '↓') + Math.abs(changeVsPrev) + '% vs ' + monthName(prevDate);
-        }
-      }
-
-      // ---- pricing -----------------------------------------------------------
-      const priced = recipes.filter(recipe => (Number(recipe.price) || 0) > 0).map(recipe => {
-        const price = Number(recipe.price) || 0;
-        const cost = unitCost(recipe);
-        const profit = price - cost;
-        return {
-          name: recipe.name || 'Untitled recipe', price, cost, profit,
-          margin: price > 0 ? profit / price : 0,
-          open: openRecipe(recipe)
-        };
-      });
-      const unpricedRecipes = recipes.filter(recipe => !((Number(recipe.price) || 0) > 0));
-      const wellPriced = priced.filter(item => item.margin >= WELL);
-      const thin = priced.filter(item => item.margin < WELL).sort((a, b) => a.margin - b.margin);
-      const healthScore = priced.length ? Math.round((wellPriced.length / priced.length) * 100) : 0;
-      // the ring is r=39, so its circumference is a little over 245
-      const healthDash = Math.round((245 * healthScore) / 100) + ' 245';
-
-      const byProfit = priced.slice().sort((a, b) => b.profit - a.profit);
-      const pickRows = byProfit.length <= 4
-        ? byProfit
-        : [byProfit[0], byProfit[1], byProfit[byProfit.length - 2], byProfit[byProfit.length - 1]];
-      const bestWorstRows = pickRows.map(item => ({
-        name: item.name,
-        priceStr: money2(item.price),
-        profitStr: money2(item.profit) + ' profit',
-        color: item.margin >= WELL ? '#7d8a3c' : 'var(--color-accent-700)',
-        open: item.open
-      }));
-
-      // ---- markets -----------------------------------------------------------
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      const eventTime = event => {
-        const when = new Date(event.occurredAt || 0);
-        return isNaN(when.getTime()) ? NaN : when.getTime();
-      };
-      const dated = events.filter(event => !isNaN(eventTime(event)));
-      const upcoming = dated.filter(event => eventTime(event) >= startOfToday)
-        .sort((a, b) => eventTime(a) - eventTime(b));
-      const past = dated.filter(event => eventTime(event) < startOfToday)
-        .sort((a, b) => eventTime(b) - eventTime(a));
-      const nextEvent = upcoming[0] || null;
-      const lastEvent = past[0] || null;
-
-      const recipeById = {};
-      recipes.forEach(recipe => { if (recipe.id) recipeById[recipe.id] = recipe; });
-
-      let nextMonthLabel = '', nextDayLabel = '', nextName = '', nextSub = '';
-      if (nextEvent) {
-        const when = new Date(nextEvent.occurredAt);
-        nextMonthLabel = when.toLocaleString('en-US', { month: 'short' });
-        nextDayLabel = String(when.getDate());
-        nextName = nextEvent.name || 'Market';
-        const plannedItems = Array.isArray(nextEvent.plannedItems) ? nextEvent.plannedItems : [];
-        if (plannedItems.length) {
-          let goal = 0, production = 0;
-          plannedItems.forEach(item => {
-            const quantity = Math.max(0, Number(item.quantity) || 0);
-            const recipe = recipeById[item.productId];
-            goal += quantity * (recipe ? Number(recipe.price) || 0 : 0);
-            production += quantity * (recipe ? unitCost(recipe) : 0);
+        const selected = Math.min(6, Math.max(0, Number(st.homeDayIndex) || 0));
+        const week = [];
+        for (let offset = 0; offset < 7; offset++) {
+          const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+          const key = dayKey(date);
+          const isToday = offset === 0;
+          const isPicked = offset === selected;
+          week.push({
+            letter: date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2),
+            number: String(date.getDate()),
+            key,
+            dotOpacity: (eventsByDay[key] || []).length > 0 ? '1' : '0',
+            dotColor: isPicked ? '#ffffff' : 'var(--color-accent)',
+            bg: isPicked ? 'var(--color-accent)' : (isToday ? 'var(--color-accent-100)' : 'transparent'),
+            color: isPicked ? '#ffffff' : 'var(--color-text)',
+            border: isToday && !isPicked ? '1px solid var(--color-accent-300)' : '1px solid transparent',
+            pick: () => this.setState({ homeDayIndex: offset })
           });
-          const breakEven = (Number(nextEvent.boothFee) || 0) + otherCostsOf(nextEvent) + production;
-          nextSub = 'break-even ' + money0(breakEven) + ' · goal ' + money0(goal);
-        } else {
-          nextSub = 'nothing planned yet';
         }
-      }
 
-      let lastTitle = '', lastRevenue = '', lastCosts = '', lastKept = '';
-      if (lastEvent) {
-        const when = new Date(lastEvent.occurredAt);
-        lastTitle = 'Last market · ' + (lastEvent.name || 'Market') + ', '
-          + when.toLocaleString('en-US', { month: 'short', day: 'numeric' });
-        let revenue = 0, production = 0;
-        sales.filter(sale => sale.eventId === lastEvent.id).forEach(sale => {
-          revenue += Number(sale.total) || 0;
-          (sale.lineItems || []).forEach(line => {
-            production += (Number(line.quantity) || 0) * (Number(line.unitCost) || 0);
-          });
+        const pickedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + selected);
+        const pickedLabel = selected === 0
+          ? 'Today'
+          : pickedDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+
+        const openEvent = event => () => this.setState(s => ({
+          screen: 'analyticsEvent', stack: [...s.stack, s.screen], analyticsEventId: event.id, eventCostsOpen: false
+        }));
+
+        const dayItems = (eventsByDay[dayKey(pickedDate)] || []).map(event => {
+          const planned = (event.plannedItems || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+          return {
+            name: event.name || 'Market',
+            detail: planned > 0
+              ? planned + (planned === 1 ? ' item to bake' : ' items to bake')
+              : 'Nothing planned to bake yet',
+            open: openEvent(event)
+          };
         });
-        const costs = production + (Number(lastEvent.boothFee) || 0) + otherCostsOf(lastEvent);
-        lastRevenue = money0(revenue);
-        lastCosts = '−' + money0(costs);
-        lastKept = money0(revenue - costs);
-      }
 
-      // ---- what ingredient prices have done -----------------------------------
-      const movers = [];
-      Object.keys(history).forEach(key => {
-        if (removed.has(key)) return;
-        const meta = this.ING_META[key];
-        if (!meta) return;
-        const before = costWas(key);
-        const after = costNow(key);
-        if (!(before > 0)) return;
-        const pct = Math.round(((after - before) / before) * 100);
-        if (pct === 0) return;
-        movers.push({ key, name: meta.name || key, pct });
-      });
-      movers.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+        // ---- what to do next ---------------------------------------------
+        const goIngredientNew = () => this.setState(s => ({
+          screen: 'ingredientEdit', stack: [...s.stack, s.screen],
+          activeIngredientKey: null, ingredientDraft: null, ingredientSaveError: ''
+        }));
+        const goPackagingNew = () => this.setState(s => ({
+          screen: 'packagingEdit', stack: [...s.stack, s.screen],
+          activePackagingKey: null, packagingDraft: null, packagingSaveError: ''
+        }));
 
-      const shifted = recipes.map(recipe => ({
-        name: recipe.name || 'Untitled recipe',
-        delta: unitCostWith(recipe, costNow) - unitCostWith(recipe, costWas)
-      })).filter(row => Math.abs(row.delta) >= 0.005)
-        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+        // Each starter step disappears the moment it is genuinely done, so the
+        // list empties itself as the baker works rather than being ticked off.
+        const starter = [
+          { label: 'Add your first ingredient', done: hasIngredients, go: goIngredientNew },
+          { label: 'Add your first packaging', done: hasPackaging, go: goPackagingNew },
+          { label: 'Create your first recipe', done: hasRecipes, go: () => this.setState(s => ({ screen: 'ingredients', pantryTab: 'rec', stack: [...s.stack, s.screen] })) }
+        ].filter(step => !step.done);
 
-      let readHeadline = 'Nothing has moved yet.';
-      let readBody = 'Baketly watches your ingredient prices and works out what each change does to every recipe that uses them. Update a package price and the first read appears here.';
-      let costWatchText = '';
-      if (movers.length) {
-        const top = movers[0];
-        const touching = recipes.filter(recipe => (recipe.ingredientKeys || []).includes(top.key)).length;
-        const direction = top.pct > 0 ? 'up ' : 'down ';
-        readHeadline = touching > 0
-          ? top.name + ' is ' + direction + Math.abs(top.pct) + '%, and it touches ' + touching
-            + ' of your ' + recipes.length + ' recipe' + (recipes.length === 1 ? '' : 's') + '.'
-          : top.name + ' is ' + direction + Math.abs(top.pct) + '%, but none of your recipes use it yet.';
-        if (shifted.length) {
-          readBody = shifted[0].name + ' moved the most: ' + money2(Math.abs(shifted[0].delta))
-            + (shifted[0].delta > 0 ? ' more' : ' less') + ' per unit. '
-            + (thin.length
-              ? thin.length + ' of your recipes now sit under a ' + Math.round(WELL * 100) + '% margin.'
-              : 'Every priced recipe still holds its margin.');
-        } else {
-          readBody = 'No recipe has changed by more than a cent, so nothing needs repricing yet.';
-        }
-        costWatchText = movers.slice(0, 4)
-          .map(mover => mover.name + ' ' + (mover.pct > 0 ? '↑' : '↓') + Math.abs(mover.pct) + '%')
-          .join(' · ') + '.'
-          + (shifted.length
-            ? ' ' + shifted[0].name + ' is ' + (shifted[0].delta > 0 ? 'up ' : 'down ')
-              + money2(Math.abs(shifted[0].delta)) + ' a unit.'
-            : '');
-      }
-
-      // ---- what actually needs the baker's attention ---------------------------
-      const attention = [];
-      unpricedRecipes.slice(0, 2).forEach(recipe => attention.push({
-        kicker: 'Needs a price',
-        text: (recipe.name || 'This recipe') + ' has no selling price yet, so Baketly cannot show what it earns.',
-        cta: 'Set a price →',
-        go: openRecipe(recipe)
-      }));
-      thin.slice(0, 2).forEach(item => attention.push({
-        kicker: 'Review price',
-        text: item.name + ' keeps ' + money2(item.profit) + ' of ' + money2(item.price)
-          + ' — a ' + Math.round(item.margin * 100) + '% margin, below the ' + Math.round(WELL * 100) + '% the rest of your pricing assumes.',
-        cta: 'Open the recipe →',
-        go: item.open
-      }));
-      const savedIngredients = st.ingredientRecords || {};
-      Object.keys(savedIngredients)
-        .filter(key => !removed.has(key) && !((Number((savedIngredients[key] || {}).packagePrice) || 0) > 0))
-        .slice(0, 2)
-        .forEach(key => attention.push({
-          kicker: 'Missing cost',
-          text: ((this.ING_META[key] && this.ING_META[key].name) || key)
-            + ' has no package price, so every recipe using it is costed short.',
-          cta: 'Add the price →',
-          go: () => this.setState(s => ({
-            screen: 'ingredientEdit', stack: [...s.stack, s.screen],
-            activeIngredientKey: key, ingredientDraft: null, ingredientSaveError: ''
+        const todos = Array.isArray(st.todoItems) ? st.todoItems : [];
+        const todoRows = todos.map((item, index) => ({
+          text: String(item && item.text || ''),
+          done: !!(item && item.done),
+          boxBg: item && item.done ? 'var(--color-accent)' : '#fff',
+          boxBorder: item && item.done ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+          tick: item && item.done ? '#fff' : 'transparent',
+          textColor: item && item.done ? '#9a947f' : 'var(--color-text)',
+          strike: item && item.done ? 'line-through' : 'none',
+          toggle: () => this.setState(s => ({
+            todoItems: (s.todoItems || []).map((entry, i) => i === index ? { ...entry, done: !entry.done } : entry)
+          })),
+          remove: () => this.setState(s => ({
+            todoItems: (s.todoItems || []).filter((_, i) => i !== index)
           }))
         }));
-      const attentionItems = attention.slice(0, 3);
 
-      return {
-        show: {
-          read: movers.length > 0 || Object.keys(st.ingredientRecords || {}).length > 0,
-          health: priced.length > 0,
-          bestworst: priced.length >= 2,
-          nextmarket: !!nextEvent,
-          snapshot: current.revenue > 0,
-          attention: attentionItems.length > 0,
-          lastmarket: !!lastEvent,
-          costwatch: movers.length > 0,
-          // there is no orders model in the app yet, so this can only be invented
-          orders: false,
-          chatmod: true
-        },
-        vals: {
-          homeDateLabel: dateLabel,
-          homeMonthLine: monthLine,
-          readHeadline: readHeadline,
-          readBody: readBody,
-          healthScore: healthScore,
-          healthDash: healthDash,
-          healthAnalyzed: priced.length + (priced.length === 1 ? ' recipe priced' : ' recipes priced'),
-          healthWell: wellPriced.length + ' priced well',
-          healthThin: thin.length + ' underpriced',
-          healthHasThin: thin.length > 0,
-          healthUnpriced: unpricedRecipes.length + ' without a price',
-          healthHasUnpriced: unpricedRecipes.length > 0,
-          healthReviewLabel: 'Review the ' + thin.length + ' →',
-          bestWorstRows: bestWorstRows,
-          nextMarketMonth: nextMonthLabel,
-          nextMarketDay: nextDayLabel,
-          nextMarketName: nextName,
-          nextMarketSub: nextSub,
-          openNextMarket: nextEvent ? openEvent(nextEvent) : () => {},
-          snapRevenue: money0(current.revenue),
-          snapRevenueSub: changeVsPrev === null
-            ? 'first month with sales'
-            : (changeVsPrev >= 0 ? '↑ ' : '↓ ') + Math.abs(changeVsPrev) + '% vs ' + monthName(prevDate),
-          snapProfit: money0(currentKept),
-          snapMargin: (current.revenue > 0 ? Math.round((currentKept / current.revenue) * 100) : 0) + '%',
-          attentionCount: attentionItems.length,
-          attentionItems: attentionItems,
-          lastMarketTitle: lastTitle,
-          lastMarketRevenue: lastRevenue,
-          lastMarketCosts: lastCosts,
-          lastMarketKept: lastKept,
-          costWatchText: costWatchText
-        }
-      };
-    })();
+        const addTodo = () => this.setState(s => {
+          const text = String(s.todoDraft || '').trim().slice(0, 120);
+          if (!text) return {};
+          return { todoItems: [...(s.todoItems || []), { text, done: false }], todoDraft: '' };
+        });
+
+        // ---- what changed nearby -------------------------------------------
+        const check = st.marketCheck || null;
+        const checkedWhen = check && check.checkedAt ? new Date(check.checkedAt) : null;
+        const nearbyLine = check && check.summary
+          ? String(check.summary)
+          : (String(st.bakeryLocation || '').trim()
+            ? 'Baketly has not looked yet. Check what bakeries near you charge.'
+            : 'Add where you sell and Baketly will tell you how your prices compare nearby.');
+
+        return {
+          homeGreeting: greeting,
+          homeToday: todayLine,
+
+          homeWeek: week,
+          homeDayLabel: pickedLabel,
+          homeDayItems: dayItems,
+          homeDayHasItems: dayItems.length > 0,
+          homeDayEmpty: dayItems.length === 0,
+
+          homeStarter: starter,
+          homeHasStarter: starter.length > 0,
+          homeTodos: todoRows,
+          homeHasTodos: todoRows.length > 0,
+          todoDraft: st.todoDraft || '',
+          setTodoDraft: e => this.setState({ todoDraft: e.target.value.slice(0, 120) }),
+          addTodo,
+
+          homeNearby: nearbyLine,
+          homeNearbyWhen: checkedWhen && !isNaN(checkedWhen.getTime())
+            ? 'Checked ' + checkedWhen.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : 'Not checked yet',
+
+          goIngredientNew,
+          goPackagingNew,
+        };
+      })(),
 `;
 
-/** Inserts the computation just before the module list is built. */
-function insertHomeData(template: string): string {
-  const anchor = "    const ids = editMode ? order : order.filter(id => !hidden[id]);";
-  if (!template.includes(anchor)) throw new Error("Missing home module id anchor");
+function addHomeController(template: string): string {
+  const anchor = /([ \t]*)onAnalytics:\s*screen\s*===\s*'analytics',/;
+  if (!anchor.test(template)) throw new Error("Missing stable home anchor");
   return template.replace(
     anchor,
-    () =>
-      homeData +
-      // A module with nothing to say is dropped rather than shown empty. This
-      // also applies while arranging, so the mockup's sample content can never
-      // reappear there.
-      "    const ids = (editMode ? order : order.filter(id => !hidden[id])).filter(id => home.show[id] !== false);",
+    (_match, indent: string) => `${homeController}${indent}onAnalytics: screen === 'analytics',`,
   );
 }
 
-/** Makes the computed values available to the page's bindings. */
-function bindHomeValues(template: string): string {
-  const anchor = /([ \t]*)onAnalytics:\s*screen\s*===\s*'analytics',/;
-  if (!anchor.test(template)) throw new Error("Missing stable home binding anchor");
-  return template.replace(
-    anchor,
-    (_match, indent: string) =>
-      `${indent}...home.vals,\n${indent}onAnalytics: screen === 'analytics',`,
-  );
-}
+const iconButton = (handler: string, label: string, path: string) =>
+  `<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ ${handler} }}" aria-label="${label}" style="width:40px;height:40px">` +
+  `<svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${path}</svg></button>`;
+
+const quickAction = (handler: string, label: string, path: string) =>
+  `      <button class="btn btn-secondary" sc-camel-on-click="{{ ${handler} }}" style="flex:1;min-width:0;min-height:66px;flex-direction:column;gap:5px;padding:10px 4px;border-radius:16px">` +
+  `<svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${path}</svg>` +
+  `<span style="font-size:10px;font-weight:600;line-height:1.2;text-align:center">${label}</span></button>`;
+
+const homeMarkup = `
+<div style="padding:18px 20px 28px">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:22px">
+    <div style="min-width:0">
+      <h2 style="font-size:26px;line-height:1.2;margin:0 0 4px">{{ homeGreeting }}</h2>
+      <div class="text-muted" style="font-size:13px">{{ homeToday }}</div>
+    </div>
+    <div style="display:flex;gap:6px;flex:none">
+      ${iconButton("goChat", "Ask Baketly", '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"></path>')}
+      ${iconButton("goSettings", "Settings", '<circle cx="12" cy="12" r="3.2"></circle><path d="M12 3.4v2.2M12 18.4v2.2M3.4 12h2.2M18.4 12h2.2M5.9 5.9l1.6 1.6M16.5 16.5l1.6 1.6M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6"></path>')}
+    </div>
+  </div>
+
+  <div style="display:flex;gap:6px;margin-bottom:20px">
+    <sc-for list="{{ homeWeek }}" as="day" hint-placeholder-count="7">
+      <div sc-camel-on-click="{{ day.pick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;border-radius:14px;cursor:pointer;background:{{ day.bg }};color:{{ day.color }};border:{{ day.border }};box-sizing:border-box">
+        <span style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.75">{{ day.letter }}</span>
+        <span style="font-size:15px;font-weight:600;font-feature-settings:'tnum'">{{ day.number }}</span>
+        <span style="width:4px;height:4px;border-radius:50%;background:{{ day.dotColor }};opacity:{{ day.dotOpacity }}"></span>
+      </div>
+    </sc-for>
+  </div>
+
+  <h6 style="margin:0 0 8px">{{ homeDayLabel }}</h6>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+    <sc-for list="{{ homeDayItems }}" as="item" hint-placeholder-count="1">
+      <div class="card" sc-camel-on-click="{{ item.open }}" style="gap:4px;padding:15px 16px;cursor:pointer">
+        <div style="font-size:15px;font-weight:600">{{ item.name }}</div>
+        <div class="text-muted" style="font-size:12px">{{ item.detail }}</div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ homeDayEmpty }}" hint-placeholder-val="{{ true }}">
+      <div class="text-muted" style="font-size:13px;line-height:1.5;padding:16px 2px;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">Nothing booked for this day. Markets you plan will show up here.</div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ homeHasStarter }}" hint-placeholder-val="{{ false }}">
+    <h6 style="margin:0 0 8px">Getting set up</h6>
+    <div style="display:flex;flex-direction:column;margin-bottom:22px">
+      <sc-for list="{{ homeStarter }}" as="step" hint-placeholder-count="3">
+        <div class="bk-row" sc-camel-on-click="{{ step.go }}" style="display:flex;align-items:center;gap:12px;padding:13px 2px;border-top:1px solid var(--color-divider);cursor:pointer;min-height:44px">
+          <span style="width:22px;height:22px;flex:none;border-radius:7px;border:1.5px solid var(--color-neutral-300);background:#fff"></span>
+          <span style="flex:1;font-size:14px">{{ step.label }}</span>
+          <span class="text-muted" style="flex:none;font-size:17px">›</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <h6 style="margin:0 0 8px">To do</h6>
+  <div style="display:flex;flex-direction:column;margin-bottom:10px">
+    <sc-for list="{{ homeTodos }}" as="todo" hint-placeholder-count="2">
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 2px;border-top:1px solid var(--color-divider);min-height:44px">
+        <button sc-camel-on-click="{{ todo.toggle }}" aria-label="Done" style="width:22px;height:22px;flex:none;border-radius:7px;border:1.5px solid {{ todo.boxBorder }};background:{{ todo.boxBg }};cursor:pointer;display:grid;place-items:center;padding:0">
+          <svg width="12" height="12" sc-camel-view-box="0 0 24 24" fill="none" stroke="{{ todo.tick }}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+        </button>
+        <span style="flex:1;font-size:14px;color:{{ todo.textColor }};text-decoration:{{ todo.strike }}">{{ todo.text }}</span>
+        <button sc-camel-on-click="{{ todo.remove }}" aria-label="Remove" style="flex:none;width:30px;height:30px;border:0;background:none;cursor:pointer;color:var(--color-neutral-400);font-size:18px;line-height:1">×</button>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:24px">
+    <input class="input" value="{{ todoDraft }}" sc-camel-on-change="{{ setTodoDraft }}" aria-label="Add a to-do" placeholder="Add something to do…" style="flex:1;min-width:0;padding:11px 14px;font-size:13px">
+    <button class="btn btn-secondary" sc-camel-on-click="{{ addTodo }}" style="flex:none;min-height:44px;padding:0 16px">Add</button>
+  </div>
+
+  <div class="card" sc-camel-on-click="{{ goAlerts }}" style="gap:7px;margin-bottom:22px;cursor:pointer">
+    <span class="card-kicker">What changed nearby</span>
+    <div style="font-size:14px;line-height:1.55">{{ homeNearby }}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span class="text-muted" style="font-size:11px">{{ homeNearbyWhen }}</span>
+      <span style="font-size:12px;font-weight:600;color:var(--color-accent-700)">See what changed ›</span>
+    </div>
+  </div>
+
+  <h6 style="margin:0 0 8px">Quick actions</h6>
+  <div style="display:flex;gap:8px">
+${quickAction("goIngredientNew", "New<br>ingredient", '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path>')}
+${quickAction("goPackagingNew", "New<br>packaging", '<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M3 11h18M12 7v13"></path>')}
+${quickAction("goNewRecipe", "New<br>recipe", '<path d="M6 3h9l4 4v14H6z"></path><path d="M9 12h7M9 16h5"></path>')}
+${quickAction("goScan", "Scan<br>label", '<path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"></path><path d="M7 12h10"></path>')}
+  </div>
+
+</div>
+`;
 
 /**
- * Swaps the body of one dashboard module. Each module is a single `sc-if` on
- * its own flag, so its block is found by matching that tag's own close.
+ * Swaps the whole dashboard for the new screen. One anchor instead of the
+ * eleven the module-by-module version needed.
  */
-function replaceModule(template: string, flag: string, markup: string): string {
-  const open = `<sc-if value="{{ m.${flag} }}"`;
+function replaceHomeScreen(template: string): string {
+  const open = '<sc-if value="{{ onDash }}"';
   const start = template.indexOf(open);
-  if (start === -1) throw new Error(`Missing home module ${flag}`);
+  if (start === -1) throw new Error("Missing home screen anchor");
   const innerStart = template.indexOf(">", start) + 1;
   let depth = 1;
   let cursor = innerStart;
   while (depth > 0) {
     const nextOpen = template.indexOf("<sc-if", cursor);
     const nextClose = template.indexOf("</sc-if>", cursor);
-    if (nextClose === -1) throw new Error(`Unclosed home module ${flag}`);
+    if (nextClose === -1) throw new Error("Unclosed home screen block");
     if (nextOpen !== -1 && nextOpen < nextClose) {
       depth += 1;
       cursor = nextOpen + 6;
     } else {
       depth -= 1;
-      if (depth === 0) {
-        return template.slice(0, innerStart) + markup + template.slice(nextClose);
-      }
+      if (depth === 0) return template.slice(0, innerStart) + homeMarkup + template.slice(nextClose);
       cursor = nextClose + 8;
     }
   }
-  throw new Error(`Unclosed home module ${flag}`);
+  throw new Error("Unclosed home screen block");
 }
 
-const readModule = `
-        <div style="border-top:2px solid var(--color-text);padding-top:14px">
-          <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent);margin-bottom:8px">This week's read</div>
-          <div style="font-family:var(--font-heading);font-weight:600;font-size:24px;line-height:1.25;margin-bottom:10px">{{ readHeadline }}</div>
-          <p style="font-size:14px;line-height:1.6;margin-bottom:10px">{{ readBody }}</p>
-          <button class="btn btn-primary" sc-camel-on-click="{{ goAlerts }}" style="min-height:44px">See what changed</button>
-        </div>
-      `;
+/** The greeting needs a name to greet, so Settings gains one field. */
+function addNameField(template: string): string {
+  const anchor =
+    '<div class="field"><label>Bakery name</label><input class="input" value="{{ bakeryName }}"';
+  if (!template.includes(anchor)) throw new Error("Missing settings bakery name anchor");
+  return template.replace(
+    anchor,
+    () =>
+      '<div class="field"><label>Your name</label><input class="input" value="{{ ownerName }}" sc-camel-on-change="{{ setOwnerName }}" aria-label="Your name" placeholder="what Baketly should call you"></div>' +
+      anchor,
+  );
+}
 
-const healthModule = `
-        <div style="display:flex;gap:16px;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);padding:16px 0">
-          <div style="flex:none;width:88px;height:88px;position:relative">
-            <svg width="88" height="88" sc-camel-view-box="0 0 88 88"><circle cx="44" cy="44" r="39" fill="none" stroke="var(--color-neutral-200)" stroke-width="3"></circle><circle cx="44" cy="44" r="39" fill="none" stroke="var(--color-accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{ healthDash }}" transform="rotate(-90 44 44)"></circle></svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:'tnum'">{{ healthScore }}</span><span class="text-muted" style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase">of 100</span></div>
-          </div>
-          <div style="flex:1">
-            <h6 style="margin-bottom:6px">Pricing health</h6>
-            <div style="font-size:13px;line-height:1.6">{{ healthAnalyzed }}<br>{{ healthWell }}<sc-if value="{{ healthHasThin }}" hint-placeholder-val="{{ false }}"> · <span style="color:var(--color-accent-700)">{{ healthThin }}</span></sc-if><sc-if value="{{ healthHasUnpriced }}" hint-placeholder-val="{{ false }}"> · {{ healthUnpriced }}</sc-if></div>
-            <sc-if value="{{ healthHasThin }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ goRecipes }}" style="margin-left:-5px;min-height:40px">{{ healthReviewLabel }}</button></sc-if>
-          </div>
-        </div>
-      `;
+const nameBinding = `      ownerName: this.state.ownerName || '',
+      setOwnerName: e => this.setState({ ownerName: e.target.value.slice(0, 60) }),
+`;
 
-const bestWorstModule = `
-        <h6 style="margin-bottom:8px">Best and worst per unit</h6>
-        <sc-raw-table class="table" style="font-size:13px">
-          <sc-raw-tbody>
-            <sc-for list="{{ bestWorstRows }}" as="row" hint-placeholder-count="2">
-              <sc-raw-tr class="bk-row" sc-camel-on-click="{{ row.open }}" style="cursor:pointer"><sc-raw-td>{{ row.name }}</sc-raw-td><sc-raw-td style="text-align:right;font-feature-settings:'tnum'">{{ row.priceStr }}</sc-raw-td><sc-raw-td style="text-align:right;font-feature-settings:'tnum';color:{{ row.color }}">{{ row.profitStr }}</sc-raw-td></sc-raw-tr>
-            </sc-for>
-          </sc-raw-tbody>
-        </sc-raw-table>
-      `;
-
-const nextMarketModule = `
-        <div class="bk-row" sc-camel-on-click="{{ openNextMarket }}" style="display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);cursor:pointer">
-          <div style="text-align:center;flex:none;width:44px"><div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent)">{{ nextMarketMonth }}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1;font-feature-settings:'tnum'">{{ nextMarketDay }}</div></div>
-          <div style="flex:1"><div style="font-family:var(--font-heading);font-weight:600;font-size:17px">{{ nextMarketName }}</div><div class="text-muted" style="font-size:12px">{{ nextMarketSub }}</div></div>
-          <span class="text-muted" style="font-size:18px">›</span>
-        </div>
-      `;
-
-const snapshotModule = `
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);padding:14px 0">
-          <div style="padding-right:12px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Revenue</div><div style="font-family:var(--font-heading);font-weight:600;font-size:23px;font-feature-settings:'tnum'">{{ snapRevenue }}</div><div class="text-muted" style="font-size:11px">{{ snapRevenueSub }}</div></div>
-          <div style="padding:0 12px;border-left:1px solid var(--color-divider)"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Profit</div><div style="font-family:var(--font-heading);font-weight:600;font-size:23px;font-feature-settings:'tnum'">{{ snapProfit }}</div><div class="text-muted" style="font-size:11px">after production &amp; fees</div></div>
-          <div style="padding-left:12px;border-left:1px solid var(--color-divider)"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Margin</div><div style="font-family:var(--font-heading);font-weight:600;font-size:23px;font-feature-settings:'tnum'">{{ snapMargin }}</div><div class="text-muted" style="font-size:11px">labor not set</div></div>
-        </div>
-      `;
-
-const attentionModule = `
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px"><h6 style="margin:0">Needs your attention</h6><span class="tag tag-accent">{{ attentionCount }}</span></div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <sc-for list="{{ attentionItems }}" as="item" hint-placeholder-count="2">
-            <div class="card" style="gap:8px">
-              <span class="card-kicker">{{ item.kicker }}</span>
-              <div style="font-size:14px;line-height:1.5">{{ item.text }}</div>
-              <button class="btn btn-ghost" sc-camel-on-click="{{ item.go }}" style="align-self:flex-start;min-height:44px">{{ item.cta }}</button>
-            </div>
-          </sc-for>
-        </div>
-      `;
-
-const lastMarketModule = `
-        <h6 style="margin-bottom:8px">{{ lastMarketTitle }}</h6>
-        <div style="display:flex;flex-direction:column;font-size:13px">
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--color-divider)"><span>Revenue</span><span style="font-feature-settings:'tnum'">{{ lastMarketRevenue }}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--color-divider)"><span class="text-muted">Ingredients + booth</span><span class="text-muted" style="font-feature-settings:'tnum'">{{ lastMarketCosts }}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)"><span style="font-family:var(--font-heading);font-weight:600;font-size:15px">You kept</span><span style="font-family:var(--font-heading);font-weight:600;font-size:17px;font-feature-settings:'tnum'">{{ lastMarketKept }}</span></div>
-        </div>
-      `;
-
-const costWatchModule = `
-        <div class="card" style="gap:8px">
-          <span class="card-kicker">Cost watch</span>
-          <div style="font-size:14px;line-height:1.5">{{ costWatchText }}</div>
-          <button class="btn btn-ghost" sc-camel-on-click="{{ goAlerts }}" style="align-self:flex-start;min-height:44px">See affected recipes →</button>
-        </div>
-      `;
-
-// Kept so the module still renders if it is ever switched on, but Baketly has
-// no orders model yet, so there is nothing truthful to list.
-const ordersModule = `
-        <h6 style="margin-bottom:8px">Upcoming orders</h6>
-        <div class="text-muted" style="font-size:13px;padding:8px 0;border-top:1px solid var(--color-divider)">No upcoming orders yet.</div>
-      `;
-
-const chatModule = `
-        <div class="card" style="gap:10px">
-          <div style="display:flex;align-items:center;gap:8px"><svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"></path></svg><span class="card-kicker" style="margin:0">Ask Baketly</span></div>
-          <div style="font-size:14px;line-height:1.5">Your bakery's numbers, answered in plain words. Try one:</div>
-          <button class="btn btn-secondary" sc-camel-on-click="{{ askGo1 }}" style="justify-content:flex-start;text-align:left;min-height:44px;font-size:12px">{{ askLabel1 }}</button>
-          <button class="btn btn-secondary" sc-camel-on-click="{{ askGo3 }}" style="justify-content:flex-start;text-align:left;min-height:44px;font-size:12px">{{ askLabel3 }}</button>
-        </div>
-      `;
-
-/** The greeting line above the modules. */
-function bindHeader(template: string): string {
-  const date = ">Baketly · Aug 21<";
-  const month = ">August so far: $2,810 · ↑12% vs July<";
-  if (!template.includes(date)) throw new Error("Missing home date anchor");
-  if (!template.includes(month)) throw new Error("Missing home month anchor");
-  return template
-    .replace(date, () => ">{{ homeDateLabel }}<")
-    .replace(month, () => ">{{ homeMonthLine }}<");
+function addNameBinding(template: string): string {
+  const anchor = /([ \t]*)onAnalytics:\s*screen\s*===\s*'analytics',/;
+  if (!anchor.test(template)) throw new Error("Missing stable owner name anchor");
+  return template.replace(
+    anchor,
+    (_match, indent: string) => `${nameBinding}${indent}onAnalytics: screen === 'analytics',`,
+  );
 }
 
 export function applyHomeBehavior(template: string): string {
-  let out = bindHeader(bindHomeValues(insertHomeData(template)));
-  const modules: Array<[string, string]> = [
-    ["isRead", readModule],
-    ["isHealth", healthModule],
-    ["isBestWorst", bestWorstModule],
-    ["isNextMarket", nextMarketModule],
-    ["isSnapshot", snapshotModule],
-    ["isAttention", attentionModule],
-    ["isLastMarket", lastMarketModule],
-    ["isCostWatch", costWatchModule],
-    ["isOrders", ordersModule],
-    ["isChatMod", chatModule],
-  ];
-  for (const [flag, markup] of modules) out = replaceModule(out, flag, markup);
-  return out;
+  return addNameField(addNameBinding(replaceHomeScreen(addHomeController(template))));
 }

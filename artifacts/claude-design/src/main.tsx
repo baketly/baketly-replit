@@ -64,6 +64,8 @@ const durableFields = [
   "bakeryName",
   "bakeryLocation",
   "bakerySpecialties",
+  "ownerName",
+  "todoItems",
   "currency",
   "hourlyRate",
   "targetMargin",
