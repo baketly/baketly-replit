@@ -275,6 +275,12 @@ const eventController = `      ...(() => {
             if (!event) return { screen: 'markets', stack: [] };
             const quantities = {};
             (event.plannedItems || []).forEach(item => { quantities[item.productId] = item.quantity; });
+            // what the market was recorded as having sold, to hand straight back
+            const soldBack = {};
+            (st.saleRecords || []).filter(sale => sale.eventId === event.id)
+              .forEach(sale => (sale.lineItems || []).forEach(line => {
+                soldBack[line.productId] = (soldBack[line.productId] || 0) + (Number(line.quantity) || 0);
+              }));
             return {
               eventRecords: (st.eventRecords || []).map(ev =>
                 ev.id === st.analyticsEventId ? { ...ev, status: 'planned' } : ev),
@@ -287,19 +293,18 @@ const eventController = `      ...(() => {
               eventOtherCosts: (event.otherCosts || []).map(cost => ({ label: cost.label, amount: String(cost.amount) })),
               evPicked: (event.plannedItems || []).map(item => item.productId),
               evQty: quantities,
-              evSold: {},
+              evSold: soldBack,
               evStatus: 'planned',
               evSaved: true,
-              evEnteringResults: false,
+              // Straight back to the step Complete event was pressed on, with
+              // the quantities still filled in — an undo lands where the
+              // mistake was made, not somewhere you have to navigate from.
+              evEnteringResults: true,
               evPickerOpen: false,
               evPickerSel: [],
               eventDeleteOpen: false,
               shopNeed: {},
-              shopNeedText: {},
-              // reopening is something you do in order to change it, so this
-              // lands in the planner. Last key wins over the reset injected
-              // alongside screen: 'event'.
-              editingKey: 'ev:' + event.id
+              shopNeedText: {}
             };
           }),
 
