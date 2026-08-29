@@ -984,7 +984,7 @@ function addCommerceBehavior(template: string): string {
   );
   out = out.replace(
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px"><h2 style="font-size:28px;margin:0">Markets &amp; orders</h2><button class="btn btn-primary" sc-camel-on-click="{{ goEventNew }}" style="min-height:44px">+ New event</button></div>',
-    () => '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px"><h2 style="font-size:28px;margin:0;flex:1;min-width:0">Markets &amp; orders</h2><button class="btn btn-primary" sc-camel-on-click="{{ goEventNew }}" style="min-height:44px;padding:8px 10px;white-space:nowrap;flex:none">+ New event</button></div>',
+    () => '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px"><h2 style="font-size:28px;margin:0;flex:1;min-width:0">Markets</h2><button class="btn btn-primary" sc-camel-on-click="{{ goEventNew }}" style="min-height:44px;padding:8px 10px;white-space:nowrap;flex:none">+ New event</button></div>',
   );
   out = out.replace(
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:28px;margin:0">Base Farmers Market</h2><span class="tag tag-accent">{{ evStatusLabel }}</span></div>\n  <p class="text-muted" style="font-size:13px;margin:4px 0 18px">Production date Sep 12 · booth $125</p>',
