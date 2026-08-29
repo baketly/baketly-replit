@@ -40,7 +40,6 @@ const eventController = `      ...(() => {
           && (typeFilter === 'all' || (recipe.type || 'treat') === typeFilter));
         const pickerItems = available.map(recipe => ({
           name: recipe.name || 'Untitled recipe',
-          meta: CUR + (Number(recipe.price) || 0).toFixed(2) + ' · costs ' + CUR + unitCost(recipe).toFixed(2),
           check: staged.includes(recipe.id) ? '✓' : '',
           rowBg: staged.includes(recipe.id) ? 'var(--color-accent-100)' : '#fff',
           toggle: () => this.setState(st => {
@@ -378,10 +377,7 @@ const pickerMarkup = `<sc-if value="{{ evPickerOpen }}" hint-placeholder-val="{{
       <sc-for list="{{ evPickerItems }}" as="ip" hint-placeholder-count="4">
         <div class="bk-row" sc-camel-on-click="{{ ip.toggle }}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 4px;border-top:1px solid var(--color-divider);cursor:pointer;font-size:14px;min-height:44px;box-sizing:border-box">
           <span>{{ ip.name }}</span>
-          <span style="display:flex;align-items:center;gap:10px">
-            <span class="text-muted" style="font-feature-settings:'tnum';font-size:12px">{{ ip.meta }}</span>
-            <span style="width:20px;height:20px;border:1px solid var(--color-accent);border-radius:6px;display:grid;place-items:center;color:var(--color-accent);font-weight:700">{{ ip.check }}</span>
-          </span>
+          <span style="width:20px;height:20px;border:1px solid var(--color-accent);border-radius:6px;display:grid;place-items:center;color:var(--color-accent);font-weight:700;flex:none">{{ ip.check }}</span>
         </div>
       </sc-for>
     </div>
