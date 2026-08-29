@@ -560,11 +560,24 @@ function shoppingFromLineup(template: string): string {
             const shown = draft != null ? String(draft) : tidy(need / scale.factor);
             // half a package up, so the trip to the shop is never short
             const packs = perPackage > 0 ? Math.ceil((need / perPackage) * 2) / 2 : 0;
+            // an amount you typed over the computed one, so the way back is
+            // offered only where there is something to undo
+            const changed = overrides[entry.key] != null || drafts[entry.key] != null;
             return {
               key: entry.key,
               name: entry.name,
               unitLabel: scale.label,
               amountInput: shown,
+              // hidden rather than absent, so the row does not jump when the
+              // first character is typed
+              resetVis: changed ? 'visible' : 'hidden',
+              reset: () => this.setState(st => {
+                const text = { ...(st.shopNeedText || {}) };
+                const need = { ...(st.shopNeed || {}) };
+                delete text[entry.key];
+                delete need[entry.key];
+                return { shopNeedText: text, shopNeed: need };
+              }),
               packStr: perPackage > 0
                 ? (packs === 1 ? '1 pack' : tidy(packs) + ' packs')
                 : 'no pack size',
@@ -623,11 +636,17 @@ function guardShoppingProgress(template: string): string {
 function editableShoppingRows(template: string): string {
   const oldTail =
     '<span class="text-muted" style="font-size:13px;font-feature-settings:\'tnum\'">{{ s.qty }}</span>';
+  const resetButton =
+    '<button sc-camel-on-click="{{ s.reset }}" aria-label="Put back the amount the lineup needs" ' +
+    'style="width:24px;height:24px;flex:none;border-radius:50%;border:1px solid var(--color-neutral-300);background:#fff;color:#8a8578;cursor:pointer;display:grid;place-items:center;padding:0;visibility:{{ s.resetVis }}">' +
+    '<svg width="13" height="13" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M3 4v6h6"></path><path d="M3.5 14a8.5 8.5 0 1 0 2.4-8.1L3 8.6"></path></svg></button>';
   const newTail =
-    '<span style="display:flex;align-items:center;gap:7px;flex:none">' +
-    '<input class="input" value="{{ s.amountInput }}" sc-camel-on-change="{{ s.setAmount }}" inputmode="decimal" aria-label="Amount needed" style="width:64px;padding:6px 8px;text-align:right;font-feature-settings:\'tnum\';font-size:13px;border-radius:10px">' +
-    '<span class="text-muted" style="font-size:12px;min-width:20px">{{ s.unitLabel }}</span>' +
-    '<span class="text-muted" style="font-size:11px;font-feature-settings:\'tnum\';min-width:62px;text-align:right">{{ s.packStr }}</span>' +
+    '<span style="display:flex;align-items:center;gap:6px;flex:none;margin-left:auto">' +
+    resetButton +
+    '<input class="input" value="{{ s.amountInput }}" sc-camel-on-change="{{ s.setAmount }}" inputmode="decimal" aria-label="Amount needed" style="width:54px;padding:6px 8px;text-align:right;font-feature-settings:\'tnum\';font-size:13px;border-radius:10px">' +
+    '<span class="text-muted" style="font-size:12px;min-width:16px">{{ s.unitLabel }}</span>' +
+    '<span class="text-muted" style="font-size:11px;font-feature-settings:\'tnum\';white-space:nowrap">{{ s.packStr }}</span>' +
     "</span>";
   const count = template.split(oldTail).length - 1;
   if (count !== 2) throw new Error(`Expected 2 shopping amount cells, found ${count}`);
@@ -678,6 +697,31 @@ function addPastEventDelete(template: string): string {
   );
 }
 
+/** The heading said where the list came from, not what it is for. */
+function describeShoppingList(template: string): string {
+  const anchor =
+    '<p class="text-muted" style="font-size:13px;margin-bottom:14px">Generated from the lineup — full batches, combined across recipes.</p>';
+  if (!template.includes(anchor)) throw new Error("Missing shopping description anchor");
+  return template.replace(
+    anchor,
+    () =>
+      '<p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">' +
+      'This is the shopping list for your market — everything the lineup needs, in full batches and added up across recipes. ' +
+      'Change any amount to match what you already have.</p>',
+  );
+}
+
+/** On a narrow screen the amount controls drop below the name, not off it. */
+function shoppingRowsCanWrap(template: string): string {
+  const anchor =
+    'display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--color-divider)';
+  const hits = template.split(anchor).length - 1;
+  if (hits !== 2) throw new Error(`Expected 2 shopping rows, found ${hits}`);
+  return template
+    .split(anchor)
+    .join(anchor.replace("gap:12px", "gap:10px") + ";flex-wrap:wrap;row-gap:8px");
+}
+
 export function applyEventBehavior(template: string): string {
   let out = addEventController(template);
   out = addPastEventDelete(out);
@@ -689,5 +733,5 @@ export function applyEventBehavior(template: string): string {
   out = replaceEventButtons(out);
   out = removeLegacyCompletedBlock(out);
   out = replaceUpcomingList(out);
-  return resetDraftOnNewEvent(out);
+  return shoppingRowsCanWrap(describeShoppingList(resetDraftOnNewEvent(out)));
 }
