@@ -639,7 +639,7 @@ function replaceRecipeEditorMarkup(template: string): string {
   return template
     .replace(
       '<div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:28px;margin:6px 0 2px">{{ recipeTitle }}</h2></div>',
-      '<div class="field" style="margin:6px 0 12px"><label>Recipe name</label><input class="input" value="{{ recipeTitle }}" sc-camel-on-change="{{ setRecipeTitle }}" placeholder="Name your recipe" aria-label="Recipe name" style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 12px"></div>',
+      '<div class="field" style="margin:6px 0 12px"><input class="input" value="{{ recipeTitle }}" sc-camel-on-change="{{ setRecipeTitle }}" placeholder="Name your recipe" aria-label="Recipe name" style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 12px"></div>',
     )
     .replace(
       '<button class="btn btn-ghost" sc-camel-on-click="{{ back }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button>',

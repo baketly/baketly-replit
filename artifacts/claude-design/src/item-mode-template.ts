@@ -232,7 +232,7 @@ const recipePreview =
   `<sc-if value="{{ recPreviewing }}" hint-placeholder-val="{{ false }}">` +
 
   // the name field, settled: the label stays, the input becomes the title
-  `<div class="field" style="margin:6px 0 12px"><label>Recipe name</label>` +
+  `<div class="field" style="margin:6px 0 12px">` +
   `<div style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 0 0">{{ recipeTitle }}</div></div>` +
 
   `<div style="display:flex;align-items:center;gap:10px;margin:4px 0 18px">` +
