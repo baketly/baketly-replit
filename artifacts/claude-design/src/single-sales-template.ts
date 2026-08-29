@@ -5,8 +5,9 @@
 // month's totals — countable, but never listed, so there was no way to see
 // what any single one of them actually was.
 //
-// The overview now lists them, newest first, one line each. Tapping a line
-// opens what was in it.
+// A month's breakdown now lists them, newest first, one line each, beside the
+// products and markets that made up the same month. Tapping a line opens what
+// was in it.
 
 const singleSalesController = `      ...(() => {
         const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
@@ -51,11 +52,9 @@ const singleSalesController = `      ...(() => {
             };
           });
 
-        const takings = singles.reduce((sum, sale) => sum + sale.amount, 0);
-
-        // The squares above cover the whole month, counter and market alike.
-        // Saying how it splits stops the total looking like it disagrees with
-        // the list underneath it.
+        // The Items Sold square on the overview covers the whole month,
+        // counter and market alike. Saying how it splits stops the total
+        // looking like it disagrees with what the month breakdown lists.
         const monthSales = sales.filter(sale => (sale.occurredAt || '').slice(0, 7) === selected);
         const marketsWithSales = new Set(monthSales.filter(sale => sale.eventId).map(sale => sale.eventId));
         const orderWord = count => count + (count === 1 ? ' order' : ' orders');
@@ -66,11 +65,7 @@ const singleSalesController = `      ...(() => {
             ? orderWord(singles.length) + ' · ' + eventWord(marketsWithSales.size)
             : orderWord(singles.length),
           singleSales: singles,
-          hasSingleSales: singles.length > 0,
-          hasNoSingleSales: singles.length === 0,
-          singleSalesCountStr: singles.length === 1
-            ? '1 sale · ' + CUR + takings.toFixed(2)
-            : singles.length + ' sales · ' + CUR + takings.toFixed(2)
+          hasSingleSales: singles.length > 0
         };
       })(),
 `;
@@ -85,24 +80,21 @@ function addSingleSalesController(template: string): string {
 }
 
 const listMarkup = `
-    <h6 style="margin-top:28px;margin-bottom:2px;font-size:16px;font-weight:600">Single sales</h6>
-    <div class="text-muted" style="font-size:12px;margin-bottom:6px">{{ singleSalesCountStr }}</div>
-    <sc-if value="{{ hasNoSingleSales }}" hint-placeholder-val="{{ false }}">
-      <div class="text-muted" style="font-size:13px;padding:14px 0;border-top:1px solid var(--color-divider)">No counter sales this month. Sales rung up at a market are shown with that market.</div>
-    </sc-if>
-    <div style="display:flex;flex-direction:column">
+  <sc-if value="{{ hasSingleSales }}" hint-placeholder-val="{{ false }}">
+    <div class="an-section-title">Single sales</div>
+    <div class="an-card">
       <sc-for list="{{ singleSales }}" as="ss" hint-placeholder-count="3">
-        <div style="border-top:1px solid var(--color-divider)">
-          <div class="bk-row" sc-camel-on-click="{{ ss.toggle }}" style="display:flex;align-items:center;gap:12px;padding:13px 2px;cursor:pointer;min-height:44px">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:14px">{{ ss.dayStr }} · {{ ss.itemsStr }}</div>
-              <div class="text-muted" style="font-size:11px">{{ ss.timeStr }} · {{ ss.paidStr }}</div>
+        <div>
+          <div class="an-row" sc-camel-on-click="{{ ss.toggle }}" style="cursor:pointer">
+            <div class="an-row-main">
+              <div class="an-row-name">{{ ss.dayStr }} · {{ ss.itemsStr }}</div>
+              <div class="an-row-sub">{{ ss.timeStr }} · {{ ss.paidStr }}</div>
             </div>
-            <div style="text-align:right;flex:none;font-feature-settings:'tnum';font-size:14px">{{ ss.totalStr }}</div>
-            <span class="text-muted" style="flex:none;font-size:12px;width:12px;text-align:right">{{ ss.caret }}</span>
+            <div class="an-row-val">{{ ss.totalStr }}</div>
+            <span class="text-muted" style="flex:none;font-size:12px;width:14px;text-align:right">{{ ss.caret }}</span>
           </div>
           <sc-if value="{{ ss.isOpen }}" hint-placeholder-val="{{ false }}">
-            <div style="padding:2px 2px 14px">
+            <div style="padding:0 2px 14px">
               <sc-for list="{{ ss.lines }}" as="sl" hint-placeholder-count="2">
                 <div style="display:flex;align-items:baseline;gap:10px;padding:5px 0;font-size:13px">
                   <span style="flex:1;min-width:0">{{ sl.name }} <span class="text-muted">{{ sl.qtyStr }}</span></span>
@@ -123,20 +115,18 @@ const listMarkup = `
         </div>
       </sc-for>
     </div>
+  </sc-if>
 `;
 
-/** Sits under Revenue Trends, at the end of the overview tab. */
+/**
+ * The month breakdown, where the rest of that month is already reported. The
+ * overview summarises every month; one month's individual sales belong on that
+ * month's own page, not under a chart of all of them.
+ */
 function addSingleSalesList(template: string): string {
-  const anchor = `    <div class="an-bar-container">
-      <sc-for list="{{ chartBars }}" as="bar" hint-placeholder-count="6">
-        <div class="an-bar-col" sc-camel-on-click="{{ bar.open }}" style="cursor:pointer">
-          <div class="an-bar {{ bar.activeCls }}" style="height:{{ bar.height }}"></div>
-          <div class="an-bar-label">{{ bar.label }}</div>
-        </div>
-      </sc-for>
-    </div>`;
-  if (!template.includes(anchor)) throw new Error("Missing revenue trends anchor");
-  return template.replace(anchor, () => anchor + "\n" + listMarkup);
+  const anchor = "<!--single-sales-here-->";
+  if (!template.includes(anchor)) throw new Error("Missing single sales anchor");
+  return template.replace(anchor, () => listMarkup);
 }
 
 /** The Items Sold square says how the month splits, rather than one total. */

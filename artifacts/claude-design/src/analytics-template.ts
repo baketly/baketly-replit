@@ -253,20 +253,7 @@ export function applyAnalyticsBehavior(template: string): string {
     </div>
   </sc-if>
 
-  <sc-if value="{{ hasBoothRows }}" hint-placeholder-val="{{ false }}">
-    <div class="an-section-title">Event costs</div>
-    <div class="an-card">
-      <sc-for list="{{ boothRows }}" as="fee" hint-placeholder-count="1">
-        <div class="an-row">
-          <div class="an-row-main">
-            <div class="an-row-name">{{ fee.name }}</div>
-            <div class="an-row-sub">{{ fee.dateStr }}</div>
-          </div>
-          <div class="an-row-val">{{ fee.feeStr }}</div>
-        </div>
-      </sc-for>
-    </div>
-  </sc-if>
+<!--single-sales-here-->
 
   <sc-if value="{{ hasNoMonthProductRows }}" hint-placeholder-val="{{ false }}">
     <div class="text-muted" style="text-align:center;padding:44px 20px;font-size:13px">No sales recorded for this month yet.</div>
@@ -622,16 +609,6 @@ export function applyAnalyticsBehavior(template: string): string {
         const groupLabels = { bread: 'Bread', babka: 'Babka', cookie: 'Cookies', treat: 'Treats', other: 'Other' };
         const productEntries = Object.entries(monthData.products);
 
-        const boothRows = events
-          .filter(ev => (ev.occurredAt || '').slice(0, 7) === selectedMonth)
-          .sort((a, b) => new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime())
-          .map(ev => ({
-            name: ev.name || 'Market',
-            dateStr: new Date(ev.occurredAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              + (otherCostTotal(ev) > 0 ? (' · booth ' + CUR) + (Number(ev.boothFee) || 0).toFixed(2) + (' + other ' + CUR) + otherCostTotal(ev).toFixed(2) : ''),
-            feeStr: CUR + ((Number(ev.boothFee) || 0) + otherCostTotal(ev)).toFixed(2)
-          }));
-
         const groupTotals = {};
         productEntries.forEach(([productId, p]) => {
           const recipe = (this.state.recipeRecords || []).find(r => r.id === productId);
@@ -764,8 +741,6 @@ export function applyAnalyticsBehavior(template: string): string {
           hasNoMonthProductRows: monthProductRows.length === 0,
           monthEventRows,
           hasMonthEventRows: monthEventRows.length > 0,
-          boothRows,
-          hasBoothRows: boothRows.length > 0,
           groupRows,
           hasGroupRows: groupRows.length > 0,
           hasNoGroupRows: groupRows.length === 0,
