@@ -558,13 +558,18 @@ function shoppingFromLineup(template: string): string {
             const need = overrides[entry.key] != null ? Number(overrides[entry.key]) : entry.amount;
             const draft = drafts[entry.key];
             const shown = draft != null ? String(draft) : tidy(need / scale.factor);
-            // half a package up, so the trip to the shop is never short
-            const packs = perPackage > 0 ? Math.ceil((need / perPackage) * 2) / 2 : 0;
+            // to the next tenth of a package, so the trip to the shop is
+            // never short but the figure is not rounded past what you need
+            const packs = perPackage > 0 ? Math.ceil((need / perPackage) * 10) / 10 : 0;
+            const changed = overrides[entry.key] != null || drafts[entry.key] != null;
             return {
               key: entry.key,
               name: entry.name,
               unitLabel: scale.label,
               amountInput: shown,
+              // hidden rather than absent, so the row does not shift when the
+              // first character is typed
+              resetVis: changed ? 'visible' : 'hidden',
               reset: () => this.setState(st => {
                 const text = { ...(st.shopNeedText || {}) };
                 const need = { ...(st.shopNeed || {}) };
@@ -634,7 +639,7 @@ function editableShoppingRows(template: string): string {
   const resetButton =
     '<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ s.reset }}" ' +
     'aria-label="Put back the amount the lineup needs" ' +
-    'style="width:24px;height:24px;min-height:0;flex:none">' +
+    'style="width:24px;height:24px;min-height:0;flex:none;visibility:{{ s.resetVis }}">' +
     '<svg width="14" height="14" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M3 4v6h6"></path><path d="M3.5 14a8.5 8.5 0 1 0 2.4-8.1L3 8.6"></path></svg></button>';
   const newTail =
