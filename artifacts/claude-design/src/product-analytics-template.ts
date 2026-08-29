@@ -80,6 +80,7 @@ const productAnalyticsController = `      ...(() => {
             soldStr: month.items + (month.items === 1 ? ' sold' : ' sold'),
             shareStr: share + '% of sales',
             revStr: money(month.revenue),
+            dotColor: 'var(--color-neutral-300)',
             open: () => this.setState(st => ({
               analyticsProductId: entry.id,
               screen: 'analyticsProduct',
@@ -87,6 +88,35 @@ const productAnalyticsController = `      ...(() => {
             }))
           };
         }).sort((a, b) => b.revenue - a.revenue || a.name.localeCompare(b.name));
+
+        // ---- the month as a whole ----------------------------------------
+        // One <svg> per slice, laid over each other, so the loop stays in HTML
+        // where it works and each wedge is its own click target. The svg boxes
+        // let pointer events through; only the painted path takes them, so a
+        // click lands on the slice under the finger rather than the last one
+        // drawn.
+        const palette = ['#7c8c3f', '#a8996a', '#9aa85e', '#c4b78e', '#b8c383',
+                         '#8a7f4a', '#6b7a35', '#d3dbae', '#5a6a2c', '#c9cfa4'];
+        const onCircle = angle =>
+          (50 + 48 * Math.cos(angle)).toFixed(2) + ' ' + (50 + 48 * Math.sin(angle)).toFixed(2);
+        let sweep = -Math.PI / 2;
+        const pieSlices = listRows.filter(row => row.revenue > 0).map((row, index) => {
+          const fraction = row.revenue / monthRevenue;
+          const from = sweep;
+          const to = sweep + fraction * Math.PI * 2;
+          sweep = to;
+          row.dotColor = palette[index % palette.length];
+          return {
+            name: row.name,
+            color: row.dotColor,
+            // one product taking the whole month has no arc to draw, so the
+            // circle is closed with two half turns instead
+            d: fraction >= 0.9999
+              ? 'M 50 2 A 48 48 0 1 1 50 98 A 48 48 0 1 1 50 2 Z'
+              : 'M 50 50 L ' + onCircle(from) + ' A 48 48 0 ' + (fraction > 0.5 ? 1 : 0) + ' 1 ' + onCircle(to) + ' Z',
+            open: row.open
+          };
+        });
 
         // ---- the page for one of them ------------------------------------
         const chosen = byProduct[this.state.analyticsProductId || ''] || null;
@@ -190,6 +220,10 @@ const productAnalyticsController = `      ...(() => {
         const shown = detail || blank;
 
         return {
+          productPie: pieSlices,
+          hasProductPie: pieSlices.length > 0,
+          hasNoProductPie: pieSlices.length === 0,
+          pieTotalStr: money(monthRevenue),
           analyticsProducts: listRows,
           hasAnyProducts: listRows.length > 0,
           hasNoAnyProducts: listRows.length === 0,
@@ -233,13 +267,32 @@ function addProductAnalyticsController(template: string): string {
 
 /** Three lines a row: what it sold, its share of the month, what it earned. */
 const listMarkup = `
+    <sc-if value="{{ hasProductPie }}" hint-placeholder-val="{{ true }}">
+      <div class="an-card" style="display:flex;flex-direction:column;align-items:center;padding:20px 16px">
+        <div style="position:relative;width:190px;height:190px">
+          <sc-for list="{{ productPie }}" as="slice" hint-placeholder-count="4">
+            <svg width="190" height="190" sc-camel-view-box="0 0 100 100" style="position:absolute;top:0;left:0;pointer-events:none">
+              <path d="{{ slice.d }}" fill="{{ slice.color }}" stroke="#fff" stroke-width="0.7" sc-camel-on-click="{{ slice.open }}" style="pointer-events:auto;cursor:pointer"></path>
+            </svg>
+          </sc-for>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;font-feature-settings:'tnum'">{{ pieTotalStr }}</div>
+            <div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase">this month</div>
+          </div>
+        </div>
+        <div class="text-muted" style="font-size:12px;margin-top:14px;text-align:center">Tap a slice, or a row below, to open that product.</div>
+      </div>
+    </sc-if>
     <sc-if value="{{ hasAnyProducts }}" hint-placeholder-val="{{ true }}">
       <div class="an-card" style="padding:0 16px">
         <sc-for list="{{ analyticsProducts }}" as="prod" hint-placeholder-count="3">
           <div class="an-list-item bk-row" sc-camel-on-click="{{ prod.open }}" style="cursor:pointer;min-height:44px;gap:12px">
-            <div style="min-width:0">
-              <div style="font-size:15px;font-weight:500;margin-bottom:2px">{{ prod.name }}</div>
-              <div class="text-muted" style="font-size:12px">{{ prod.soldStr }} · {{ prod.shareStr }}</div>
+            <div style="display:flex;align-items:flex-start;gap:10px;min-width:0">
+              <span style="flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px;background:{{ prod.dotColor }}"></span>
+              <div style="min-width:0">
+                <div style="font-size:15px;font-weight:500;margin-bottom:2px">{{ prod.name }}</div>
+                <div class="text-muted" style="font-size:12px">{{ prod.soldStr }} · {{ prod.shareStr }}</div>
+              </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;flex:none">
               <div style="font-size:16px;font-weight:600;font-feature-settings:'tnum'">{{ prod.revStr }}</div>
