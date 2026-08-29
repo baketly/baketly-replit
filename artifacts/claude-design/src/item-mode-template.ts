@@ -221,29 +221,36 @@ function resetModeOnOpen(template: string): string {
     .join("screen: 'ingredientEdit', editingKey: '', stack: [...st.stack, st.screen], activeIngredientKey:");
 }
 
+/**
+ * The preview is the editor with the controls taken out: same sections, same
+ * order, same headings, so a recipe does not appear to change shape when the
+ * pencil is pressed. Values that were inputs are plain text, and the buttons
+ * that only make sense while editing — add from pantry, add packaging, the
+ * per-row amount boxes and their × — are gone.
+ */
 const recipePreview =
   `<sc-if value="{{ recPreviewing }}" hint-placeholder-val="{{ false }}">` +
-  `<h2 style="font-size:28px;margin:6px 0 2px">{{ recipeTitle }}</h2>` +
-  `<p class="text-muted" style="font-size:13px;margin:0 0 18px">Makes {{ recipeYield }} per batch</p>` +
-  `<div style="display:flex;flex-direction:column;margin-bottom:20px">` +
-  row("Sells for", "{{ recipeSell }}") +
-  row("Costs to make", "{{ recipeCostPer }} each") +
-  row("Whole batch", "{{ recipeBatch }}") +
-  row("Margin", "{{ recipeMargin }}") +
-  `</div>` +
-  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Ingredients</div>` +
-  `<div style="display:flex;flex-direction:column;margin-bottom:18px">` +
+
+  // the name field, settled: the label stays, the input becomes the title
+  `<div class="field" style="margin:6px 0 12px"><label>Recipe name</label>` +
+  `<div style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 0 0">{{ recipeTitle }}</div></div>` +
+
+  `<div style="display:flex;align-items:center;gap:10px;margin:4px 0 18px">` +
+  `<span class="text-muted" style="font-size:13px">Batch yields</span>` +
+  `<span style="font-size:14px;font-weight:600;font-feature-settings:'tnum'">{{ recipeYield }}</span>` +
+  `<span class="text-muted" style="font-size:13px">units · retail</span></div>` +
+
+  // the editor's four-column row without its amount box and remove button
+  `<h6 style="margin-bottom:8px">Ingredients</h6>` +
+  `<div style="display:flex;flex-direction:column;font-size:14px;margin-bottom:20px;border-bottom:1px solid var(--color-divider)">` +
   `<sc-for list="{{ recipeIngs }}" as="ing" hint-placeholder-count="3">` +
-  `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider)">` +
+  `<div style="display:grid;grid-template-columns:1fr 100px 46px;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--color-divider)">` +
   `<span style="font-size:14px">{{ ing.name }}</span>` +
-  `<span class="text-muted" style="font-size:13px;font-feature-settings:'tnum'">{{ ing.amt }} {{ ing.unit }} · {{ ing.costStr }}</span>` +
+  `<span class="text-muted" style="font-size:13px;text-align:right;font-feature-settings:'tnum'">{{ ing.amt }} {{ ing.unit }}</span>` +
+  `<span style="font-size:13px;text-align:right;font-feature-settings:'tnum'">{{ ing.costStr }}</span>` +
   `</div></sc-for></div>` +
-  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Packaging</div>` +
-  `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">` +
-  `<sc-for list="{{ recipePacks }}" as="pk" hint-placeholder-count="2">` +
-  `<span class="tag tag-neutral">{{ pk.label }}</span>` +
-  `</sc-for></div>` +
-  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Macros · per unit</div>` +
+
+  `<h6 style="margin-bottom:8px">Macros · per unit</h6>` +
   macroBoxes([
     ["kcal", "{{ macroKcal }}"],
     ["protein", "{{ macroProtein }}"],
@@ -251,8 +258,25 @@ const recipePreview =
     ["fat", "{{ macroFat }}"],
     ["sugar", "{{ macroSugar }}"],
   ]) +
-  `<div style="height:12px"></div>` +
-  `<p class="text-muted" style="font-size:12px;line-height:1.5">{{ macroNote }}</p>` +
+  `<div class="text-muted" style="font-size:12px;margin-bottom:20px">{{ macroNote }}</div>` +
+
+  `<h6 style="margin-bottom:8px">Packaging</h6>` +
+  `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">` +
+  `<sc-for list="{{ recipePacks }}" as="pk" hint-placeholder-count="2">` +
+  `<span class="tag tag-neutral" style="font-feature-settings:'tnum'">{{ pk.label }}</span>` +
+  `</sc-for></div>` +
+
+  // the cost block reads the same in both modes
+  `<div style="border-top:2px solid var(--color-text);padding-top:12px;display:flex;justify-content:space-between;align-items:baseline">` +
+  `<span style="font-family:var(--font-heading);font-weight:600;font-size:17px">Cost per unit</span>` +
+  `<span style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:'tnum'">{{ recipeCostPer }}</span></div>` +
+  `<div class="text-muted" style="font-size:12px;margin-top:4px">Batch {{ recipeBatch }} incl. packaging · labor not set</div>` +
+  `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--color-divider);border-radius:var(--radius-md);margin-top:16px;background:#fff">` +
+  `<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Sells today</div>` +
+  `<div style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:'tnum'">{{ recipeSell }}</div></div>` +
+  `<div style="padding:14px 16px;border-left:1px solid var(--color-divider)"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Margin</div>` +
+  `<div style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:'tnum'">{{ recipeMargin }}</div></div></div>` +
+  `<div class="text-muted" style="font-size:12px;margin-top:6px">Margin = what you keep of the {{ recipeSell }} price after ingredients and packaging.</div>` +
   `</sc-if>`;
 
 /** A recipe is worth reading before it is edited: costs, lines and margin. */
