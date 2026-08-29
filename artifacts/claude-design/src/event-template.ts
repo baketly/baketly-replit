@@ -637,16 +637,17 @@ function editableShoppingRows(template: string): string {
   const oldTail =
     '<span class="text-muted" style="font-size:13px;font-feature-settings:\'tnum\'">{{ s.qty }}</span>';
   const resetButton =
-    '<button sc-camel-on-click="{{ s.reset }}" aria-label="Put back the amount the lineup needs" ' +
-    'style="width:24px;height:24px;flex:none;border-radius:50%;border:1px solid var(--color-neutral-300);background:#fff;color:#8a8578;cursor:pointer;display:grid;place-items:center;padding:0;visibility:{{ s.resetVis }}">' +
-    '<svg width="13" height="13" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ s.reset }}" ' +
+    'aria-label="Put back the amount the lineup needs" ' +
+    'style="width:24px;height:24px;min-height:0;flex:none;visibility:{{ s.resetVis }}">' +
+    '<svg width="14" height="14" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M3 4v6h6"></path><path d="M3.5 14a8.5 8.5 0 1 0 2.4-8.1L3 8.6"></path></svg></button>';
   const newTail =
-    '<span style="display:flex;align-items:center;gap:6px;flex:none;margin-left:auto">' +
+    '<span style="display:flex;align-items:center;gap:5px;flex:none">' +
     resetButton +
-    '<input class="input" value="{{ s.amountInput }}" sc-camel-on-change="{{ s.setAmount }}" inputmode="decimal" aria-label="Amount needed" style="width:54px;padding:6px 8px;text-align:right;font-feature-settings:\'tnum\';font-size:13px;border-radius:10px">' +
-    '<span class="text-muted" style="font-size:12px;min-width:16px">{{ s.unitLabel }}</span>' +
-    '<span class="text-muted" style="font-size:11px;font-feature-settings:\'tnum\';white-space:nowrap">{{ s.packStr }}</span>' +
+    '<input class="input" value="{{ s.amountInput }}" sc-camel-on-change="{{ s.setAmount }}" inputmode="decimal" aria-label="Amount needed" style="width:64px;padding:6px 8px;text-align:right;font-feature-settings:\'tnum\';font-size:13px;border-radius:10px">' +
+    '<span class="text-muted" style="font-size:12px;min-width:20px">{{ s.unitLabel }}</span>' +
+    '<span class="text-muted" style="font-size:11px;font-feature-settings:\'tnum\';width:56px;flex:none;text-align:right">{{ s.packStr }}</span>' +
     "</span>";
   const count = template.split(oldTail).length - 1;
   if (count !== 2) throw new Error(`Expected 2 shopping amount cells, found ${count}`);
@@ -711,15 +712,16 @@ function describeShoppingList(template: string): string {
   );
 }
 
-/** On a narrow screen the amount controls drop below the name, not off it. */
-function shoppingRowsCanWrap(template: string): string {
-  const anchor =
-    'display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--color-divider)';
+/** A long ingredient name breaks inside its column instead of moving the box. */
+function shoppingNamesWrapInPlace(template: string): string {
+  const anchor = '<span style="flex:1;font-size:14px;color:{{ s.textColor }}">{{ s.name }}</span>';
   const hits = template.split(anchor).length - 1;
-  if (hits !== 2) throw new Error(`Expected 2 shopping rows, found ${hits}`);
+  if (hits !== 2) throw new Error(`Expected 2 shopping names, found ${hits}`);
   return template
     .split(anchor)
-    .join(anchor.replace("gap:12px", "gap:10px") + ";flex-wrap:wrap;row-gap:8px");
+    .join(
+      '<span style="flex:1;min-width:0;overflow-wrap:break-word;font-size:14px;color:{{ s.textColor }}">{{ s.name }}</span>',
+    );
 }
 
 export function applyEventBehavior(template: string): string {
@@ -733,5 +735,5 @@ export function applyEventBehavior(template: string): string {
   out = replaceEventButtons(out);
   out = removeLegacyCompletedBlock(out);
   out = replaceUpcomingList(out);
-  return shoppingRowsCanWrap(describeShoppingList(resetDraftOnNewEvent(out)));
+  return shoppingNamesWrapInPlace(describeShoppingList(resetDraftOnNewEvent(out)));
 }
