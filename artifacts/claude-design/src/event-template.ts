@@ -560,17 +560,11 @@ function shoppingFromLineup(template: string): string {
             const shown = draft != null ? String(draft) : tidy(need / scale.factor);
             // half a package up, so the trip to the shop is never short
             const packs = perPackage > 0 ? Math.ceil((need / perPackage) * 2) / 2 : 0;
-            // an amount you typed over the computed one, so the way back is
-            // offered only where there is something to undo
-            const changed = overrides[entry.key] != null || drafts[entry.key] != null;
             return {
               key: entry.key,
               name: entry.name,
               unitLabel: scale.label,
               amountInput: shown,
-              // hidden rather than absent, so the row does not jump when the
-              // first character is typed
-              resetVis: changed ? 'visible' : 'hidden',
               reset: () => this.setState(st => {
                 const text = { ...(st.shopNeedText || {}) };
                 const need = { ...(st.shopNeed || {}) };
@@ -587,8 +581,9 @@ function shoppingFromLineup(template: string): string {
                 this.setState(st => {
                   const text = { ...(st.shopNeedText || {}) };
                   const need = { ...(st.shopNeed || {}) };
-                  // emptying the box goes back to the amount the lineup asks for
-                  if (raw.trim() === '') { delete text[entry.key]; delete need[entry.key]; }
+                  // an empty box is a box you are still typing in, not a
+                  // request for the computed amount back
+                  if (raw.trim() === '') { text[entry.key] = ''; delete need[entry.key]; }
                   else { text[entry.key] = raw; need[entry.key] = isFinite(parsed) ? Math.max(0, parsed) * scale.factor : entry.amount; }
                   return { shopNeedText: text, shopNeed: need };
                 });
@@ -639,7 +634,7 @@ function editableShoppingRows(template: string): string {
   const resetButton =
     '<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ s.reset }}" ' +
     'aria-label="Put back the amount the lineup needs" ' +
-    'style="width:24px;height:24px;min-height:0;flex:none;visibility:{{ s.resetVis }}">' +
+    'style="width:24px;height:24px;min-height:0;flex:none">' +
     '<svg width="14" height="14" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M3 4v6h6"></path><path d="M3.5 14a8.5 8.5 0 1 0 2.4-8.1L3 8.6"></path></svg></button>';
   const newTail =
