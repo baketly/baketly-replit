@@ -81,6 +81,7 @@ const productAnalyticsController = `      ...(() => {
             shareStr: share + '% of sales',
             revStr: money(month.revenue),
             dotColor: 'var(--color-neutral-300)',
+            rowBg: 'transparent',
             open: () => this.setState(st => ({
               analyticsProductId: entry.id,
               screen: 'analyticsProduct',
@@ -99,13 +100,25 @@ const productAnalyticsController = `      ...(() => {
                          '#8a7f4a', '#6b7a35', '#d3dbae', '#5a6a2c', '#c9cfa4'];
         const onCircle = angle =>
           (50 + 48 * Math.cos(angle)).toFixed(2) + ' ' + (50 + 48 * Math.sin(angle)).toFixed(2);
+        // Ten slices on a phone leave no room for labels around the ring, so
+        // the chart names the one you touch instead: it lifts out of the circle,
+        // the rest fade back, and the line under the chart says which product it
+        // is and what it earned. Its row in the list lights up with it.
+        const earning = listRows.filter(row => row.revenue > 0);
+        const picked = earning.some(row => row.id === (this.state.pieSelectedId || ''))
+          ? this.state.pieSelectedId
+          : '';
         let sweep = -Math.PI / 2;
-        const pieSlices = listRows.filter(row => row.revenue > 0).map((row, index) => {
+        const pieSlices = earning.map((row, index) => {
           const fraction = row.revenue / monthRevenue;
           const from = sweep;
           const to = sweep + fraction * Math.PI * 2;
           sweep = to;
           row.dotColor = palette[index % palette.length];
+          const chosen = row.id === picked;
+          if (chosen) row.rowBg = 'var(--color-accent-100)';
+          const middle = (from + to) / 2;
+          const lift = chosen ? 5 : 0;
           return {
             name: row.name,
             color: row.dotColor,
@@ -114,9 +127,16 @@ const productAnalyticsController = `      ...(() => {
             d: fraction >= 0.9999
               ? 'M 50 2 A 48 48 0 1 1 50 98 A 48 48 0 1 1 50 2 Z'
               : 'M 50 50 L ' + onCircle(from) + ' A 48 48 0 ' + (fraction > 0.5 ? 1 : 0) + ' 1 ' + onCircle(to) + ' Z',
-            open: row.open
+            shift: 'translate(' + (lift * Math.cos(middle)).toFixed(2) + ' ' + (lift * Math.sin(middle)).toFixed(2) + ')',
+            fade: !picked || chosen ? '1' : '0.45',
+            // the first touch names it; touching the same slice again opens it,
+            // as does the button on the line underneath
+            open: () => this.setState(st => (st.pieSelectedId === row.id
+              ? { analyticsProductId: row.id, screen: 'analyticsProduct', stack: [...st.stack, st.screen] }
+              : { pieSelectedId: row.id }))
           };
         });
+        const pickedRow = earning.find(row => row.id === picked) || null;
 
         // ---- the page for one of them ------------------------------------
         const chosen = byProduct[this.state.analyticsProductId || ''] || null;
@@ -224,6 +244,15 @@ const productAnalyticsController = `      ...(() => {
           hasProductPie: pieSlices.length > 0,
           hasNoProductPie: pieSlices.length === 0,
           pieTotalStr: money(monthRevenue),
+          pieHasPick: !!pickedRow,
+          pieNoPick: !pickedRow,
+          pickedName: pickedRow ? pickedRow.name : '',
+          pickedColor: pickedRow ? pickedRow.dotColor : 'transparent',
+          pickedSubStr: pickedRow ? pickedRow.revStr + ' · ' + pickedRow.shareStr : '',
+          clearPick: () => this.setState({ pieSelectedId: '' }),
+          openPickedProduct: () => this.setState(st => (pickedRow
+            ? { analyticsProductId: pickedRow.id, screen: 'analyticsProduct', stack: [...st.stack, st.screen] }
+            : {})),
           analyticsProducts: listRows,
           hasAnyProducts: listRows.length > 0,
           hasNoAnyProducts: listRows.length === 0,
@@ -272,7 +301,7 @@ const listMarkup = `
         <div style="position:relative;width:190px;height:190px">
           <sc-for list="{{ productPie }}" as="slice" hint-placeholder-count="4">
             <svg width="190" height="190" sc-camel-view-box="0 0 100 100" style="position:absolute;top:0;left:0;pointer-events:none">
-              <path d="{{ slice.d }}" fill="{{ slice.color }}" stroke="#fff" stroke-width="0.7" sc-camel-on-click="{{ slice.open }}" style="pointer-events:auto;cursor:pointer"></path>
+              <path d="{{ slice.d }}" fill="{{ slice.color }}" stroke="#fff" stroke-width="0.7" transform="{{ slice.shift }}" opacity="{{ slice.fade }}" sc-camel-on-click="{{ slice.open }}" style="pointer-events:auto;cursor:pointer"></path>
             </svg>
           </sc-for>
           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
@@ -280,13 +309,26 @@ const listMarkup = `
             <div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase">this month</div>
           </div>
         </div>
-        <div class="text-muted" style="font-size:12px;margin-top:14px;text-align:center">Tap a slice, or a row below, to open that product.</div>
+        <sc-if value="{{ pieNoPick }}" hint-placeholder-val="{{ true }}">
+          <div class="text-muted" style="font-size:12px;margin-top:14px;text-align:center">Tap a slice to see which product it is.</div>
+        </sc-if>
+        <sc-if value="{{ pieHasPick }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:10px;width:100%;margin-top:14px;padding-top:14px;border-top:1px solid var(--color-divider)">
+            <span style="flex:none;width:12px;height:12px;border-radius:50%;background:{{ pickedColor }}"></span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px;font-weight:500">{{ pickedName }}</div>
+              <div class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">{{ pickedSubStr }}</div>
+            </div>
+            <button class="btn btn-secondary" sc-camel-on-click="{{ openPickedProduct }}" style="flex:none;min-height:38px;font-size:12px;padding:0 12px">Details ›</button>
+            <button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ clearPick }}" aria-label="Show every product again" style="flex:none;width:32px;height:32px;min-height:0;color:#8a8578;font-size:16px;line-height:1">×</button>
+          </div>
+        </sc-if>
       </div>
     </sc-if>
     <sc-if value="{{ hasAnyProducts }}" hint-placeholder-val="{{ true }}">
       <div class="an-card" style="padding:0 16px">
         <sc-for list="{{ analyticsProducts }}" as="prod" hint-placeholder-count="3">
-          <div class="an-list-item bk-row" sc-camel-on-click="{{ prod.open }}" style="cursor:pointer;min-height:44px;gap:12px">
+          <div class="an-list-item bk-row" sc-camel-on-click="{{ prod.open }}" style="cursor:pointer;min-height:44px;gap:12px;background:{{ prod.rowBg }};margin:0 -16px;padding-left:16px;padding-right:16px">
             <div style="display:flex;align-items:flex-start;gap:10px;min-width:0">
               <span style="flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px;background:{{ prod.dotColor }}"></span>
               <div style="min-width:0">
