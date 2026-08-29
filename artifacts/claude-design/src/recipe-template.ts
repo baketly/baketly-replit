@@ -423,6 +423,21 @@ function replaceRecipeList(template: string): string {
 }
 
 /** The macros heading named one sample product: every recipe is per unit. */
+/** Sugar joins the macro boxes, which now hold five. */
+function addSugarBox(template: string): string {
+  const grid = '<div style="display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--color-divider);border-radius:var(--radius-md);margin-bottom:6px;background:#fff">';
+  const fatBox =
+    '<div style="padding:12px 8px;text-align:center;border-left:1px solid var(--color-divider)"><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:\'tnum\'">{{ macroFat }}</div><div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase">fat</div></div>';
+  if (!template.includes(grid)) throw new Error("Missing macro grid anchor");
+  if (!template.includes(fatBox)) throw new Error("Missing macro fat box anchor");
+  const sugarBox = fatBox
+    .replace("{{ macroFat }}", "{{ macroSugar }}")
+    .replace(">fat<", ">sugar<");
+  return template
+    .replace(grid, () => grid.replace("repeat(4,1fr)", "repeat(5,1fr)"))
+    .replace(fatBox, () => fatBox + sugarBox);
+}
+
 function macrosPerUnit(template: string): string {
   const anchor = '<h6 style="margin-bottom:8px">Macros · per babka</h6>';
   if (!template.includes(anchor)) throw new Error("Missing macros heading anchor");
@@ -547,10 +562,31 @@ function replaceRecipeEditorLogic(template: string): string {
           recipeCostPer: CUR + per.toFixed(2),
           recipeBatch: CUR + (ingTotal + packPer * y).toFixed(2),
           recipeMargin: Math.round((Number(recipe.price || 0) - per) / Math.max(Number(recipe.price || 0), 1) * 100) + '%',
-          macroKcal: keys.length ? '402' : '0',
-          macroProtein: keys.length ? '9g' : '0g',
-          macroCarbs: keys.length ? '45g' : '0g',
-          macroFat: keys.length ? '22g' : '0g',
+          ...(() => {
+            // These were four fixed numbers under a note claiming they were
+            // computed from the recipe. Add up what the ingredients actually
+            // carry — records hold macros per 100 of the ingredient's unit —
+            // and divide by what one batch yields.
+            const totals = keys.reduce((sum, key) => {
+              const saved = (this.state.ingredientRecords || {})[key] || {};
+              const share = amt(key) / 100;
+              sum.kcal += share * (Number(saved.kcal) || 0);
+              sum.protein += share * (Number(saved.protein) || 0);
+              sum.carbs += share * (Number(saved.carbs) || 0);
+              sum.fat += share * (Number(saved.fat) || 0);
+              sum.sugar += share * (Number(saved.sugar) || 0);
+              return sum;
+            }, { kcal: 0, protein: 0, carbs: 0, fat: 0, sugar: 0 });
+            const each = value => value / Math.max(1, y);
+            const grams = value => Math.round(each(value)) + 'g';
+            return {
+              macroKcal: keys.length ? String(Math.round(each(totals.kcal))) : '0',
+              macroProtein: keys.length ? grams(totals.protein) : '0g',
+              macroCarbs: keys.length ? grams(totals.carbs) : '0g',
+              macroFat: keys.length ? grams(totals.fat) : '0g',
+              macroSugar: keys.length ? grams(totals.sugar) : '0g'
+            };
+          })(),
           macroNote: keys.length ? 'Computed from your recipe ingredients.' : 'Add ingredients to calculate nutrition.',
           recipeSaveError: this.state.recipeSaveError || '',
           saveRecipeLabel: isNewRecipe ? 'Save recipe' : 'Save changes',
@@ -648,7 +684,7 @@ function addIngredientPickerFilters(template: string): string {
 }
 
 export function applyRecipeRecordBehavior(template: string): string {
-  template = macrosPerUnit(template);
+  template = addSugarBox(macrosPerUnit(template));
   const base = replaceRecipeEditorMarkup(
     replaceRecipeNavigation(
       replacePackagingEditor(

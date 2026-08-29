@@ -97,6 +97,19 @@ function addModeController(template: string): string {
   );
 }
 
+/** The macro strip the recipe editor uses, so a preview reads the same. */
+const macroBoxes = (values: Array<[string, string]>) =>
+  `<div style="display:grid;grid-template-columns:repeat(${values.length},1fr);border:1px solid var(--color-divider);border-radius:var(--radius-md);margin-bottom:6px;background:#fff">` +
+  values
+    .map(
+      ([label, value], index) =>
+        `<div style="padding:12px 6px;text-align:center${index ? ";border-left:1px solid var(--color-divider)" : ""}">` +
+        `<div style="font-family:var(--font-heading);font-weight:600;font-size:18px;font-feature-settings:'tnum'">${value}</div>` +
+        `<div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase">${label}</div></div>`,
+    )
+    .join("") +
+  `</div>`;
+
 const row = (label: string, value: string) =>
   `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider)">` +
   `<span class="text-muted" style="font-size:13px">${label}</span>` +
@@ -112,12 +125,13 @@ const ingredientPreview =
   row("{{ ingCostLabel }}", "{{ ingredientCostPer }}") +
   `</div>` +
   `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">{{ ingPer100Label }}</div>` +
-  `<div style="display:flex;flex-direction:column;margin-bottom:8px">` +
-  row("Calories", "{{ ingredientKcal }}") +
-  row("Protein", "{{ ingredientProtein }} g") +
-  row("Carbs", "{{ ingredientCarbs }} g") +
-  row("Fat", "{{ ingredientFat }} g") +
-  `</div>` +
+  macroBoxes([
+    ["kcal", "{{ ingredientKcal }}"],
+    ["protein", "{{ ingredientProtein }}g"],
+    ["carbs", "{{ ingredientCarbs }}g"],
+    ["fat", "{{ ingredientFat }}g"],
+    ["sugar", "{{ ingredientSugar }}g"],
+  ]) +
   `</sc-if>`;
 
 const packagingPreview =
@@ -230,12 +244,14 @@ const recipePreview =
   `<span class="tag tag-neutral">{{ pk.label }}</span>` +
   `</sc-for></div>` +
   `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Macros · per unit</div>` +
-  `<div style="display:flex;flex-direction:column;margin-bottom:8px">` +
-  row("Calories", "{{ macroKcal }}") +
-  row("Protein", "{{ macroProtein }}") +
-  row("Carbs", "{{ macroCarbs }}") +
-  row("Fat", "{{ macroFat }}") +
-  `</div>` +
+  macroBoxes([
+    ["kcal", "{{ macroKcal }}"],
+    ["protein", "{{ macroProtein }}"],
+    ["carbs", "{{ macroCarbs }}"],
+    ["fat", "{{ macroFat }}"],
+    ["sugar", "{{ macroSugar }}"],
+  ]) +
+  `<div style="height:12px"></div>` +
   `<p class="text-muted" style="font-size:12px;line-height:1.5">{{ macroNote }}</p>` +
   `</sc-if>`;
 
