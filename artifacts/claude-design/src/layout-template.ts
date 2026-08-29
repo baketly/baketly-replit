@@ -50,6 +50,22 @@ function fieldsCanShrink(template: string): string {
   );
 }
 
+/**
+ * Pantry's Packaging tab sat 15px wider than Ingredients and Recipes. Those
+ * two lists are long enough to scroll, so the scroll body loses 15px to the
+ * scrollbar; Packaging's shorter list does not scroll, so it keeps the full
+ * width. Reserving the gutter on every screen body means a screen is the same
+ * width whether its content happens to overflow or not.
+ */
+function reserveScrollbarGutter(template: string): string {
+  const anchor = "flex:1;overflow:auto;min-height:0";
+  // Three come from the generated markup; earlier passes add their own screens,
+  // so guard that the anchor still exists rather than pinning an exact count.
+  const hits = template.split(anchor).length - 1;
+  if (hits < 3) throw new Error(`Expected at least 3 scroll bodies, found ${hits}`);
+  return template.split(anchor).join(anchor + ";scrollbar-gutter:stable");
+}
+
 export function applyLayoutBehavior(template: string): string {
-  return fieldsCanShrink(clampGridColumns(template));
+  return reserveScrollbarGutter(fieldsCanShrink(clampGridColumns(template)));
 }
