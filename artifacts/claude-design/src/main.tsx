@@ -14,6 +14,7 @@ import { applySaleBehavior } from "./sale-template";
 import { applySingleSalesBehavior } from "./single-sales-template";
 import { applyNavBehavior } from "./nav-template";
 import { applyItemModeBehavior } from "./item-mode-template";
+import { applyLayoutBehavior } from "./layout-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
@@ -256,7 +257,8 @@ window.__baketlyApplyRecipeRecords = (template) => {
     recipeTemplate = removeKnownPackagingPlaceholders(template);
   }
 
-  return applyItemModeBehavior(
+  return applyLayoutBehavior(
+    applyItemModeBehavior(
     applyNavBehavior(
       applyCurrencyBehavior(
         applyOnboardingBehavior(
@@ -275,6 +277,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
           ),
         ),
       ),
+    ),
     ),
   );
 };
