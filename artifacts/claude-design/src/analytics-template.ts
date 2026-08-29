@@ -1031,6 +1031,7 @@ function addCommerceBehavior(template: string): string {
            eventOtherCosts: draftOtherCosts.map((cost, index) => ({
              label: String((cost && cost.label) ?? ''),
              amount: String((cost && cost.amount) ?? ''),
+             amountStr: (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$') + (Number((cost && cost.amount) || 0)).toFixed(2),
              setLabel: e => this.setState(st => { const next = [...(st.eventOtherCosts || [])]; next[index] = { ...next[index], label: e.target.value.slice(0, 60) }; return { eventOtherCosts: next }; }),
              setAmount: e => this.setState(st => { const next = [...(st.eventOtherCosts || [])]; next[index] = { ...next[index], amount: e.target.value }; return { eventOtherCosts: next }; }),
              remove: () => this.setState(st => ({ eventOtherCosts: (st.eventOtherCosts || []).filter((_, i) => i !== index) }))

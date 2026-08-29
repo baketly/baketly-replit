@@ -310,29 +310,78 @@ function resetRecipeOnOpen(template: string): string {
     .join("screen: 'recipeEditor', editingKey: '', stack: [...st.stack, st.screen], activeRecipeId:");
 }
 
+/**
+ * Like the recipe preview, this is the planner with the controls removed:
+ * same name, date and booth fee, the same four-column lineup, the same stats
+ * card. Adding products, changing quantities and entering other costs are
+ * things you do while editing, so those controls live in that mode only.
+ */
 const eventPreview =
   `<sc-if value="{{ evPreviewing }}" hint-placeholder-val="{{ false }}">` +
-  `<h2 style="font-size:28px;margin:6px 0 2px">{{ eventName }}</h2>` +
-  `<p class="text-muted" style="font-size:13px;margin:0 0 18px">{{ evDateLabel }} · booth {{ evBoothLabel }}</p>` +
-  `<div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Baking for this market</div>` +
-  `<div style="display:flex;flex-direction:column;margin-bottom:18px">` +
+
+  // where the planner puts its name input
+  `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">` +
+  `<h2 style="font-size:24px;margin:6px 0 0">{{ eventName }}</h2></div>` +
+
+  `<div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin:10px 0 18px">` +
+  `<div class="field"><label>Event date</label>` +
+  `<div style="font-size:15px;padding:8px 0 0">{{ evDateLabel }}</div></div>` +
+  `<div class="field"><label>Booth fee</label>` +
+  `<div style="font-size:15px;padding:8px 0 0;font-feature-settings:'tnum'">{{ evBoothLabel }}</div></div></div>` +
+
+  // the planner's lineup, with the quantity box settled into text
+  `<h6 style="margin-bottom:8px">Product lineup</h6>` +
+  `<div style="display:grid;grid-template-columns:1fr 62px 42px 58px;gap:10px;padding:0 0 6px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#8a8578">` +
+  `<span>Product</span><span style="text-align:right">Qty</span><span style="text-align:right">Price</span><span style="text-align:right">Revenue</span></div>` +
+  `<div style="display:flex;flex-direction:column;margin-bottom:18px;border-bottom:1px solid var(--color-divider)">` +
   `<sc-for list="{{ evLineup }}" as="line" hint-placeholder-count="3">` +
-  `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider)">` +
-  `<span style="font-size:14px">{{ line.name }}</span>` +
-  `<span class="text-muted" style="font-size:13px;font-feature-settings:'tnum'">{{ line.qty }} × {{ line.priceStr }} · {{ line.revStr }}</span>` +
+  `<div style="display:grid;grid-template-columns:1fr 62px 42px 58px;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--color-divider)">` +
+  `<span style="min-width:0"><span style="font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ line.name }}</span>` +
+  `<span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">cost {{ line.costStr }}</span></span>` +
+  `<span style="text-align:right;font-size:13px;font-feature-settings:'tnum'">{{ line.qty }}</span>` +
+  `<span style="text-align:right;font-size:13px;font-feature-settings:'tnum'">{{ line.priceStr }}</span>` +
+  `<span style="text-align:right;font-size:13px;font-feature-settings:'tnum'">{{ line.revStr }}</span>` +
   `</div></sc-for>` +
   `<sc-if value="{{ evLineupEmpty }}" hint-placeholder-val="{{ false }}">` +
-  `<div class="text-muted" style="font-size:13px;padding:14px 0">Nothing planned to bake yet.</div>` +
-  `</sc-if>` +
-  `</div>` +
-  `<div style="display:flex;flex-direction:column;margin-bottom:18px">` +
-  row("Units planned", "{{ evUnits }}") +
-  row("Expected revenue", "{{ evRevenue }}") +
-  row("Expected cost", "{{ evCost }}") +
-  row("Expected profit", "{{ evProfit }}") +
-  row("Expected margin", "{{ evMargin }}") +
-  `</div>` +
-  `<button class="btn btn-secondary btn-block" sc-camel-on-click="{{ goShopping }}" style="min-height:46px;margin-bottom:8px">Shopping list · {{ shopProgress }} collected</button>` +
+  `<div class="text-muted" style="padding:16px 0;font-size:13px;border-top:1px solid var(--color-divider)">Nothing planned to bake yet.</div>` +
+  `</sc-if></div>` +
+
+  // the same stats card the planner shows
+  `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--color-divider);border-radius:var(--radius-md);background:#fff;margin-bottom:6px">` +
+  `<div style="border-bottom:1px solid var(--color-divider)"><div style="padding:12px 14px">` +
+  `<div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">Units planned</div>` +
+  `<div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ evUnits }}</div></div></div>` +
+  `<div style="border-bottom:1px solid var(--color-divider);border-left:1px solid var(--color-divider)"><div style="padding:12px 14px">` +
+  `<div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">Est. revenue</div>` +
+  `<div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ evRevenue }}</div></div></div>` +
+  `<div style=""><div style="padding:12px 14px">` +
+  `<div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">Est. cost</div>` +
+  `<div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ evCost }}</div></div></div>` +
+  `<div style="border-left:1px solid var(--color-divider)"><div style="padding:12px 14px">` +
+  `<div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">Expected profit</div>` +
+  `<div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ evProfit }}</div></div></div>` +
+  `<div style="grid-column:1 / -1;border-top:1px solid var(--color-divider);display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px">` +
+  `<span class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase">Expected margin</span>` +
+  `<span style="font-family:var(--font-heading);font-weight:600;font-size:24px;font-feature-settings:'tnum'">{{ evMargin }}</span></div></div>` +
+  `<div class="text-muted" style="font-size:12px;margin-bottom:18px">Prices and costs are a snapshot from when each product was added · booth fee not included.</div>` +
+
+  `<div style="display:flex;gap:10px;margin-bottom:18px">` +
+  `<button class="btn btn-secondary" sc-camel-on-click="{{ goShopping }}" style="flex:1;min-height:52px;flex-direction:column;gap:2px">` +
+  `<span>Shopping list</span>` +
+  `<span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">{{ shopProgress }} collected</span></button></div>` +
+
+  // costs already entered are worth reading; adding one is an edit
+  `<sc-if value="{{ hasEventOtherCosts }}" hint-placeholder-val="{{ false }}">` +
+  `<div style="border-top:1px solid var(--color-divider);padding-top:16px;margin:4px 0 18px">` +
+  `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">` +
+  `<h6 style="margin:0">Other costs</h6>` +
+  `<span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">{{ eventOtherCostTotalStr }}</span></div>` +
+  `<sc-for list="{{ eventOtherCosts }}" as="oc" hint-placeholder-count="0">` +
+  `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-top:1px solid var(--color-divider)">` +
+  `<span style="font-size:14px">{{ oc.label }}</span>` +
+  `<span style="font-size:13px;font-feature-settings:'tnum'">{{ oc.amountStr }}</span></div>` +
+  `</sc-for></div></sc-if>` +
+
   "<!--finish-here-->" +
   `</sc-if>`;
 
