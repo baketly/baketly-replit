@@ -68,9 +68,18 @@ const chatControllerLogic = `      ...(() => {
         this.__baketlyAskFromCard = (question) => { this.go('chat'); send(question); };
 
         // Talking is faster than typing with floury hands, and thinking out
-        // loud is how a plan for a market actually gets made. The browser does
-        // the listening; nothing is recorded or sent anywhere until the message
-        // is sent like any other.
+        // loud is how a plan for a market actually gets made.
+        //
+        // The listening is the browser's, not ours, and it is not local: Chrome
+        // streams the audio to Google and Safari to Apple to transcribe it. The
+        // words land in the box and go nowhere else until the message is sent,
+        // but the speech itself has already left the phone. That belongs in a
+        // privacy policy before this ships.
+        //
+        // It also only exists in a browser. A WKWebView has no Web Speech API
+        // at all, so wrapping this app for iOS — Capacitor, Cordova, a Home
+        // Screen PWA — leaves the button dead unless a native recogniser is
+        // plugged in behind it.
         const Listener = window.SpeechRecognition || window.webkitSpeechRecognition;
         const stopListening = () => {
           if (!this.__baketlyVoice) return;
