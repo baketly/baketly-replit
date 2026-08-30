@@ -52,8 +52,11 @@ const saleController = `      ...(() => {
           startSale: () => (attachedEvent
             ? openSaleScreen({})
             : this.setState({ saleModeOpen: true, saleEventPickerOpen: false })),
-          // after charging, carrying on at the same market is the common case
-          saleAgain: () => (attachedEvent ? openSaleScreen({}) : this.setState({ saleModeOpen: true, saleEventPickerOpen: false })),
+          // After charging, the next sale is the same kind as the one just
+          // rung up — another customer at the same market, or another at the
+          // counter. Asking again is a question already answered. The chooser
+          // belongs to the Pay tab, where the decision is actually being made.
+          saleAgain: () => openSaleScreen({}),
 
           saleModeOpen: this.state.saleModeOpen === true,
           closeSaleMode: e => { if (!e || e.target === e.currentTarget) this.setState({ saleModeOpen: false, saleEventPickerOpen: false }); },
