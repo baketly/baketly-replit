@@ -335,20 +335,22 @@ const eventPreview =
 
   // the planner's lineup, with the quantity box settled into text
   `<h6 style="margin-bottom:8px">Product lineup</h6>` +
-  `<div style="display:grid;grid-template-columns:1fr 62px 42px 58px;gap:10px;padding:0 0 6px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#8a8578">` +
-  `<span>Product</span><span style="text-align:right">Qty</span><span style="text-align:right">Price</span><span style="text-align:right">Revenue</span></div>` +
+  // A column of its own for the calculator, so every button lands on the same
+  // line down the page. Beside the product's cost they followed text of
+  // differing widths and stood in five different places. The numeric columns
+  // give up what it needs, leaving the name the width it had.
+  `<div style="display:grid;grid-template-columns:1fr 26px 40px 38px 52px;gap:8px;padding:0 0 6px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#8a8578">` +
+  `<span>Product</span><span></span><span style="text-align:right">Qty</span><span style="text-align:right">Price</span><span style="text-align:right">Revenue</span></div>` +
   `<div style="display:flex;flex-direction:column;margin-bottom:18px;border-bottom:1px solid var(--color-divider)">` +
   `<sc-for list="{{ evLineup }}" as="line" hint-placeholder-count="3">` +
-  `<div style="display:grid;grid-template-columns:1fr 62px 42px 58px;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--color-divider)">` +
+  `<div style="display:grid;grid-template-columns:1fr 26px 40px 38px 52px;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--color-divider)">` +
   `<span style="min-width:0">` +
   `<span style="font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ line.name }}</span>` +
-  `<span style="display:flex;align-items:center;gap:8px">` +
-  `<span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">cost {{ line.costStr }}</span>` +
+  `<span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">cost {{ line.costStr }}</span></span>` +
   `<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ line.toCalculator }}" aria-label="Scale this recipe" style="width:26px;height:26px;min-height:0;flex:none">` +
   `<svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">` +
   `<rect x="4" y="3" width="16" height="18" rx="2"></rect>` +
   `<path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"></path></svg></button>` +
-  `</span></span>` +
   `<span style="text-align:right;font-size:13px;font-feature-settings:'tnum'">{{ line.qty }}</span>` +
   `<span style="text-align:right;font-size:13px;font-feature-settings:'tnum'">{{ line.priceStr }}</span>` +
   `<span style="text-align:right;font-size:13px;font-feature-settings:'tnum'">{{ line.revStr }}</span>` +
