@@ -11,6 +11,7 @@ import { applyOnboardingBehavior } from "./onboarding-template";
 import { applyCurrencyBehavior } from "./currency";
 import { applyEventBehavior } from "./event-template";
 import { applySaleBehavior } from "./sale-template";
+import { applyEventInsightsBehavior } from "./event-insights-template";
 import { applyProductAnalyticsBehavior } from "./product-analytics-template";
 import { applySingleSalesBehavior } from "./single-sales-template";
 import { applyNavBehavior } from "./nav-template";
@@ -269,8 +270,10 @@ window.__baketlyApplyRecipeRecords = (template) => {
                 applySingleSalesBehavior(
                   applySaleBehavior(
                     applyEventBehavior(
-                      applyProductAnalyticsBehavior(
-                        applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+                      applyEventInsightsBehavior(
+                        applyProductAnalyticsBehavior(
+                          applyAnalyticsBehavior(applyIngredientRecordBehavior(recipeTemplate)),
+                        ),
                       ),
                     ),
                   ),
