@@ -104,8 +104,11 @@ export async function runMarketCheck(
             : "unknown",
         note: String(entry.note || ""),
         grounded: entry.grounded === true,
+        // The server looks for a spread now rather than a single price, and
+        // caps at six. Cutting to three here would throw away the sellers that
+        // make a range mean anything.
         competitors: (Array.isArray(entry.competitors) ? entry.competitors : [])
-          .slice(0, 3)
+          .slice(0, 6)
           .map((seller: Record<string, unknown>) => ({
             name: String(seller.name || ""),
             price: typeof seller.price === "number" ? seller.price : null,

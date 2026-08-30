@@ -90,20 +90,22 @@ function admitCheck(req: Request, res: Response, next: NextFunction): void {
 // pass one found, with no tools, so no new number can appear.
 const RESEARCH_RULES = [
   "You research what small bakeries and cafes currently charge, so a home baker can tell whether their own prices are out of step locally.",
-  "Always use the search tool before you answer. Run at least one search per product, using the local language of the given location as well as English. Never answer from memory: prices you remember are out of date and location-specific prices are not something you can recall.",
-  "Search the web for CURRENT prices for each product listed, sold in the baker's own town or the towns around it. Prefer bakery menus, delivery apps and local listings.",
-  "STAY LOCAL. A price only helps if someone could walk in and pay it. Only use a seller in the same country as the baker, and within roughly an hour's travel of the town given. A famous bakery in another country is worse than useless here: the baker will move their prices to match a market they do not sell in. If a source does not make the seller's town plain, do not use it.",
-  "When a list of nearby bakeries is given, work through it. Search each one by name together with the town — its own site, its menu, its delivery-app listing, its reviews — and take prices from those. They are the shops the baker actually competes with, and they are known to be close. Only look wider if the list yields nothing for a product, and even then stay in the same area.",
-  "MATCH THE KIND, NOT THE NAME. The baker names products their own way, and nowhere else sells a 'Mini Nutella Babka'. Work out what kind of thing each one is — a babka, a filled cookie, a sourdough loaf, a cupcake — and search for that, in the local language as well as English. A price for the ordinary local version of the same kind of thing is what is wanted. Say in the line which kind you priced when it is not the baker's exact product.",
-  "For each product write one line: the product name, the local price range you actually found with its currency, the town it was found in, and the bakery or site it came from.",
-  "If you could not find local prices for a product even by its kind, write that you found none for it. Never guess a number to fill a gap, and never reach further afield to have something to say: the baker will change their prices based on this, so an honest 'not found' is worth more than a range from the wrong place.",
+  "Always search. Never answer from memory: prices you remember are out of date, and local prices are not something you can recall.",
+  "SEARCH LIKE A PERSON WOULD. For each kind of product, run several searches, not one — the plain question first, such as 'sourdough loaf price bakery near <town>', then variations: the neighbouring towns by name, 'menu', 'order online', the local delivery apps, and the same again in the local language. A single search per product finds a single price, and a single price is not a range.",
+  "GATHER AS MANY SELLERS AS YOU CAN. For each product, find prices at several different bakeries — three or more wherever they exist. A range built from one shop tells the baker nothing about their town. Keep looking until you have a spread or have genuinely run out of local sellers.",
+  "MATCH THE KIND, NOT THE NAME. The baker names products their own way, and nowhere else sells a 'Mini Nutella Babka'. Work out what kind of thing each one is — a babka, a filled cookie, a sourdough loaf, a cupcake — and search for that. The ordinary local version of the same kind of thing is what is wanted. Note which kind you priced when it is not the baker's exact product.",
+  "STAY LOCAL. A price only helps if someone could walk in and pay it. Every seller must be in the same country as the baker and within roughly an hour of the town given. A well-known bakery elsewhere is worse than useless: the baker will move their prices to match a market they do not sell in. If a source will not tell you which town the seller is in, do not use it.",
+  "A list of nearby bakeries from map data may be given. Use it two ways: as extra things to search for by name and website, and as a check that a seller you found somewhere else really is local. It is not a list to work through in order, and it is not exhaustive — a shop absent from it may still be nearby.",
+  "REPORT EVERY SELLER SEPARATELY. Write one line per seller per product: the product, the kind you actually priced, the seller's name, its town, the price with its currency, and where you found it. Do not merge sellers into a single line and do not summarise a range — the range is worked out later, from your lines.",
+  "Never invent a number to fill a gap, and never reach further afield to have something to say. If a product has no local price after real searching, say so plainly for that product. An honest 'none found' is worth more than a price from the wrong place.",
 ].join(" ");
 
 const STRUCTURE_RULES = [
   "You convert a price research note into JSON. Use only numbers that appear in the note.",
   "If the note names a real local range for a product, you MUST set localLow and localHigh to those numbers and set grounded to true. Never describe a range in the note field without also filling localLow and localHigh.",
   "For a product the note found nothing for, set localLow and localHigh to null, verdict to unknown, grounded to false, and leave competitors empty.",
-  "competitors lists up to three named sellers the note actually mentions for that product, each with the price the note gives for that seller, or null if it gives none. Never invent a seller.",
+  "competitors lists the named sellers the note mentions for that product — up to six, and all of them if there are fewer — each with the price the note gives for that seller, or null if it gives none. Never invent a seller.",
+  "localLow and localHigh are the lowest and highest of the prices the note actually lists for that product. When the note gives one seller only, both are that price: do not widen it to look like a range.",
   "sourceIndex is the number of the source that seller came from, taken from the numbered source list. Use -1 when the seller cannot be traced to one of those sources.",
   "verdict compares the baker's own price with the local range: 'under' if they charge less than the local low, 'over' if more than the local high, otherwise 'in_range'.",
   "The note field is one short plain sentence naming the local range and what it means for their price. If the note priced a more ordinary version of the product rather than the baker's own, say which — 'plain babkas nearby go for…' — so nobody reads it as a like-for-like comparison. No markdown, no bullets, no URLs.",
@@ -180,8 +182,10 @@ router.post(
         apiKey,
         parts: [{ text: RESEARCH_RULES + "\n\n" + productBlock }],
         tools: [{ google_search: {} }],
-        temperature: 0,
-        maxOutputTokens: 2048,
+        // a little warmth: at zero it reruns near-identical searches and finds
+        // the same one shop again
+        temperature: 0.3,
+        maxOutputTokens: 8192,
         attemptTimeoutMs: 30_000,
         budgetMs: 45_000,
         onModelSkipped: (skipped, error) =>
@@ -242,7 +246,7 @@ router.post(
           // comes from grounding metadata, so a link can never be invented.
           const competitors = (Array.isArray(entry.competitors) ? entry.competitors : [])
             .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
-            .slice(0, 3)
+            .slice(0, 6)
             .map((c) => {
               const index = Number(c.sourceIndex);
               const source =
