@@ -734,6 +734,27 @@ function shoppingNamesWrapInPlace(template: string): string {
     );
 }
 
+/**
+ * A lineup row can be pulled to the right to take the product off the list.
+ * The × sits behind the row rather than beside it, so nothing is added to a
+ * line that is already four columns wide on a phone.
+ */
+function swipeToRemoveFromLineup(template: string): string {
+  const row = "      <div style=\"display:grid;grid-template-columns:1fr 62px 42px 58px;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--color-divider)\">\n";
+  const wrapped = "      <div style=\"position:relative;overflow:hidden;border-top:1px solid var(--color-divider)\">\n        <div style=\"position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding-left:12px;opacity:{{ p.swipeOpacity }}\"><span style=\"width:30px;height:30px;border-radius:50%;background:#b0563e;color:#fff;display:grid;place-items:center;font-size:17px;line-height:1\">×</span></div>\n        <div sc-camel-on-pointer-down=\"{{ p.swipeStart }}\" sc-camel-on-pointer-move=\"{{ p.swipeMove }}\" sc-camel-on-pointer-up=\"{{ p.swipeEnd }}\" sc-camel-on-pointer-cancel=\"{{ p.swipeEnd }}\" style=\"display:grid;grid-template-columns:1fr 62px 42px 58px;gap:10px;align-items:center;padding:7px 0;background:var(--color-bg);touch-action:pan-y;transform:translateX({{ p.swipeX }});transition:{{ p.swipeEase }}\">\n";
+  if (!template.includes(row)) throw new Error("Missing lineup row anchor");
+  const at = template.indexOf(row);
+  const closeAt = template.indexOf("      </div>\n", at + row.length);
+  if (closeAt < 0) throw new Error("Missing lineup row close");
+  return (
+    template.slice(0, at) +
+    wrapped +
+    template.slice(at + row.length, closeAt) +
+    "        </div>\n      </div>\n" +
+    template.slice(closeAt + "      </div>\n".length)
+  );
+}
+
 export function applyEventBehavior(template: string): string {
   let out = addEventController(template);
   out = addPastEventDelete(out);
@@ -745,5 +766,5 @@ export function applyEventBehavior(template: string): string {
   out = replaceEventButtons(out);
   out = removeLegacyCompletedBlock(out);
   out = replaceUpcomingList(out);
-  return shoppingNamesWrapInPlace(describeShoppingList(resetDraftOnNewEvent(out)));
+  return swipeToRemoveFromLineup(shoppingNamesWrapInPlace(describeShoppingList(resetDraftOnNewEvent(out))));
 }
