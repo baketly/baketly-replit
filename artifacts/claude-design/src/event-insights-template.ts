@@ -81,7 +81,7 @@ const eventInsightsController = `      ...(() => {
             // optimistically rather than a number the ledger ever shows
             wasted: row.sold > 0 ? leftover * (row.cost / row.sold) : 0
           };
-        }).filter(row => row.baked > 0 || row.sold > 0);
+        }).filter(row => row.sold > 0);
 
         const sortBy = this.state.eventProductSort === 'margin' ? 'margin' : 'rate';
         const ordered = [...rows].sort((a, b) => sortBy === 'margin'
@@ -161,6 +161,9 @@ const eventInsightsController = `      ...(() => {
           eventWasteStr: money(wastedTotal),
           eventAdvice: advice,
           hasEventAdvice: advice.length > 0,
+          sortExplainer: sortBy === 'margin'
+            ? 'Ordered by margin — the share of the price you keep after ingredients and packaging. Best first.'
+            : 'Ordered by how much of each bake sold at the table. Worst first, so what is coming home is at the top.',
           sortByRate: sortBy === 'rate',
           sortByMargin: sortBy === 'margin',
           rateChipBg: sortBy === 'rate' ? 'var(--color-accent)' : '#fff',
@@ -193,11 +196,12 @@ const insightsMarkup = `
       <div class="text-muted" style="font-size:12px;margin-bottom:18px">Everything you have taken to a market, over {{ eventMarketCount }}. What came home is what you baked and did not sell, and what its ingredients cost you.</div>
 
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <span class="text-muted" style="font-size:12px;flex:none">Sort by</span>
-        <button sc-camel-on-click="{{ sortByRateNow }}" style="flex:none;height:32px;padding:0 12px;font-family:var(--font-body);font-size:12px;font-weight:600;border-radius:999px;cursor:pointer;border:1px solid var(--color-neutral-300);background:{{ rateChipBg }};color:{{ rateChipColor }}">What sells</button>
-        <button sc-camel-on-click="{{ sortByMarginNow }}" style="flex:none;height:32px;padding:0 12px;font-family:var(--font-body);font-size:12px;font-weight:600;border-radius:999px;cursor:pointer;border:1px solid var(--color-neutral-300);background:{{ marginChipBg }};color:{{ marginChipColor }}">What earns</button>
+        <span class="text-muted" style="font-size:12px;flex:none">Show</span>
+        <button sc-camel-on-click="{{ sortByRateNow }}" style="flex:none;height:32px;padding:0 12px;font-family:var(--font-body);font-size:12px;font-weight:600;border-radius:999px;cursor:pointer;border:1px solid var(--color-neutral-300);background:{{ rateChipBg }};color:{{ rateChipColor }}">Slowest sellers</button>
+        <button sc-camel-on-click="{{ sortByMarginNow }}" style="flex:none;height:32px;padding:0 12px;font-family:var(--font-body);font-size:12px;font-weight:600;border-radius:999px;cursor:pointer;border:1px solid var(--color-neutral-300);background:{{ marginChipBg }};color:{{ marginChipColor }}">Best margin</button>
       </div>
 
+      <div class="text-muted" style="font-size:12px;margin-bottom:10px">{{ sortExplainer }}</div>
       <div class="an-card" style="padding:0 16px">
         <sc-for list="{{ eventProducts }}" as="ep" hint-placeholder-count="4">
           <div class="an-list-item bk-row" sc-camel-on-click="{{ ep.open }}" style="cursor:pointer;min-height:44px;gap:12px;align-items:flex-start">
