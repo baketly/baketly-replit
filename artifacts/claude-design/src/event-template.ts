@@ -755,6 +755,22 @@ function swipeToRemoveFromLineup(template: string): string {
   );
 }
 
+/**
+ * The shopping list is somewhere you go, not something you change, so it sits
+ * with the market as it stands rather than in the middle of editing it. The
+ * preview carries its own button; this drops the editor's copy.
+ */
+function shoppingListOutOfTheEditor(template: string): string {
+  const button = '<button class="btn btn-secondary" sc-camel-on-click="{{ goShopping }}" style="flex:1;min-height:52px;flex-direction:column;gap:2px">';
+  const at = template.indexOf(button);
+  if (at < 0) throw new Error("Missing editor shopping button anchor");
+  const rowStart = template.lastIndexOf('<div style="display:flex;gap:10px;margin-bottom:18px">', at);
+  if (rowStart < 0) throw new Error("Missing editor shopping row anchor");
+  const rowEnd = template.indexOf("</div>", template.indexOf("</button>", at));
+  if (rowEnd < 0) throw new Error("Missing editor shopping row close");
+  return template.slice(0, rowStart) + template.slice(rowEnd + "</div>".length);
+}
+
 export function applyEventBehavior(template: string): string {
   let out = addEventController(template);
   out = addPastEventDelete(out);
@@ -766,5 +782,7 @@ export function applyEventBehavior(template: string): string {
   out = replaceEventButtons(out);
   out = removeLegacyCompletedBlock(out);
   out = replaceUpcomingList(out);
-  return swipeToRemoveFromLineup(shoppingNamesWrapInPlace(describeShoppingList(resetDraftOnNewEvent(out))));
+  return shoppingListOutOfTheEditor(
+    swipeToRemoveFromLineup(shoppingNamesWrapInPlace(describeShoppingList(resetDraftOnNewEvent(out)))),
+  );
 }

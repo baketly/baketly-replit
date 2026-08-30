@@ -890,7 +890,7 @@ function removeCashTracker(template: string): string {
 // The mockup's two "Baketly noticed" cards held invented copy and did nothing.
 // They now show a real tip and open the chat with it.
 const eventCostEditorMarkup = `
-  <div style="border-top:1px solid var(--color-divider);padding-top:16px;margin-top:4px">
+  <div style="border-top:1px solid var(--color-divider);padding-top:16px;margin:4px 0 20px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
       <h6 style="margin:0">Other costs</h6>
       <sc-if value="{{ hasEventOtherCosts }}" hint-placeholder-val="{{ false }}"><span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">{{ eventOtherCostTotalStr }}</span></sc-if>
