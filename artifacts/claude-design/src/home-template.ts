@@ -30,7 +30,11 @@ const homeController = `      ...(() => {
         const hour = now.getHours();
         const partOfDay = hour < ${GREETING_HOURS.morning} ? 'Good morning'
           : (hour < ${GREETING_HOURS.afternoon} ? 'Good afternoon' : 'Good evening');
-        const name = String(st.ownerName || '').trim();
+        // Whatever they typed, greet them by the first word of it. Split on a
+        // plain space rather than a pattern: this controller is injected as the
+        // text of a template literal, where a backslash-s collapses to a bare
+        // s and the name would be cut at its first lowercase s instead.
+        const name = String(st.ownerName || '').trim().split(' ')[0] || '';
         const greeting = name ? partOfDay + ', ' + name : partOfDay;
         // day before month, the way a date is spoken: 'Thursday, 27 August'
         const todayLine = now.toLocaleDateString('en-US', { weekday: 'long' })

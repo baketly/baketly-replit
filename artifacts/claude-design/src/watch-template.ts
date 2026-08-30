@@ -70,12 +70,18 @@ const watchController = `      ...(() => {
         // is not necessarily the baker's own
         const localCurrency = (check && check.currency) ? String(check.currency) : '';
         const localMoney = value => value.toFixed(2) + (localCurrency ? ' ' + localCurrency : '');
-        const verdictLabels = { under: 'You charge less', over: 'You charge more', in_range: 'In line locally', unknown: 'Not found' };
-        const verdictClasses = { under: 'tag-accent', over: 'tag-accent', in_range: 'tag-neutral', unknown: 'tag-neutral' };
-        const localRows = check ? (check.products || []).map(product => ({
+        const verdictLabels = { under: 'You charge less', over: 'You charge more', in_range: 'In line locally' };
+        const verdictClasses = { under: 'tag-accent', over: 'tag-accent', in_range: 'tag-neutral' };
+        // A product nothing was found for used to get a row saying so and a
+        // "Not found" pill beside it. That is not a finding about the bakery,
+        // it is the absence of one, and repeated down the list it buried the
+        // products that did come back with a price.
+        const found = check ? (check.products || []).filter(product => product.grounded === true) : [];
+        const missed = check ? (check.products || []).length - found.length : 0;
+        const localRows = found.map(product => ({
           name: product.name,
           yourPrice: money(Number(product.price) || 0),
-          rangeStr: product.grounded ? localMoney(Number(product.localLow) || 0) + ' – ' + localMoney(Number(product.localHigh) || 0) + ' nearby' : 'No local prices found',
+          rangeStr: localMoney(Number(product.localLow) || 0) + ' – ' + localMoney(Number(product.localHigh) || 0) + ' nearby',
           note: product.note || '',
           competitors: (product.competitors || []).map(seller => ({
             name: seller.name,
@@ -83,9 +89,9 @@ const watchController = `      ...(() => {
             uri: seller.uri || ''
           })),
           hasCompetitors: (product.competitors || []).length > 0,
-          verdictLabel: verdictLabels[product.verdict] || 'Not found',
+          verdictLabel: verdictLabels[product.verdict] || 'In line locally',
           verdictClass: verdictClasses[product.verdict] || 'tag-neutral'
-        })) : [];
+        }));
 
         const runCheck = () => {
           const location = (this.state.bakeryLocation || '').trim();
@@ -130,6 +136,11 @@ const watchController = `      ...(() => {
           localRows,
           hasLocalRows: localRows.length > 0,
           noLocalRows: localRows.length === 0,
+          // said once, quietly, instead of once per product
+          missedNote: missed > 0
+            ? 'No local prices found for ' + missed + (missed === 1 ? ' other product.' : ' other products.')
+            : '',
+          hasMissed: missed > 0,
           needsLocation: localRows.length === 0 && !(this.state.bakeryLocation || '').trim(),
           awaitingFirstCheck: localRows.length === 0 && !!(this.state.bakeryLocation || '').trim(),
           goLocationSettings: () => this.setState(st => ({ screen: 'settings', stack: [...st.stack, st.screen] })),
@@ -207,6 +218,9 @@ function replaceWatchScreen(template: string): string {
         </div>
       </sc-for>
     </div>
+    <sc-if value="{{ hasMissed }}" hint-placeholder-val="{{ false }}">
+      <div class="text-muted" style="font-size:12px;margin:-8px 0 16px">{{ missedNote }}</div>
+    </sc-if>
   </sc-if>
   <sc-if value="{{ needsLocation }}" hint-placeholder-val="{{ false }}">
     <div class="an-card" sc-camel-on-click="{{ goLocationSettings }}" style="padding:14px;cursor:pointer;border-color:var(--color-accent)">
