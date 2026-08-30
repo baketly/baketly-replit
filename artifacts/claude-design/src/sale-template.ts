@@ -45,8 +45,13 @@ const saleController = `      ...(() => {
           saleAttached: !!attachedEvent,
           saleAttachedName: attachedEvent ? (attachedEvent.name || 'Market') : '',
 
-          // the tab bar always asks, so there is a way back out of a market
-          startSale: () => this.setState({ saleModeOpen: true, saleEventPickerOpen: false }),
+          // Attached to a market, Pay goes back to that market's till however
+          // long you spend on other tabs. A market is a session, not a single
+          // sale, and being asked again between every customer is the wrong
+          // question. The tick in the corner is the way out.
+          startSale: () => (attachedEvent
+            ? openSaleScreen({})
+            : this.setState({ saleModeOpen: true, saleEventPickerOpen: false })),
           // after charging, carrying on at the same market is the common case
           saleAgain: () => (attachedEvent ? openSaleScreen({}) : this.setState({ saleModeOpen: true, saleEventPickerOpen: false })),
 
@@ -62,6 +67,54 @@ const saleController = `      ...(() => {
           saleEventOptions: upcomingForSale,
           saleHasUpcoming: upcomingForSale.length > 0,
           saleHasNoUpcoming: upcomingForSale.length === 0,
+          saleNotAttached: !attachedEvent,
+          // A shorter heading: "Sale at Riverside Night Market" at the size the
+          // till uses for "New sale" took three lines and pushed everything down.
+          saleTitleSize: attachedEvent ? '21px' : '28px',
+
+          // Leaving the market and finishing it are the same act. Rather than
+          // dropping you back at the counter, the tick carries what the till
+          // took into the market's own results step, already counted, where it
+          // can be corrected before the market is closed.
+          finishSaleEvent: () => this.setState(st => {
+            if (!attachedEvent) return { saleEventId: '' };
+            const quantities = {};
+            (attachedEvent.plannedItems || []).forEach(item => {
+              quantities[item.productId] = item.quantity;
+            });
+            const sold = {};
+            sales.filter(sale => sale.eventId === attachedEvent.id).forEach(sale =>
+              (sale.lineItems || []).forEach(line => {
+                sold[line.productId] = (sold[line.productId] || 0) + (Number(line.quantity) || 0);
+              }));
+            // something rung up but never planned for still needs a row to be
+            // corrected in
+            const picked = (attachedEvent.plannedItems || []).map(item => item.productId);
+            Object.keys(sold).forEach(id => { if (picked.indexOf(id) === -1) picked.push(id); });
+            return {
+              saleEventId: '',
+              screen: 'event',
+              stack: [...st.stack, st.screen],
+              eventCurrentId: attachedEvent.id,
+              eventName: attachedEvent.name || 'Market',
+              eventDate: (attachedEvent.occurredAt || '').slice(0, 10),
+              eventBoothFee: Number(attachedEvent.boothFee) || 0,
+              eventOtherCosts: (attachedEvent.otherCosts || []).map(cost => ({
+                label: cost.label, amount: String(cost.amount)
+              })),
+              evPicked: picked,
+              evQty: quantities,
+              evSold: sold,
+              evStatus: 'planned',
+              evSaved: true,
+              evEnteringResults: true,
+              evPickerOpen: false,
+              evPickerSel: [],
+              eventDeleteOpen: false,
+              shopNeed: {},
+              shopNeedText: {}
+            };
+          }),
           leaveSaleEvent: () => this.setState({ saleEventId: '' }),
 
           // A market sale starts from what was planned for that market, so the
@@ -126,17 +179,30 @@ function addSaleController(template: string): string {
   );
 }
 
-/** The heading says which market you are selling at. */
+/** The heading says which market you are selling at, and how to finish it. */
 function bindSaleTitle(template: string): string {
-  const anchor = '<h2 style="font-size:28px;margin:6px 0 2px">New sale</h2>';
-  if (!template.includes(anchor)) throw new Error("Missing sale title anchor");
+  const anchor =
+    '<div style="display:flex;justify-content:space-between;align-items:baseline">\n' +
+    '    <h2 style="font-size:28px;margin:6px 0 2px">New sale</h2>\n' +
+    '    <span class="text-muted" style="font-size:12px;font-feature-settings:\'tnum\'">{{ todayLabel }}</span>\n' +
+    "  </div>";
+  if (!template.includes(anchor)) throw new Error("Missing sale header anchor");
   return template.replace(
     anchor,
     () =>
-      '<h2 style="font-size:28px;margin:6px 0 2px">{{ saleTitle }}</h2>' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
+      '<div style="flex:1;min-width:0">' +
+      '<h2 style="font-size:{{ saleTitleSize }};line-height:1.18;margin:6px 0 2px">{{ saleTitle }}</h2>' +
+      '<span class="text-muted" style="font-size:12px;font-feature-settings:\'tnum\'">{{ todayLabel }}</span>' +
+      "</div>" +
       '<sc-if value="{{ saleAttached }}" hint-placeholder-val="{{ false }}">' +
-      '<button class="btn btn-ghost" sc-camel-on-click="{{ leaveSaleEvent }}" style="min-height:32px;padding:2px 8px;font-size:12px;margin:0 0 2px -6px">Leave this market</button>' +
-      "</sc-if>",
+      '<button sc-camel-on-click="{{ finishSaleEvent }}" aria-label="Finish this market" ' +
+      'style="flex:none;width:40px;height:40px;margin-top:6px;border-radius:50%;border:0;' +
+      'background:var(--color-accent);color:#fff;display:grid;place-items:center;cursor:pointer;' +
+      'padding:0;box-shadow:var(--shadow-sm)">' +
+      '<svg width="21" height="21" sc-camel-view-box="0 0 24 24" fill="none" stroke="#fff" ' +
+      'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>' +
+      "</button></sc-if></div>",
   );
 }
 
@@ -147,12 +213,22 @@ function routeSaleEntryPoints(template: string): string {
     '<button class="btn btn-primary btn-block" sc-camel-on-click="{{ goSale }}" style="min-height:52px;margin-bottom:10px">New sale</button>';
   if (!template.includes(tabButton)) throw new Error("Missing sale tab button anchor");
   if (!template.includes(doneButton)) throw new Error("Missing sale done button anchor");
+  // At a market the next thing you do is serve the next customer, so Done —
+  // which walks away from the market — is only offered on a counter sale.
+  const doneGhost =
+    '<button class="btn btn-ghost btn-block" sc-camel-on-click="{{ goDash }}" style="min-height:48px">Done</button>';
+  if (!template.includes(doneGhost)) throw new Error("Missing sale done ghost anchor");
   return template
     .replace(tabButton, () => '<button sc-camel-on-click="{{ startSale }}" aria-label="New sale"')
     .replace(
       doneButton,
       () =>
         '<button class="btn btn-primary btn-block" sc-camel-on-click="{{ saleAgain }}" style="min-height:52px;margin-bottom:10px">New sale</button>',
+    )
+    .replace(
+      doneGhost,
+      () =>
+        '<sc-if value="{{ saleNotAttached }}" hint-placeholder-val="{{ true }}">' + doneGhost + "</sc-if>",
     );
 }
 

@@ -239,7 +239,15 @@ const eventController = `      ...(() => {
 
           // only offered once the market exists and is still ahead of you
           evCanComplete: !!saved && saved.status === 'planned' && !entering,
-          startCompleting: () => this.setState({ evEnteringResults: true, evSold: { ...soldEntered } }),
+          // Something rung up at the market that was never planned for it had
+          // no row here, so the one number you could not correct was the one
+          // you did not expect to sell. A zero-quantity product never reaches
+          // the saved plan, so giving it a row costs nothing.
+          startCompleting: () => this.setState(st => {
+            const picked = Array.isArray(st.evPicked) ? [...st.evPicked] : [];
+            Object.keys(soldEntered).forEach(id => { if (picked.indexOf(id) === -1) picked.push(id); });
+            return { evEnteringResults: true, evSold: { ...soldEntered }, evPicked: picked };
+          }),
           evEnteringResults: entering,
           evNotEnteringResults: !entering,
           cancelCompleting: () => this.setState({ evEnteringResults: false }),
