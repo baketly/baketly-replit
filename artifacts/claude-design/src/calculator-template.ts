@@ -35,11 +35,9 @@ const calculatorController = `      ...(() => {
           ? (chosen.ingredientKeys || []).map(key => {
               const meta = this.ING_META[key] || {};
               const perBatch = Number((chosen.amounts || {})[key]) || 0;
-              const perUnit = perBatch / made;
-              const needed = perUnit * wanted;
+              const needed = (perBatch / made) * wanted;
               return {
                 name: meta.name || key,
-                perUnitStr: measure(perUnit, meta.unit || 'g') + ' each',
                 neededStr: measure(needed, meta.unit || 'g'),
                 costStr: CUR + (needed * (Number(meta.per) || 0)).toFixed(2)
               };
@@ -166,10 +164,7 @@ const screenMarkup = `<!-- ══ RECIPE CALCULATOR ══ -->
       <div style="display:flex;flex-direction:column;font-size:14px;margin-bottom:20px;border-bottom:1px solid var(--color-divider)">
         <sc-for list="{{ calcLines }}" as="ln" hint-placeholder-count="4">
           <div style="display:grid;grid-template-columns:1fr 92px 52px;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--color-divider)">
-            <span style="min-width:0">
-              <span style="font-size:14px;display:block;overflow-wrap:break-word">{{ ln.name }}</span>
-              <span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">{{ ln.perUnitStr }}</span>
-            </span>
+            <span style="min-width:0;font-size:14px;overflow-wrap:break-word">{{ ln.name }}</span>
             <span style="text-align:right;font-size:14px;font-weight:500;font-feature-settings:'tnum'">{{ ln.neededStr }}</span>
             <span class="text-muted" style="text-align:right;font-size:13px;font-feature-settings:'tnum'">{{ ln.costStr }}</span>
           </div>
