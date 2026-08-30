@@ -4,6 +4,7 @@ import {
   GeminiProviderError,
   MissingGeminiKeyError,
 } from "../lib/gemini";
+import { nearbyBakeries } from "../lib/nearby-bakeries";
 
 const router: IRouter = Router();
 
@@ -92,6 +93,7 @@ const RESEARCH_RULES = [
   "Always use the search tool before you answer. Run at least one search per product, using the local language of the given location as well as English. Never answer from memory: prices you remember are out of date and location-specific prices are not something you can recall.",
   "Search the web for CURRENT prices for each product listed, sold in the baker's own town or the towns around it. Prefer bakery menus, delivery apps and local listings.",
   "STAY LOCAL. A price only helps if someone could walk in and pay it. Only use a seller in the same country as the baker, and within roughly an hour's travel of the town given. A famous bakery in another country is worse than useless here: the baker will move their prices to match a market they do not sell in. If a source does not make the seller's town plain, do not use it.",
+  "When a list of nearby bakeries is given, work through it. Search each one by name together with the town — its own site, its menu, its delivery-app listing, its reviews — and take prices from those. They are the shops the baker actually competes with, and they are known to be close. Only look wider if the list yields nothing for a product, and even then stay in the same area.",
   "MATCH THE KIND, NOT THE NAME. The baker names products their own way, and nowhere else sells a 'Mini Nutella Babka'. Work out what kind of thing each one is — a babka, a filled cookie, a sourdough loaf, a cupcake — and search for that, in the local language as well as English. A price for the ordinary local version of the same kind of thing is what is wanted. Say in the line which kind you priced when it is not the baker's exact product.",
   "For each product write one line: the product name, the local price range you actually found with its currency, the town it was found in, and the bakery or site it came from.",
   "If you could not find local prices for a product even by its kind, write that you found none for it. Never guess a number to fill a gap, and never reach further afield to have something to say: the baker will change their prices based on this, so an honest 'not found' is worth more than a range from the wrong place.",
@@ -148,11 +150,27 @@ router.post(
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new MissingGeminiKeyError();
 
+      // Looked up from map data before anything is searched, so the research
+      // starts from shops known to be close rather than from a place name a
+      // search engine may read loosely. Empty on any failure, and the check
+      // then runs the way it did before.
+      const neighbours = await nearbyBakeries(location);
+
       const lines = [
         "The baker sells in: " + location,
         "Every price you report must come from a seller in or near that place, in the same country.",
-        "Their products and current prices:",
       ];
+      if (neighbours.length) {
+        lines.push(
+          "",
+          "Bakeries near them, from map data, nearest first. These are the ones to price:",
+        );
+        for (const shop of neighbours) {
+          const where = [shop.town, shop.website].filter(Boolean).join(" · ");
+          lines.push("- " + shop.name + " (" + shop.km + " km" + (where ? ", " + where : "") + ")");
+        }
+      }
+      lines.push("", "Their products and current prices:");
       for (const product of products) {
         lines.push("- " + product.name + ": " + product.price);
       }
@@ -256,7 +274,7 @@ router.post(
         });
 
       req.log.info(
-        { model, searches: searches.length, sources: sources.length },
+        { model, searches: searches.length, sources: sources.length, neighbours: neighbours.length },
         "Market check completed",
       );
       res.json({
