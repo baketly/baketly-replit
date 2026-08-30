@@ -81,7 +81,9 @@ const watchController = `      ...(() => {
         const localRows = found.map(product => ({
           name: product.name,
           yourPrice: money(Number(product.price) || 0),
-          rangeStr: localMoney(Number(product.localLow) || 0) + ' – ' + localMoney(Number(product.localHigh) || 0) + ' nearby',
+          rangeStr: (Number(product.localLow) === Number(product.localHigh)
+            ? 'one nearby charges ' + localMoney(Number(product.localLow) || 0)
+            : localMoney(Number(product.localLow) || 0) + ' – ' + localMoney(Number(product.localHigh) || 0) + ' nearby'),
           note: product.note || '',
           competitors: (product.competitors || []).map(seller => ({
             name: seller.name,
@@ -89,6 +91,9 @@ const watchController = `      ...(() => {
             uri: seller.uri || ''
           })),
           hasCompetitors: (product.competitors || []).length > 0,
+          sellerCountStr: (product.competitors || []).length === 1
+            ? 'from 1 seller'
+            : 'from ' + (product.competitors || []).length + ' sellers',
           verdictLabel: verdictLabels[product.verdict] || 'In line locally',
           verdictClass: verdictClasses[product.verdict] || 'tag-neutral'
         }));
@@ -208,6 +213,7 @@ function replaceWatchScreen(template: string): string {
             <div class="an-row-sub" style="margin-top:3px">{{ loc.note }}</div>
             <sc-if value="{{ loc.hasCompetitors }}" hint-placeholder-val="{{ false }}">
               <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+                <span class="text-muted" style="font-size:11px;align-self:center">{{ loc.sellerCountStr }}</span>
                 <sc-for list="{{ loc.competitors }}" as="seller" hint-placeholder-count="2">
                   <a href="{{ seller.uri }}" target="_blank" rel="noopener noreferrer" style="font-size:12px;text-decoration:none;border:1px solid var(--color-divider);background:#fff;border-radius:999px;padding:5px 11px;color:var(--color-accent-700)">{{ seller.name }} {{ seller.priceStr }} ↗</a>
                 </sc-for>
