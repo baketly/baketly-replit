@@ -54,7 +54,9 @@ const productAnalyticsController = `      ...(() => {
             / Math.max(1, Number(recipe.yield) || 1);
           const packaging = (recipe.packagingKeys || []).reduce((sum, key) =>
             sum + (this.PACK_META[key] ? this.PACK_META[key].per : 0), 0);
-          return perUnit + packaging;
+          const time = ((Number(this.state.hourlyRate) || 0) / 60)
+            * (Number(recipe.activeMinutes) || 0) / Math.max(1, Number(recipe.yield) || 1);
+          return perUnit + packaging + time;
         };
 
         const totalsOf = entry => Object.keys(entry.months).reduce((sum, month) => {

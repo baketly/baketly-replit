@@ -969,7 +969,9 @@ function addCommerceBehavior(template: string): string {
     "        const { evQty, evSold, shopChecked, cashQty, cashPaid, cashOrdersArr } = this.state;",
     () => `        const { evQty, evSold, shopChecked, cashQty, cashPaid, cashOrdersArr } = this.state;
         const recipes = Array.isArray(this.state.recipeRecords) ? this.state.recipeRecords : [];
-        const recipeCost = r => ((r.ingredientKeys || []).reduce((sum, key) => sum + (Number((r.amounts || {})[key]) || 0) * (this.ING_META[key] ? this.ING_META[key].per : 0), 0) / Math.max(1, Number(r.yield) || 1)) + (r.packagingKeys || []).reduce((sum, key) => sum + (this.PACK_META[key] ? this.PACK_META[key].per : 0), 0);
+        // Your time is a cost like flour is, once a recipe says how much of
+        // it a batch takes and settings say what an hour of yours is worth.
+        const recipeCost = r => ((r.ingredientKeys || []).reduce((sum, key) => sum + (Number((r.amounts || {})[key]) || 0) * (this.ING_META[key] ? this.ING_META[key].per : 0), 0) / Math.max(1, Number(r.yield) || 1)) + (r.packagingKeys || []).reduce((sum, key) => sum + (this.PACK_META[key] ? this.PACK_META[key].per : 0), 0) + ((Number(this.state.hourlyRate) || 0) / 60) * (Number(r.activeMinutes) || 0) / Math.max(1, Number(r.yield) || 1);
         const productFor = p => recipes.find(r => r.id === p.k || r.name === p.name);
         const eventProduct = p => { const r = productFor(p); return r ? { id: p.k, productId: r.id, name: r.name, price: Number(r.price) || 0, cost: recipeCost(r) } : { id: p.k, productId: p.k, name: p.name, price: Number(p.price) || 0, cost: Number(p.cost) || 0 }; };
         // The lineup used to be a fixed five products from the page's own

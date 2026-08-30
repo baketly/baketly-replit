@@ -26,7 +26,9 @@ const eventController = `      ...(() => {
             (sum, key) => sum + (Number((recipe.amounts || {})[key]) || 0) * ((this.ING_META[key] && Number(this.ING_META[key].per)) || 0), 0);
           const packaging = (recipe.packagingKeys || []).reduce(
             (sum, key) => sum + ((this.PACK_META[key] && Number(this.PACK_META[key].per)) || 0), 0);
-          return ingredients / made + packaging;
+          const time = ((Number(this.state.hourlyRate) || 0) / 60)
+            * (Number(recipe.activeMinutes) || 0) / Math.max(1, Number(recipe.yield) || 1);
+          return ingredients / made + packaging + time;
         };
 
         // ---- the picker ------------------------------------------------

@@ -29,6 +29,8 @@ const recipeRecordSchema = z
     icon: z.enum(["loaf", "babka", "focaccia", "brookie", "cookie", "cake", "cup"]),
     price: z.number().finite().min(0).max(10_000),
     yield: z.number().int().min(1).max(10_000),
+    activeMinutes: z.number().int().min(0).max(10_000).optional(),
+    activeMinutes: z.number().int().min(0).max(10_000).optional(),
     ingredientKeys: z.array(z.string().min(1).max(80)).max(100),
     packagingKeys: z.array(z.string().min(1).max(80)).max(100),
     amounts: quantityRecordSchema,
