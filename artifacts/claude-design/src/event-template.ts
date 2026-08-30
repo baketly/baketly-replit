@@ -771,6 +771,33 @@ function shoppingListOutOfTheEditor(template: string): string {
   return template.slice(0, rowStart) + template.slice(rowEnd + "</div>".length);
 }
 
+/**
+ * A calculator beside every product in the lineup. The columns give up a few
+ * pixels each to make room rather than the name giving up all of them.
+ */
+function calculatorOnLineupRows(template: string): string {
+  const grid =
+    "grid-template-columns:1fr 62px 42px 58px;gap:10px;align-items:center;padding:7px 0;background:var(--color-bg)";
+  const roomier =
+    "grid-template-columns:1fr 56px 38px 52px 30px;gap:8px;align-items:center;padding:7px 0;background:var(--color-bg)";
+  // Two screens carry this row and only one of them is reachable, so the
+  // anchor takes in the close that the swipe wrapper leaves behind. Without it
+  // the button lands on the copy nobody sees.
+  const revenue =
+    "<span style=\"text-align:right;font-size:13px;font-feature-settings:'tnum'\">{{ p.revStr }}</span>\n        </div>";
+  if (!template.includes(grid)) throw new Error("Missing lineup grid anchor");
+  if (!template.includes(revenue)) throw new Error("Missing lineup revenue anchor");
+  const button =
+    '<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ p.toCalculator }}" aria-label="Scale this recipe" ' +
+    'style="width:30px;height:30px;min-height:0;flex:none;justify-self:end">' +
+    '<svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="4" y="3" width="16" height="18" rx="2"></rect>' +
+    '<path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"></path></svg></button>';
+  return template
+    .replace(grid, () => roomier)
+    .replace(revenue, () => revenue.replace("</div>", button + "</div>"));
+}
+
 export function applyEventBehavior(template: string): string {
   let out = addEventController(template);
   out = addPastEventDelete(out);
@@ -782,7 +809,9 @@ export function applyEventBehavior(template: string): string {
   out = replaceEventButtons(out);
   out = removeLegacyCompletedBlock(out);
   out = replaceUpcomingList(out);
-  return shoppingListOutOfTheEditor(
-    swipeToRemoveFromLineup(shoppingNamesWrapInPlace(describeShoppingList(resetDraftOnNewEvent(out)))),
+  return calculatorOnLineupRows(
+    shoppingListOutOfTheEditor(
+      swipeToRemoveFromLineup(shoppingNamesWrapInPlace(describeShoppingList(resetDraftOnNewEvent(out)))),
+    ),
   );
 }

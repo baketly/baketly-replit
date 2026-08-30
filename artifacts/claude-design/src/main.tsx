@@ -11,6 +11,7 @@ import { applyOnboardingBehavior } from "./onboarding-template";
 import { applyCurrencyBehavior } from "./currency";
 import { applyEventBehavior } from "./event-template";
 import { applySaleBehavior } from "./sale-template";
+import { applyCalculatorBehavior } from "./calculator-template";
 import { applyEventInsightsBehavior } from "./event-insights-template";
 import { applyProductAnalyticsBehavior } from "./product-analytics-template";
 import { applySingleSalesBehavior } from "./single-sales-template";
@@ -264,7 +265,8 @@ window.__baketlyApplyRecipeRecords = (template) => {
     applyNavBehavior(
       applyCurrencyBehavior(
         applyOnboardingBehavior(
-          applyHomeBehavior(
+          applyCalculatorBehavior(
+            applyHomeBehavior(
             applyWatchBehavior(
               applyChatBehavior(
                 applySingleSalesBehavior(
@@ -279,6 +281,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ),

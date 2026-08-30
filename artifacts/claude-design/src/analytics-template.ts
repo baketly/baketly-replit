@@ -1010,6 +1010,18 @@ function addCommerceBehavior(template: string): string {
           };
         });
         const evLineup = eventProducts.map(p => ({
+          // planning a market is deciding how many of each to bake, which is
+          // the calculator's question with the answer already known
+          toCalculator: e => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            this.setState(st => ({
+              calcRecipeId: p.id,
+              calcUnits: Math.max(0, Number((st.evQty || {})[p.id]) || 0),
+              calcUnitsText: null,
+              screen: 'calculator',
+              stack: [...st.stack, st.screen]
+            }));
+          },
           swipeX: (swipe.id === p.id ? Math.max(0, Math.min(96, Number(swipe.dx) || 0)) : 0) + 'px',
           swipeOpacity: swipe.id === p.id
             ? String(Math.min(1, Math.max(0, (Number(swipe.dx) || 0) / PULL)))
