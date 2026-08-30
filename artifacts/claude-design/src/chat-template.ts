@@ -13,8 +13,8 @@ const chatControllerLogic = `      ...(() => {
         // hear findings about numbers that do not exist
         const justStarting = savedSales === 0 && (savedRecipes === 0 || savedIngredients === 0);
         const greeting = justStarting
-          ? { who: 'b', text: 'Hi! I turn what you pay for ingredients into what each bake really costs, and what to charge for it. Tell me what you bake, or try a question below to see what I can do.' }
-          : { who: 'b', text: 'Hi! I watch your costs, prices and markets. Ask me anything — or try a question below.' };
+          ? { who: 'b', text: 'Hi! I turn what you pay for ingredients into what each bake really costs, and what to charge for it. Tell me what you bake, or ask me what I can do.' }
+          : { who: 'b', text: 'Hi! I watch your costs, prices and markets. Ask me anything — type it or hold the microphone.' };
         const shown = stored.length ? stored : [greeting];
         const pending = this.state.chatPending === true;
 
@@ -67,6 +67,49 @@ const chatControllerLogic = `      ...(() => {
 
         this.__baketlyAskFromCard = (question) => { this.go('chat'); send(question); };
 
+        // Talking is faster than typing with floury hands, and thinking out
+        // loud is how a plan for a market actually gets made. The browser does
+        // the listening; nothing is recorded or sent anywhere until the message
+        // is sent like any other.
+        const Listener = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const stopListening = () => {
+          if (!this.__baketlyVoice) return;
+          try { this.__baketlyVoice.stop(); } catch (error) {}
+          this.__baketlyVoice = null;
+        };
+        const toggleVoice = () => {
+          if (this.__baketlyVoice) { stopListening(); this.setState({ chatListening: false }); return; }
+          if (!Listener) {
+            this.setState({ chatError: 'This browser cannot listen. Type your question instead.' });
+            return;
+          }
+          const listener = new Listener();
+          listener.lang = 'en-US';
+          listener.interimResults = true;
+          listener.continuous = false;
+          // whatever was already typed stays; speech is added to it
+          const already = String(this.state.chatDraft || '').trim();
+          listener.onresult = event => {
+            let heard = '';
+            for (let i = 0; i < event.results.length; i++) heard += event.results[i][0].transcript;
+            const joined = (already ? already + ' ' : '') + heard.trim();
+            this.setState({ chatDraft: joined.slice(0, 500) });
+          };
+          listener.onerror = event => {
+            this.__baketlyVoice = null;
+            this.setState({
+              chatListening: false,
+              chatError: event && event.error === 'not-allowed'
+                ? 'Baketly needs permission to use the microphone.'
+                : 'I did not catch that. Try again, or type it.'
+            });
+          };
+          listener.onend = () => { this.__baketlyVoice = null; this.setState({ chatListening: false }); };
+          this.__baketlyVoice = listener;
+          this.setState({ chatListening: true, chatError: '' });
+          try { listener.start(); } catch (error) { this.__baketlyVoice = null; this.setState({ chatListening: false }); }
+        };
+
         return {
           chatMsgs: shown.map(m => ({
             text: m.text,
@@ -78,7 +121,11 @@ const chatControllerLogic = `      ...(() => {
           chatDraft: this.state.chatDraft || '',
           setChatDraft: e => this.setState({ chatDraft: e.target.value.slice(0, 500) }),
           sendChat: () => send(this.state.chatDraft),
-          chatSuggestions: followUps.slice(0, 3).map(label => ({ label, ask: () => send(label) })),
+          toggleVoice,
+          chatListening: this.state.chatListening === true,
+          voiceLabel: this.state.chatListening === true ? 'Stop listening' : 'Speak your question',
+          voiceBg: this.state.chatListening === true ? 'var(--color-accent)' : '#fff',
+          voiceColor: this.state.chatListening === true ? '#fff' : 'var(--color-text)',
           chatPending: pending,
           chatIdle: !pending,
           chatError: this.state.chatError || '',
@@ -117,11 +164,15 @@ function replaceChatBindings(template: string): string {
   return template.slice(0, goAnchorStart) + chatControllerLogic + template.slice(afterGo + 1);
 }
 
-const suggestionsMarkup = `  <div style="display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 12px">
-    <sc-for list="{{ chatSuggestions }}" as="sug" hint-placeholder-count="3">
-      <button class="btn btn-secondary" sc-camel-on-click="{{ sug.ask }}" style="min-height:40px;font-size:12px">{{ sug.label }}</button>
-    </sc-for>
-  </div>
+// The three prepared questions are gone. They filled the screen under every
+// answer with things the baker had not asked, and a chat that suggests what to
+// say is a chat that does not trust you to say it.
+const suggestionsMarkup = `  <sc-if value="{{ chatListening }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:8px;margin:14px 0 8px;font-size:12px;color:var(--color-accent-700)">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--color-accent);flex:none"></span>
+      <span>Listening — say what you need, then tap the microphone again.</span>
+    </div>
+  </sc-if>
   <sc-if value="{{ chatPending }}" hint-placeholder-val="{{ false }}">
     <div class="text-muted" style="font-size:12px;margin-bottom:8px">Baketly is reading your numbers…</div>
   </sc-if>
@@ -162,9 +213,16 @@ function bindChatComposer(template: string): string {
   const sendButton =
     '<button class="btn btn-primary btn-icon" aria-label="Send" style="width:44px;height:44px">';
   if (!out.includes(sendButton)) throw new Error("Missing chat send button anchor");
+  const microphone =
+    '<button class="btn btn-secondary btn-icon" sc-camel-on-click="{{ toggleVoice }}" aria-label="{{ voiceLabel }}" ' +
+    'style="width:44px;height:44px;flex:none;background:{{ voiceBg }};color:{{ voiceColor }}">' +
+    '<svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="9" y="2" width="6" height="12" rx="3"></rect>' +
+    '<path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v4"></path></svg></button>';
   return out.replace(
     sendButton,
     () =>
+      microphone +
       '<button class="btn btn-primary btn-icon" sc-camel-on-click="{{ sendChat }}" aria-label="Send" style="width:44px;height:44px">',
   );
 }
