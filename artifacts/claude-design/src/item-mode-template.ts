@@ -266,13 +266,17 @@ const recipePreview =
   `<span class="tag tag-neutral" style="font-feature-settings:'tnum'">{{ pk.label }}</span>` +
   `</sc-for></div>` +
 
+  // the editor asks for it in this position, so the preview answers there
+  `<div class="field" style="margin-bottom:20px"><label>Active cooking time (min)</label>` +
+  `<div style="font-size:15px;padding:8px 0 0">{{ recipeMinutesLabel }}</div></div>` +
+
   // the cost block reads the same in both modes
   `<div style="border-top:2px solid var(--color-text);padding-top:12px;display:flex;justify-content:space-between;align-items:baseline">` +
   `<span style="font-family:var(--font-heading);font-weight:600;font-size:17px">Cost per unit</span>` +
   `<span style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:'tnum'">{{ recipeCostPer }}</span></div>` +
-  `<div class="text-muted" style="font-size:12px;margin-top:4px">Batch {{ recipeBatch }} incl. packaging · labor not set</div>` +
+  `<div class="text-muted" style="font-size:12px;margin-top:4px">Batch {{ recipeBatch }} incl. packaging · {{ recipeLabourNote }}</div>` +
   `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--color-divider);border-radius:var(--radius-md);margin-top:16px;background:#fff">` +
-  `<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Sells today</div>` +
+  `<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Price</div>` +
   `<div style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:'tnum'">{{ recipeSell }}</div></div>` +
   `<div style="padding:14px 16px;border-left:1px solid var(--color-divider)"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Margin</div>` +
   `<div style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:'tnum'">{{ recipeMargin }}</div></div></div>` +

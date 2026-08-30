@@ -114,7 +114,7 @@ export const defaultRecipes = [
 ];
 
 const blankRecipeSource =
-  "{ name: '', type: 'treat', icon: 'cake', price: 0, yield: 12, ingredientKeys: [], packagingKeys: [], amounts: {} }";
+  "{ name: '', type: 'treat', icon: 'cake', price: 0, yield: 12, activeMinutes: 0, ingredientKeys: [], packagingKeys: [], amounts: {} }";
 
 export const packagingDefaults = {
   babkabag: { name: "Mini babka bag", supplier: "Uline", packPrice: 11, unitsPerPack: 50 },
@@ -460,7 +460,13 @@ function replaceRecipeEditorLogic(template: string): string {
         const amt = k => amounts[k] ?? 0;
         const ingTotal = keys.reduce((sum, key) => sum + amt(key) * (this.ING_META[key] ? this.ING_META[key].per : 0), 0);
         const packPer = packs.reduce((sum, key) => sum + (this.PACK_META[key] ? this.PACK_META[key].per : 0), 0);
-        const per = ingTotal / y + packPer;
+        // Your hour is a cost like flour is. The rate was asked for at
+        // onboarding and then went nowhere; with a time on the recipe it can
+        // finally reach the number that matters.
+        const minutes = Math.max(0, Number(recipe.activeMinutes) || 0);
+        const rate = Math.max(0, Number(this.state.hourlyRate) || 0);
+        const labourPer = (rate / 60) * minutes / y;
+        const per = ingTotal / y + packPer + labourPer;
         const updateRecipe = update => this.setState(st => {
           if (!st.activeRecipeId) return { recipeDraft: { ...blankRecipe, ...(st.recipeDraft || {}), ...update }, recipeSaveError: '' };
           return { recipeRecords: (st.recipeRecords || []).map(r => r.id === st.activeRecipeId ? { ...r, ...update } : r) };
@@ -475,6 +481,14 @@ function replaceRecipeEditorLogic(template: string): string {
           setRecipeTitle: e => updateRecipe({ name: e.target.value.slice(0, 160) }),
           recipeYield: String(y),
           setRecipeYield: e => { const value = parseInt(e.target.value, 10); updateRecipe({ yield: isNaN(value) || value < 1 ? 1 : value }); },
+          recipeMinutes: minutes > 0 ? String(minutes) : '',
+          setRecipeMinutes: e => { const value = parseInt(e.target.value, 10); updateRecipe({ activeMinutes: isNaN(value) || value < 0 ? 0 : value }); },
+          recipeMinutesLabel: minutes > 0 ? minutes + ' min' : 'not set',
+          recipeLabourNote: minutes > 0
+            ? (rate > 0
+              ? 'and ' + CUR + (labourPer * y).toFixed(2) + ' of your time'
+              : 'your time not costed — set an hourly rate in settings')
+            : 'labor not set',
           recipeIngs: keys.map(k => {
             const m = this.ING_META[k];
             return {
@@ -560,7 +574,7 @@ function replaceRecipeEditorLogic(template: string): string {
           recipeSellInput: Number(recipe.price || 0).toFixed(2),
           setRecipeSell: e => { const value = parseFloat(e.target.value); updateRecipe({ price: isNaN(value) || value < 0 ? 0 : value }); },
           recipeCostPer: CUR + per.toFixed(2),
-          recipeBatch: CUR + (ingTotal + packPer * y).toFixed(2),
+          recipeBatch: CUR + (per * y).toFixed(2),
           recipeMargin: Math.round((Number(recipe.price || 0) - per) / Math.max(Number(recipe.price || 0), 1) * 100) + '%',
           ...(() => {
             // These were four fixed numbers under a note claiming they were
@@ -654,7 +668,7 @@ function replaceRecipeEditorMarkup(template: string): string {
       '',
     )
     .replace(
-      '<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Sells today</div><sc-if value="{{ newRecipeMode }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:3px;font-family:var(--font-heading);font-weight:600;font-size:26px"><span>{{ currencySymbol }}</span><input class="input" value="{{ recipeSellInput }}" sc-camel-on-change="{{ setRecipeSell }}" inputmode="decimal" aria-label="Selling price" style="width:82px;padding:3px 4px;font:inherit;text-align:right;border-radius:8px"></div></sc-if><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ true }}"><div style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:\'tnum\'">{{ recipeSell }}</div></sc-if></div>',
+      '<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Price</div><sc-if value="{{ newRecipeMode }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:3px;font-family:var(--font-heading);font-weight:600;font-size:26px"><span>{{ currencySymbol }}</span><input class="input" value="{{ recipeSellInput }}" sc-camel-on-change="{{ setRecipeSell }}" inputmode="decimal" aria-label="Selling price" style="width:82px;padding:3px 4px;font:inherit;text-align:right;border-radius:8px"></div></sc-if><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ true }}"><div style="font-family:var(--font-heading);font-weight:600;font-size:26px;font-feature-settings:\'tnum\'">{{ recipeSell }}</div></sc-if></div>',
       '<div style="padding:14px 16px"><div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Sells for</div><div style="display:flex;align-items:center;gap:3px;font-family:var(--font-heading);font-weight:600;font-size:26px"><span>{{ currencySymbol }}</span><input class="input" value="{{ recipeSellInput }}" sc-camel-on-change="{{ setRecipeSell }}" inputmode="decimal" aria-label="Selling price" style="width:82px;padding:3px 4px;font:inherit;text-align:right;border-radius:8px"></div></div>',
     )
     .replace(
@@ -683,6 +697,33 @@ function addIngredientPickerFilters(template: string): string {
   return template.replace(anchor, () => ingredientPickerFiltersMarkup + anchor);
 }
 
+/**
+ * "Sells today" read like a promotion and "Active time" like a stopwatch on
+ * something unnamed. Both now say what they hold.
+ */
+function renameRecipeFields(template: string): string {
+  const price = 'margin-bottom:4px">Sells today</div>';
+  // The field was drawn but never wired: an input with a placeholder, no
+  // value and nowhere to put one, so a time you typed was gone on the next
+  // render. Renaming it and binding it are the same edit.
+  const time =
+    '<div class="field" style="margin-bottom:20px"><label>Active time (min)</label>' +
+    '<input class="input" placeholder="not set"></div>';
+  const labour = "Batch {{ recipeBatch }} incl. packaging · labor not set";
+  let out = template;
+  if (out.includes(price)) out = out.split(price).join('margin-bottom:4px">Price</div>');
+  if (!out.includes(labour)) throw new Error("Missing labor note anchor");
+  out = out.replace(labour, () => "Batch {{ recipeBatch }} incl. packaging · {{ recipeLabourNote }}");
+  if (!out.includes(time)) throw new Error("Missing active time anchor");
+  return out.replace(
+    time,
+    () =>
+      '<div class="field" style="margin-bottom:20px"><label>Active cooking time (min)</label>' +
+      '<input class="input" value="{{ recipeMinutes }}" sc-camel-on-change="{{ setRecipeMinutes }}" ' +
+      'aria-label="Active cooking time in minutes" inputmode="numeric" placeholder="not set"></div>',
+  );
+}
+
 export function applyRecipeRecordBehavior(template: string): string {
   template = addSugarBox(macrosPerUnit(template));
   const base = replaceRecipeEditorMarkup(
@@ -704,10 +745,12 @@ export function applyRecipeRecordBehavior(template: string): string {
     withoutUnresolvedPackagingTokens,
   );
 
-  return safelyApplyPackagingSection(
-    "packaging dialogs",
-    withPackagingController,
-    value => replacePackagingDeleteDialog(replacePackagingPicker(value)),
-    usePackagingPickerFallback,
+  return renameRecipeFields(
+    safelyApplyPackagingSection(
+      "packaging dialogs",
+      withPackagingController,
+      value => replacePackagingDeleteDialog(replacePackagingPicker(value)),
+      usePackagingPickerFallback,
+    ),
   );
 }
