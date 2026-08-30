@@ -62,10 +62,60 @@ const saleController = `      ...(() => {
           saleEventOptions: upcomingForSale,
           saleHasUpcoming: upcomingForSale.length > 0,
           saleHasNoUpcoming: upcomingForSale.length === 0,
-          leaveSaleEvent: () => this.setState({ saleEventId: '' })
+          leaveSaleEvent: () => this.setState({ saleEventId: '' }),
+
+          // A market sale starts from what was planned for that market, so the
+          // list is the few things on the table rather than the whole pantry.
+          // The categories are what made a long list navigable and have nothing
+          // left to do here.
+          saleShowCats: !attachedEvent,
+          saleLineupOnly: !!attachedEvent && !(this.state.posSearch || '').trim()
         };
       })(),
 `;
+
+/**
+ * At a market the till lists what was baked for that market. Searching looks
+ * past the van — someone always asks for the thing you did not plan for — so
+ * anything in the pantry can still be rung up.
+ */
+function tillShowsTheLineup(template: string): string {
+  const anchor =
+    "const visible = posRecipes.filter(r => (posCat === 'all' || r.type === posCat) && (!posQ || r.name.toLowerCase().includes(posQ)));";
+  if (!template.includes(anchor)) throw new Error("Missing till list anchor");
+  return template.replace(
+    anchor,
+    () =>
+      "const posLineup = (() => {\n" +
+      "              const at = this.state.saleEventId || '';\n" +
+      "              if (!at) return null;\n" +
+      "              const ev = (this.state.eventRecords || []).find(e => e.id === at);\n" +
+      "              const planned = ev && Array.isArray(ev.plannedItems) ? ev.plannedItems : [];\n" +
+      "              if (!planned.length) return null;\n" +
+      "              const ids = {};\n" +
+      "              planned.forEach(item => { if (item && item.productId) ids[item.productId] = true; });\n" +
+      "              return ids;\n" +
+      "            })();\n" +
+      "            const visible = posRecipes.filter(r => (posCat === 'all' || r.type === posCat)\n" +
+      "              && (posQ ? r.name.toLowerCase().includes(posQ) : (!posLineup || posLineup[r.id])));",
+  );
+}
+
+/** The category chips only earn their room on a list of everything. */
+function tillHidesCategories(template: string): string {
+  const anchor =
+    '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;overflow-x:auto;scrollbar-width:none">\n    <sc-for list="{{ posCats }}" as="f" hint-placeholder-count="5">';
+  if (!template.includes(anchor)) throw new Error("Missing till categories anchor");
+  return template.replace(
+    anchor,
+    () =>
+      '<sc-if value="{{ saleLineupOnly }}" hint-placeholder-val="{{ false }}">' +
+      '<p class="text-muted" style="font-size:12px;line-height:1.5;margin:0 0 8px">' +
+      'What you planned to bake for {{ saleAttachedName }}. Search to ring up anything else.</p></sc-if>' +
+      '<sc-if value="{{ saleShowCats }}" hint-placeholder-val="{{ true }}">' +
+      anchor,
+  );
+}
 
 function addSaleController(template: string): string {
   const anchor = /([ \t]*)onAnalytics:\s*screen\s*===\s*'analytics',/;
@@ -154,6 +204,16 @@ const chooserMarkup = `<sc-if value="{{ saleModeOpen }}" hint-placeholder-val="{
 `;
 
 /** Both dialogs live at the end of the sale screen, above the tab bar. */
+/** Closes the block the categories were wrapped in. */
+function closeCategoryBlock(template: string): string {
+  const anchor = '    </sc-for>\n  </div>\n  <div style="flex:1;display:flex;flex-direction:column">\n    <sc-for list="{{ posProducts }}" as="p" hint-placeholder-count="8">';
+  if (!template.includes(anchor)) throw new Error("Missing till list close anchor");
+  return template.replace(
+    anchor,
+    () => '    </sc-for>\n  </div></sc-if>\n  <div style="flex:1;display:flex;flex-direction:column">\n    <sc-for list="{{ posProducts }}" as="p" hint-placeholder-count="8">',
+  );
+}
+
 function addSaleDialogs(template: string): string {
   const anchor = '<sc-if value="{{ tabsVisible }}" hint-placeholder-val="{{ true }}">';
   if (!template.includes(anchor)) throw new Error("Missing tab bar anchor");
@@ -173,7 +233,8 @@ function fileSaleAgainstEvent(template: string): string {
 }
 
 export function applySaleBehavior(template: string): string {
-  return fileSaleAgainstEvent(
-    addSaleDialogs(routeSaleEntryPoints(bindSaleTitle(addSaleController(template)))),
-  );
+  let out = addSaleController(template);
+  out = tillShowsTheLineup(out);
+  out = closeCategoryBlock(tillHidesCategories(out));
+  return fileSaleAgainstEvent(addSaleDialogs(routeSaleEntryPoints(bindSaleTitle(out))));
 }
