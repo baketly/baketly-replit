@@ -467,6 +467,9 @@ function replaceRecipeEditorLogic(template: string): string {
         const rate = Math.max(0, Number(this.state.hourlyRate) || 0);
         const labourPer = (rate / 60) * minutes / y;
         const per = ingTotal / y + packPer + labourPer;
+        // how far a row has to travel before letting go removes the ingredient
+        const PULL = 64;
+        const swipe = this.state.recSwipe || {};
         const updateRecipe = update => this.setState(st => {
           if (!st.activeRecipeId) return { recipeDraft: { ...blankRecipe, ...(st.recipeDraft || {}), ...update }, recipeSaveError: '' };
           return { recipeRecords: (st.recipeRecords || []).map(r => r.id === st.activeRecipeId ? { ...r, ...update } : r) };
@@ -491,8 +494,38 @@ function replaceRecipeEditorLogic(template: string): string {
             : 'labor not set',
           recipeIngs: keys.map(k => {
             const m = this.ING_META[k];
+            const pulled = swipe.id === k ? Math.max(0, Number(swipe.dx) || 0) : 0;
             return {
               name: m.name, unit: m.unit, amt: String(amt(k)), costStr: CUR + (amt(k) * m.per).toFixed(2),
+              swipeX: Math.min(96, pulled) + 'px',
+              swipeOpacity: String(Math.min(1, pulled / PULL)),
+              // no easing under a finger, or the row lags behind it
+              swipeEase: swipe.id === k && swipe.dragging ? 'none' : 'transform 170ms ease',
+              swipeStart: e => {
+                // a drag inside the amount box is typing, not swiping
+                if (e && e.target && String(e.target.tagName).toLowerCase() === 'input') return;
+                const from = e && typeof e.clientX === 'number' ? e.clientX : 0;
+                if (e && e.currentTarget && e.currentTarget.setPointerCapture && e.pointerId != null) {
+                  try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+                }
+                this.setState({ recSwipe: { id: k, dx: 0, from, dragging: true } });
+              },
+              swipeMove: e => {
+                const now = this.state.recSwipe;
+                if (!now || !now.dragging || now.id !== k) return;
+                const dx = (typeof e.clientX === 'number' ? e.clientX : 0) - now.from;
+                this.setState({ recSwipe: { ...now, dx: Math.max(0, dx) } });
+              },
+              swipeEnd: () => {
+                const now = this.state.recSwipe;
+                if (!now || now.id !== k) return;
+                if ((Number(now.dx) || 0) >= PULL) {
+                  this.setState({ recSwipe: null });
+                  updateRecipe({ ingredientKeys: keys.filter(x => x !== k) });
+                  return;
+                }
+                this.setState({ recSwipe: { ...now, dx: 0, dragging: false } });
+              },
               set: e => { const value = parseFloat(e.target.value); updateRecipe({ amounts: { ...amounts, [k]: isNaN(value) || value < 0 ? 0 : value } }); },
               remove: () => updateRecipe({ ingredientKeys: keys.filter(x => x !== k) })
             };
@@ -724,6 +757,33 @@ function renameRecipeFields(template: string): string {
   );
 }
 
+/**
+ * An ingredient row drags to the right to come off the recipe, the way a
+ * market's lineup does. The × that used to sit in a fourth column goes with
+ * it: a 26px target at the edge of a phone was the hardest thing on the row
+ * to hit, and it took width from the name to be there.
+ */
+function swipeToRemoveIngredient(template: string): string {
+  const row =
+    '      <div style="display:grid;grid-template-columns:1fr 100px 46px 26px;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--color-divider)">';
+  const button =
+    '\n        <button sc-camel-on-click="{{ ing.remove }}" aria-label="Remove" style="width:26px;height:26px;border-radius:50%;border:1px solid var(--color-neutral-300);background:#fff;cursor:pointer;color:#8a8578;font-size:13px;line-height:1;padding:0">×</button>';
+  const close = "\n      </div>";
+  if (!template.includes(row)) throw new Error("Missing ingredient row anchor");
+  if (!template.includes(button)) throw new Error("Missing ingredient remove anchor");
+  return template
+    .replace(button + close, () => close + "\n      </div>")
+    .replace(
+      row,
+      () =>
+        '      <div style="position:relative;overflow:hidden;border-top:1px solid var(--color-divider)">' +
+        '<div style="position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding-left:12px;opacity:{{ ing.swipeOpacity }}">' +
+        '<span style="width:30px;height:30px;border-radius:50%;background:#b0563e;color:#fff;display:grid;place-items:center;font-size:17px;line-height:1">×</span></div>' +
+        '<div sc-camel-on-pointer-down="{{ ing.swipeStart }}" sc-camel-on-pointer-move="{{ ing.swipeMove }}" sc-camel-on-pointer-up="{{ ing.swipeEnd }}" sc-camel-on-pointer-cancel="{{ ing.swipeEnd }}" ' +
+        'style="display:grid;grid-template-columns:1fr 100px 46px;align-items:center;gap:8px;padding:7px 0;background:var(--color-bg);touch-action:pan-y;transform:translateX({{ ing.swipeX }});transition:{{ ing.swipeEase }}">',
+    );
+}
+
 export function applyRecipeRecordBehavior(template: string): string {
   template = addSugarBox(macrosPerUnit(template));
   const base = replaceRecipeEditorMarkup(
@@ -745,12 +805,14 @@ export function applyRecipeRecordBehavior(template: string): string {
     withoutUnresolvedPackagingTokens,
   );
 
-  return renameRecipeFields(
+  return swipeToRemoveIngredient(
+    renameRecipeFields(
     safelyApplyPackagingSection(
       "packaging dialogs",
       withPackagingController,
       value => replacePackagingDeleteDialog(replacePackagingPicker(value)),
       usePackagingPickerFallback,
+      ),
     ),
   );
 }
