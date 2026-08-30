@@ -94,7 +94,7 @@ export function applyAnalyticsBehavior(template: string): string {
       <div class="an-card" style="margin-bottom:0;padding:14px;">
         <div class="an-stat-label">Margin</div>
         <div class="an-stat-val">{{ monthMarginStr }}</div>
-        <div class="an-stat-sub">labor not set</div>
+        <div class="an-stat-sub">{{ monthLabourNote }}</div>
       </div>
       <div class="an-card" sc-camel-on-click="{{ goAnalyticsItems }}" style="margin-bottom:0;padding:14px;cursor:pointer;position:relative;">
         <div class="an-stat-label">Items Sold</div>
@@ -730,6 +730,9 @@ export function applyAnalyticsBehavior(template: string): string {
           monthRevStr: CUR + monthRev.toFixed(2),
            monthProfitStr: (monthProfit < 0 ? ('-' + CUR) : CUR) + Math.abs(monthProfit).toFixed(2),
           monthMarginStr: monthMargin + '%',
+          monthLabourNote: (Number(this.state.hourlyRate) || 0) > 0
+            ? 'incl. your time at ' + CUR + (Number(this.state.hourlyRate) || 0).toFixed(2) + '/hr'
+            : 'labor not costed',
           monthItemsStr: String(monthData.items),
           monthSalesCount: String(monthData.count),
           monthRevDiff,
