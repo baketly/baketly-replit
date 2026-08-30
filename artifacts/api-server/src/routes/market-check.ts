@@ -90,9 +90,11 @@ function admitCheck(req: Request, res: Response, next: NextFunction): void {
 const RESEARCH_RULES = [
   "You research what small bakeries and cafes currently charge, so a home baker can tell whether their own prices are out of step locally.",
   "Always use the search tool before you answer. Run at least one search per product, using the local language of the given location as well as English. Never answer from memory: prices you remember are out of date and location-specific prices are not something you can recall.",
-  "Search the web for CURRENT prices for each product listed, in or near the given location. Prefer bakery menus, delivery apps and local listings.",
-  "For each product write one line: the product name, the local price range you actually found with its currency, and the bakery or site it came from.",
-  "If you could not find real local prices for a product, write that you found none for it. Never guess a number to fill a gap: the baker will change their prices based on this, so an honest 'not found' is worth more than an invented range.",
+  "Search the web for CURRENT prices for each product listed, sold in the baker's own town or the towns around it. Prefer bakery menus, delivery apps and local listings.",
+  "STAY LOCAL. A price only helps if someone could walk in and pay it. Only use a seller in the same country as the baker, and within roughly an hour's travel of the town given. A famous bakery in another country is worse than useless here: the baker will move their prices to match a market they do not sell in. If a source does not make the seller's town plain, do not use it.",
+  "MATCH THE KIND, NOT THE NAME. The baker names products their own way, and nowhere else sells a 'Mini Nutella Babka'. Work out what kind of thing each one is — a babka, a filled cookie, a sourdough loaf, a cupcake — and search for that, in the local language as well as English. A price for the ordinary local version of the same kind of thing is what is wanted. Say in the line which kind you priced when it is not the baker's exact product.",
+  "For each product write one line: the product name, the local price range you actually found with its currency, the town it was found in, and the bakery or site it came from.",
+  "If you could not find local prices for a product even by its kind, write that you found none for it. Never guess a number to fill a gap, and never reach further afield to have something to say: the baker will change their prices based on this, so an honest 'not found' is worth more than a range from the wrong place.",
 ].join(" ");
 
 const STRUCTURE_RULES = [
@@ -102,7 +104,8 @@ const STRUCTURE_RULES = [
   "competitors lists up to three named sellers the note actually mentions for that product, each with the price the note gives for that seller, or null if it gives none. Never invent a seller.",
   "sourceIndex is the number of the source that seller came from, taken from the numbered source list. Use -1 when the seller cannot be traced to one of those sources.",
   "verdict compares the baker's own price with the local range: 'under' if they charge less than the local low, 'over' if more than the local high, otherwise 'in_range'.",
-  "The note field is one short plain sentence naming the local range and what it means for their price. No markdown, no bullets, no URLs.",
+  "The note field is one short plain sentence naming the local range and what it means for their price. If the note priced a more ordinary version of the product rather than the baker's own, say which — 'plain babkas nearby go for…' — so nobody reads it as a like-for-like comparison. No markdown, no bullets, no URLs.",
+  "Drop any product whose prices came from outside the baker's own country or region. A range from the wrong place is worse than no range: leave localLow and localHigh null and grounded false instead.",
   "currency is the ISO code of the local prices, such as USD, ILS or EUR.",
   "summary is one sentence covering the whole check.",
 ].join(" ");
@@ -145,7 +148,11 @@ router.post(
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new MissingGeminiKeyError();
 
-      const lines = ["Where the baker sells: " + location, "Their products and current prices:"];
+      const lines = [
+        "The baker sells in: " + location,
+        "Every price you report must come from a seller in or near that place, in the same country.",
+        "Their products and current prices:",
+      ];
       for (const product of products) {
         lines.push("- " + product.name + ": " + product.price);
       }
