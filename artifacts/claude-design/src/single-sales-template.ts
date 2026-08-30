@@ -48,7 +48,12 @@ const singleSalesController = `      ...(() => {
                 eachStr: CUR + (Number(line.unitPrice) || 0).toFixed(2) + ' each',
                 lineStr: CUR + ((Number(line.quantity) || 0) * (Number(line.unitPrice) || 0)).toFixed(2)
               })),
-              toggle: () => this.setState(st => ({ openSaleId: st.openSaleId === sale.id ? '' : sale.id }))
+              toggle: () => this.setState(st => ({ openSaleId: st.openSaleId === sale.id ? '' : sale.id })),
+              // a sale is money that was taken, so removing one asks first
+              askDelete: e => {
+                if (e && e.stopPropagation) e.stopPropagation();
+                this.setState({ saleDeleteId: sale.id });
+              }
             };
           });
 
@@ -60,7 +65,17 @@ const singleSalesController = `      ...(() => {
         const orderWord = count => count + (count === 1 ? ' order' : ' orders');
         const eventWord = count => count + (count === 1 ? ' event' : ' events');
 
+        const doomed = singles.find(sale => sale.id === (this.state.saleDeleteId || '')) || null;
+
         return {
+          saleDeleteOpen: !!doomed,
+          saleDeleteWhat: doomed ? doomed.dayStr + ' · ' + doomed.itemsStr + ' · ' + doomed.totalStr : '',
+          cancelDeleteSale: () => this.setState({ saleDeleteId: '' }),
+          confirmDeleteSale: () => this.setState(st => ({
+            saleRecords: (st.saleRecords || []).filter(sale => sale.id !== st.saleDeleteId),
+            saleDeleteId: '',
+            openSaleId: ''
+          })),
           monthOrdersSplit: marketsWithSales.size
             ? orderWord(singles.length) + ' · ' + eventWord(marketsWithSales.size)
             : orderWord(singles.length),
@@ -92,6 +107,7 @@ const listMarkup = `
             </div>
             <div class="an-row-val">{{ ss.totalStr }}</div>
             <span class="text-muted" style="flex:none;font-size:12px;width:14px;text-align:right">{{ ss.caret }}</span>
+            <button sc-camel-on-click="{{ ss.askDelete }}" aria-label="Delete this sale" style="flex:none;width:28px;height:28px;border:0;background:none;cursor:pointer;color:var(--color-neutral-400);font-size:17px;line-height:1;padding:0">×</button>
           </div>
           <sc-if value="{{ ss.isOpen }}" hint-placeholder-val="{{ false }}">
             <div style="padding:0 2px 14px">
@@ -123,10 +139,25 @@ const listMarkup = `
  * overview summarises every month; one month's individual sales belong on that
  * month's own page, not under a chart of all of them.
  */
+const deleteDialog = `
+<sc-if value="{{ saleDeleteOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(38,34,28,0.38)">
+  <div style="width:100%;max-width:360px;background:var(--color-bg);border-radius:18px;padding:20px">
+    <h6 style="margin:0 0 6px">Delete this sale?</h6>
+    <p style="font-size:14px;line-height:1.5;margin-bottom:16px">{{ saleDeleteWhat }} will be removed from your records, and your revenue and margins for the month will change with it. This cannot be undone.</p>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-secondary" sc-camel-on-click="{{ cancelDeleteSale }}" style="flex:1;min-height:46px">Keep it</button>
+      <button class="btn btn-primary" sc-camel-on-click="{{ confirmDeleteSale }}" style="flex:1;min-height:46px;background:#b0563e;border-color:#b0563e">Delete</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+`;
+
 function addSingleSalesList(template: string): string {
   const anchor = "<!--single-sales-here-->";
   if (!template.includes(anchor)) throw new Error("Missing single sales anchor");
-  return template.replace(anchor, () => listMarkup);
+  return template.replace(anchor, () => listMarkup + deleteDialog);
 }
 
 /** The Items Sold square says how the month splits, rather than one total. */
