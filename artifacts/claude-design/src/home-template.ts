@@ -54,6 +54,17 @@ const homeController = `      ...(() => {
           eventsByDay[key].push(event);
         });
 
+        // A to-do belongs to a day, the way a market does. One saved before
+        // to-dos had a day sits on today, so nothing already written vanishes.
+        const todos = Array.isArray(st.todoItems) ? st.todoItems : [];
+        const todayKey = dayKey(today);
+        const openTodosByDay = {};
+        todos.forEach(item => {
+          if (!item || item.done) return;
+          const key = item.day || todayKey;
+          openTodosByDay[key] = (openTodosByDay[key] || 0) + 1;
+        });
+
         const selected = Math.min(6, Math.max(0, Number(st.homeDayIndex) || 0));
         const week = [];
         for (let offset = 0; offset < 7; offset++) {
@@ -67,6 +78,8 @@ const homeController = `      ...(() => {
             key,
             dotOpacity: (eventsByDay[key] || []).length > 0 ? '1' : '0',
             dotColor: isPicked ? '#ffffff' : 'var(--color-accent)',
+            todoDotOpacity: (openTodosByDay[key] || 0) > 0 ? '1' : '0',
+            todoDotColor: isPicked ? '#f5d58f' : '#d4953a',
             bg: isPicked ? 'var(--color-accent)' : (isToday ? 'var(--color-accent-100)' : 'transparent'),
             color: isPicked ? '#ffffff' : 'var(--color-text)',
             border: isToday && !isPicked ? '1px solid var(--color-accent-300)' : '1px solid transparent',
@@ -141,8 +154,11 @@ const homeController = `      ...(() => {
           { label: 'Create your first recipe', done: hasRecipes, go: () => this.setState(s => ({ screen: 'ingredients', pantryTab: 'rec', stack: [...s.stack, s.screen] })) }
         ].filter(step => !step.done);
 
-        const todos = Array.isArray(st.todoItems) ? st.todoItems : [];
-        const todoRows = todos.map((item, index) => ({
+        const pickedKey = dayKey(pickedDate);
+        const todoRows = todos
+          .map((item, index) => ({ item, index }))
+          .filter(({ item }) => ((item && item.day) || todayKey) === pickedKey)
+          .map(({ item, index }) => ({
           text: String(item && item.text || ''),
           done: !!(item && item.done),
           boxBg: item && item.done ? 'var(--color-accent)' : '#fff',
@@ -161,7 +177,9 @@ const homeController = `      ...(() => {
         const addTodo = () => this.setState(s => {
           const text = String(s.todoDraft || '').trim().slice(0, 120);
           if (!text) return {};
-          return { todoItems: [...(s.todoItems || []), { text, done: false }], todoDraft: '' };
+          const at = Math.min(6, Math.max(0, Number(s.homeDayIndex) || 0));
+          const forDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + at);
+          return { todoItems: [...(s.todoItems || []), { text, done: false, day: dayKey(forDay) }], todoDraft: '' };
         });
 
         // ---- what changed nearby -------------------------------------------
@@ -187,6 +205,9 @@ const homeController = `      ...(() => {
           homeHasStarter: starter.length > 0,
           homeTodos: todoRows,
           homeHasTodos: todoRows.length > 0,
+          homeTodoPlaceholder: selected === 0
+            ? 'Add something to do today…'
+            : 'Add something for ' + pickedDate.toLocaleDateString('en-US', { weekday: 'long' }) + '…',
           todoDraft: st.todoDraft || '',
           setTodoDraft: e => this.setState({ todoDraft: e.target.value.slice(0, 120) }),
           addTodo,
@@ -239,7 +260,7 @@ const homeMarkup = `
       <div sc-camel-on-click="{{ day.pick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;border-radius:14px;cursor:pointer;background:{{ day.bg }};color:{{ day.color }};border:{{ day.border }};box-sizing:border-box">
         <span style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.75">{{ day.letter }}</span>
         <span style="font-size:15px;font-weight:600;font-feature-settings:'tnum'">{{ day.number }}</span>
-        <span style="width:4px;height:4px;border-radius:50%;background:{{ day.dotColor }};opacity:{{ day.dotOpacity }}"></span>
+        <span style="display:flex;gap:3px"><span style="width:4px;height:4px;border-radius:50%;background:{{ day.dotColor }};opacity:{{ day.dotOpacity }}"></span><span style="width:4px;height:4px;border-radius:50%;background:{{ day.todoDotColor }};opacity:{{ day.todoDotOpacity }}"></span></span>
       </div>
     </sc-for>
   </div>
@@ -283,7 +304,7 @@ const homeMarkup = `
     </sc-for>
   </div>
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:24px">
-    <input class="input" value="{{ todoDraft }}" sc-camel-on-change="{{ setTodoDraft }}" aria-label="Add a to-do" placeholder="Add something to do…" style="flex:1;min-width:0;padding:11px 14px;font-size:13px">
+    <input class="input" value="{{ todoDraft }}" sc-camel-on-change="{{ setTodoDraft }}" aria-label="Add a to-do" placeholder="{{ homeTodoPlaceholder }}" style="flex:1;min-width:0;padding:11px 14px;font-size:13px">
     <button class="btn btn-secondary" sc-camel-on-click="{{ addTodo }}" style="flex:none;min-height:44px;padding:0 16px">Add</button>
   </div>
 

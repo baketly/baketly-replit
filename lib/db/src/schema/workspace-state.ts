@@ -155,7 +155,17 @@ export const workspaceStatePayloadSchema = z
     bakerySpecialties: z.array(z.string().min(1).max(40)).max(20).optional(),
     ownerName: z.string().max(60).optional(),
     todoItems: z
-      .array(z.object({ text: z.string().min(1).max(120), done: z.boolean() }).strict())
+      .array(
+        z
+          .object({
+            text: z.string().min(1).max(120),
+            done: z.boolean(),
+            // the day it is for, as YYYY-MM-DD; absent on to-dos saved before
+            // they had one, which the home screen puts on today
+            day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+          })
+          .strict(),
+      )
       .max(100)
       .optional(),
     currency: z.enum(["USD", "EUR", "GBP"]).optional(),
