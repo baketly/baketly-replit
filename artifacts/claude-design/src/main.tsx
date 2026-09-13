@@ -301,7 +301,45 @@ window.__baketlySuggestPlaces = suggestPlaces;
 window.__baketlyAsk = askBaketly;
 window.__baketlyAskContext = buildAskContext;
 window.__baketlyReady = workspaceClient.hydrate();
-window.__baketlyPersist = (state) => workspaceClient.queue(state);
+// The state that says which page is showing. When any of it changes the user
+// has gone somewhere new, and that page should start at its top rather than
+// wherever the last one was scrolled to.
+const pageStateKeys = [
+  "screen",
+  "pantryTab",
+  "analyticsTab",
+  "settingsTab",
+  "activeRecipeId",
+  "activeIngredientKey",
+  "activePackagingKey",
+  "eventCurrentId",
+  "analyticsProductId",
+  "analyticsEventId",
+  "openSaleId",
+];
+let lastPageKey: string | null = null;
+
+function scrollNewPageToTop(state: WorkspaceState) {
+  const record = state as unknown as Record<string, unknown>;
+  const pageKey = JSON.stringify(pageStateKeys.map((key) => record[key] ?? null));
+  if (pageKey === lastPageKey) return;
+  const firstPage = lastPageKey === null;
+  lastPageKey = pageKey;
+  if (firstPage) return;
+  requestAnimationFrame(() => {
+    document.querySelectorAll<HTMLElement>("body *").forEach((element) => {
+      if (element.scrollTop === 0) return;
+      const overflow = getComputedStyle(element).overflowY;
+      if (overflow === "auto" || overflow === "scroll") element.scrollTop = 0;
+    });
+    window.scrollTo(0, 0);
+  });
+}
+
+window.__baketlyPersist = (state) => {
+  workspaceClient.queue(state);
+  scrollNewPageToTop(state);
+};
 window.addEventListener("pagehide", workspaceClient.flush);
 window.addEventListener("online", workspaceClient.retry);
 
