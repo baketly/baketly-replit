@@ -18,7 +18,7 @@ const saleController = `      ...(() => {
         const attachedEvent = events.find(ev => ev.id === attachedTo) || null;
 
         const openSaleScreen = extra => this.setState(st => ({
-          posQty: {}, posTendered: 0, posStage: 'idle', posPromo: 'none', posCustom: '',
+          posQty: {}, posTendered: 0, posStage: 'idle', posPromo: 'none', posCustom: '', posStockNotice: '',
           screen: 'sale', stack: [...st.stack, st.screen], sheet: false,
           saleModeOpen: false, saleEventPickerOpen: false,
           ...(extra || {})
@@ -124,6 +124,10 @@ const saleController = `      ...(() => {
           // list is the few things on the table rather than the whole pantry.
           // The categories are what made a long list navigable and have nothing
           // left to do here.
+          posStockNotice: String(this.state.posStockNotice || ''),
+          posStockNoticeShow: !!this.state.posStockNotice && this.state.screen === 'sale',
+          dismissPosStockNotice: () => this.setState({ posStockNotice: '' }),
+
           saleShowCats: !attachedEvent,
           saleLineupOnly: !!attachedEvent && !(this.state.posSearch || '').trim()
         };
@@ -311,8 +315,120 @@ function fileSaleAgainstEvent(template: string): string {
   );
 }
 
+/** Swaps one exact piece of the template, refusing if it is missing or repeated. */
+function swapOnce(template: string, from: string, to: string, label: string): string {
+  const count = template.split(from).length - 1;
+  if (count !== 1) throw new Error(`Till stock ${label}: expected 1 anchor, found ${count}`);
+  return template.replace(from, () => to);
+}
+
+/**
+ * At a market each planned item shows how many are left: what was planned,
+ * less what earlier sales at that market took, less what is in this sale. The
+ * count moves as items go in and out of the sale. When the last one goes in,
+ * or a sold-out item is tapped, a notice says so and the item stops adding.
+ * Anything rung up that was never planned has no count and adds as before.
+ */
+function tillCountsPlannedStock(template: string): string {
+  let out = swapOnce(
+    template,
+    "const k = r.id, n = posQty[k] || 0;",
+    `const k = r.id, n = posQty[k] || 0;
+                const stockAt = this.state.saleEventId || '';
+                const stockEvent = stockAt ? (this.state.eventRecords || []).find(ev => ev.id === stockAt) : null;
+                const stockPlan = stockEvent && Array.isArray(stockEvent.plannedItems)
+                  ? stockEvent.plannedItems.find(item => item && item.productId === k) : null;
+                const stockPlanned = stockPlan ? Math.max(0, Number(stockPlan.quantity) || 0) : null;
+                const stockSoldBefore = stockPlanned === null ? 0 : (this.state.saleRecords || [])
+                  .filter(sale => sale && sale.eventId === stockAt)
+                  .reduce((sum, sale) => sum + (sale.lineItems || [])
+                    .filter(line => line && line.productId === k)
+                    .reduce((lineSum, line) => lineSum + (Number(line.quantity) || 0), 0), 0);
+                const stockLeftIn = inSale => stockPlanned === null ? null : Math.max(0, stockPlanned - stockSoldBefore - inSale);
+                const stockLeft = stockLeftIn(n);
+                const stockGone = stockLeft === 0;
+                const stockNotify = text => {
+                  const at = Date.now();
+                  setTimeout(() => this.setState(s => (s.posStockNoticeAt === at ? { posStockNotice: '' } : {})), 3200);
+                  return { posStockNotice: text, posStockNoticeAt: at };
+                };`,
+    "row counts",
+  );
+
+  out = swapOnce(
+    out,
+    "stepDisplay: n > 0 ? 'flex' : 'none', addDisplay: n > 0 ? 'none' : 'grid',",
+    "stepDisplay: n > 0 ? 'flex' : 'none', addDisplay: n > 0 ? 'none' : 'grid',\n" +
+      "                  stockShow: stockLeft !== null,\n" +
+      "                  stockStr: stockGone ? 'Sold out' : stockLeft + ' left',\n" +
+      "                  stockColor: stockGone ? '#b4532a' : (stockLeft <= 2 ? '#b07a1f' : 'var(--color-accent)'),\n" +
+      "                  addOpacity: stockGone ? '0.35' : '1',",
+    "row bindings",
+  );
+
+  out = swapOnce(
+    out,
+    "add: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(st => ({ posQty: { ...st.posQty, [k]: (st.posQty[k] || 0) + 1 } })); },",
+    `add: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(st => {
+                    const inSale = (st.posQty || {})[k] || 0;
+                    const leftNow = stockLeftIn(inSale);
+                    if (leftNow === 0) return stockNotify(r.name + ' is sold out');
+                    const next = { posQty: { ...st.posQty, [k]: inSale + 1 } };
+                    return leftNow === 1 ? { ...next, ...stockNotify('That was the last ' + r.name + ' — now sold out') } : next;
+                  }); },`,
+    "add handler",
+  );
+
+  // taking one back out means it is no longer sold out, so the notice goes
+  out = swapOnce(
+    out,
+    "dec: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(st => ({ posQty: { ...st.posQty, [k]: Math.max(0, (st.posQty[k] || 0) - 1) } })); }",
+    "dec: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(st => ({ posQty: { ...st.posQty, [k]: Math.max(0, (st.posQty[k] || 0) - 1) }, ...(stockPlanned !== null ? { posStockNotice: '' } : {}) })); }",
+    "dec handler",
+  );
+
+  out = swapOnce(
+    out,
+    "<div class=\"text-muted\" style=\"font-size:11px;font-feature-settings:'tnum';margin-top:1px\">{{ p.priceStr }}</div>",
+    "<div class=\"text-muted\" style=\"font-size:11px;font-feature-settings:'tnum';margin-top:1px\">{{ p.priceStr }}" +
+      '<sc-if value="{{ p.stockShow }}" hint-placeholder-val="{{ false }}">' +
+      '<span style="color:{{ p.stockColor }};font-weight:600"> · {{ p.stockStr }}</span></sc-if></div>',
+    "row count markup",
+  );
+
+  // both plus buttons fade once there is nothing left to add
+  out = swapOnce(
+    out,
+    'aria-label="More" style="width:34px;height:34px;border-radius:50%;border:0;background:var(--color-accent);color:#fff;cursor:pointer;font-size:15px;line-height:1;padding:0">+</button>',
+    'aria-label="More" style="width:34px;height:34px;border-radius:50%;border:0;background:var(--color-accent);color:#fff;cursor:pointer;font-size:15px;line-height:1;padding:0;opacity:{{ p.addOpacity }}">+</button>',
+    "more button",
+  );
+  out = swapOnce(
+    out,
+    'aria-label="Add one" style="display:{{ p.addDisplay }};',
+    'aria-label="Add one" style="opacity:{{ p.addOpacity }};display:{{ p.addDisplay }};',
+    "add button",
+  );
+
+  // the notice floats just above the total bar, where the baker is looking
+  const footer =
+    '<div style="position:sticky;bottom:0;background:var(--color-bg);border-top:1px solid var(--color-divider);margin:0 -20px;padding:12px 20px 14px;display:flex;align-items:center;gap:12px">';
+  return swapOnce(
+    out,
+    footer,
+    footer +
+      '<sc-if value="{{ posStockNoticeShow }}" hint-placeholder-val="{{ false }}">' +
+      '<div role="status" sc-camel-on-click="{{ dismissPosStockNotice }}" style="position:absolute;left:16px;right:16px;bottom:calc(100% + 8px);' +
+      'display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:#3a2f22;color:#fff;' +
+      'font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);cursor:pointer;z-index:5">' +
+      '<span style="flex:none;width:8px;height:8px;border-radius:50%;background:#e0874f"></span>' +
+      '<span style="flex:1;min-width:0">{{ posStockNotice }}</span></div></sc-if>',
+    "notice markup",
+  );
+}
+
 export function applySaleBehavior(template: string): string {
-  let out = addSaleController(template);
+  let out = tillCountsPlannedStock(addSaleController(template));
   out = tillShowsTheLineup(out);
   out = closeCategoryBlock(tillHidesCategories(out));
   return fileSaleAgainstEvent(addSaleDialogs(routeSaleEntryPoints(bindSaleTitle(out))));
