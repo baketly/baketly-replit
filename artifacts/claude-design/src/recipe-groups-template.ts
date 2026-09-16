@@ -5,13 +5,13 @@
 // bakery that sells pies, or splits cookies into big and small, had nowhere to
 // put them.
 //
-// The groups are now a list kept in Settings: named, renamed, reordered and
-// removed there. A recipe's type holds the id of its group, which is why every
+// The groups are now a list kept in Settings, where they are added and
+// removed. A recipe's type holds the id of its group, which is why every
 // place that filtered by type keeps working. Until the baker edits the list it
 // is the original four, under the ids recipes already carry. A recipe whose
 // group no longer exists shows as "No group" rather than vanishing.
 //
-// The Recipes list is ordered by group, in the order the groups are listed,
+// The Recipes list is ordered by group, in the order the groups were added,
 // with each group's name above its recipes. A–Z and Price are still a tap away.
 
 function swapOnce(template: string, from: string, to: string, label: string): string {
@@ -219,24 +219,12 @@ const settingsGroups = `      ...(() => {
         const groups = this.recipeGroupList();
         const recipes = Array.isArray(this.state.recipeRecords) ? this.state.recipeRecords : [];
         const saveGroups = next => this.setState({ recipeGroups: next });
-        const move = (from, to) => {
-          if (to < 0 || to >= groups.length) return;
-          const next = [...groups];
-          const [moved] = next.splice(from, 1);
-          next.splice(to, 0, moved);
-          saveGroups(next);
-        };
         return {
-          settingsGroups: groups.map((g, i) => {
+          settingsGroups: groups.map(g => {
             const count = recipes.filter(r => this.recipeGroupOf(r) === g.id).length;
             return {
-              name: String(g.name || ''),
+              name: this.recipeGroupName(g.id),
               countStr: count + (count === 1 ? ' recipe' : ' recipes'),
-              rename: e => saveGroups(groups.map(x => x.id === g.id ? { ...x, name: String(e.target.value || '').slice(0, 40) } : x)),
-              up: () => move(i, i - 1),
-              down: () => move(i, i + 1),
-              upOpacity: i === 0 ? '0.3' : '1',
-              downOpacity: i === groups.length - 1 ? '0.3' : '1',
               remove: () => saveGroups(groups.filter(x => x.id !== g.id))
             };
           }),
@@ -254,8 +242,6 @@ const settingsGroups = `      ...(() => {
       })(),
 `;
 
-const ARROW = (d: string) =>
-  `<svg width="14" height="14" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"></path></svg>`;
 const smallRound =
   "flex:none;width:30px;height:30px;min-height:0;padding:0;border-radius:50%;border:1px solid var(--color-neutral-300);background:#fff;cursor:pointer;display:grid;place-items:center;color:var(--color-text)";
 
@@ -266,10 +252,8 @@ const settingsGroupsMarkup =
   '<sc-if value="{{ settingsHasNoGroups }}" hint-placeholder-val="{{ false }}"><div class="text-muted" style="font-size:13px;padding:6px 0 10px">No groups yet.</div></sc-if>' +
   '<sc-for list="{{ settingsGroups }}" as="sg" hint-placeholder-count="4">' +
   '<div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-top:1px solid var(--color-divider)">' +
-  '<div style="flex:1;min-width:0"><input class="input" value="{{ sg.name }}" sc-camel-on-change="{{ sg.rename }}" aria-label="Group name" placeholder="Untitled group" style="width:100%;padding:8px 10px;font-size:14px">' +
-  '<div class="text-muted" style="font-size:11px;margin:3px 2px 0">{{ sg.countStr }}</div></div>' +
-  `<button sc-camel-on-click="{{ sg.up }}" aria-label="Move group up" style="${smallRound};opacity:{{ sg.upOpacity }}">${ARROW("M18 15l-6-6-6 6")}</button>` +
-  `<button sc-camel-on-click="{{ sg.down }}" aria-label="Move group down" style="${smallRound};opacity:{{ sg.downOpacity }}">${ARROW("M6 9l6 6 6-6")}</button>` +
+  '<div style="flex:1;min-width:0"><div style="font-size:14px;overflow-wrap:anywhere">{{ sg.name }}</div>' +
+  '<div class="text-muted" style="font-size:11px;margin-top:2px">{{ sg.countStr }}</div></div>' +
   `<button sc-camel-on-click="{{ sg.remove }}" aria-label="Remove group" style="${smallRound};color:#b0563e;font-size:17px;line-height:1">×</button>` +
   "</div></sc-for>" +
   '<div style="display:flex;gap:8px;margin-top:10px">' +
