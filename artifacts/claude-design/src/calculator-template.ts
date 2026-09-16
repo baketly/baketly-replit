@@ -208,7 +208,7 @@ function addCalculatorScreen(template: string): string {
   return template.replace(anchor, () => screenMarkup + anchor);
 }
 
-/** A second row of quick actions on Home, so the tile has somewhere to go. */
+/** The calculator joins Home's quick actions, at the end of the same row. */
 function addHomeQuickAction(template: string): string {
   const anchor =
     '<button class="btn btn-secondary" sc-camel-on-click="{{ startNewEvent }}" style="flex:1;min-width:0;min-height:66px;flex-direction:column;gap:5px;padding:10px 4px;border-radius:16px">';
@@ -216,13 +216,11 @@ function addHomeQuickAction(template: string): string {
   const closeAt = template.indexOf("</button>\n  </div>", template.indexOf(anchor));
   if (closeAt < 0) throw new Error("Missing quick action row close");
   const tile =
-    '\n  <div style="display:flex;gap:8px;margin-top:8px">' +
     '<button class="btn btn-secondary" sc-camel-on-click="{{ goCalculator }}" style="flex:1;min-width:0;min-height:66px;flex-direction:column;gap:5px;padding:10px 4px;border-radius:16px">' +
     '<svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
     '<rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"></path></svg>' +
-    '<span style="font-size:10px;font-weight:600;line-height:1.2;text-align:center">Recipe<br>calculator</span></button>' +
-    '<span style="flex:1"></span><span style="flex:1"></span><span style="flex:1"></span></div>';
-  const at = closeAt + "</button>\n  </div>".length;
+    '<span style="font-size:9.5px;font-weight:600;line-height:1.2;text-align:center;letter-spacing:-0.01em">Recipe<br>calculator</span></button>';
+  const at = closeAt + "</button>".length;
   return template.slice(0, at) + tile + template.slice(at);
 }
 
