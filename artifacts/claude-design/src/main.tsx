@@ -19,6 +19,7 @@ import { applySingleSalesBehavior } from "./single-sales-template";
 import { applyNavBehavior } from "./nav-template";
 import { applyItemModeBehavior } from "./item-mode-template";
 import { applyLayoutBehavior } from "./layout-template";
+import { applyRecipeGroupsBehavior } from "./recipe-groups-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
 import { AuthGate, fetchCurrentUser, signOut, type SignedInUser } from "./auth-ui";
@@ -72,6 +73,7 @@ const durableFields = [
   "bakerySpecialties",
   "ownerName",
   "todoItems",
+  "recipeGroups",
   "currency",
   "hourlyRate",
   "targetMargin",
@@ -266,6 +268,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
   }
 
   return applyLayoutBehavior(
+    applyRecipeGroupsBehavior(
     applyItemModeBehavior(
     applyNavBehavior(
       applyCurrencyBehavior(
@@ -293,6 +296,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
           ),
         ),
       ),
+    ),
     ),
     ),
   );

@@ -69,12 +69,24 @@ export function buildAskContext(
     return ingredients / yieldCount + packaging;
   };
 
+  // a recipe's type is its group's id; the model should see the group's name
+  const savedGroups = Array.isArray(state.recipeGroups)
+    ? (state.recipeGroups as Array<{ id?: string; name?: string }>)
+    : [
+        { id: "bread", name: "Bread" },
+        { id: "babka", name: "Babka" },
+        { id: "cookie", name: "Cookies" },
+        { id: "treat", name: "Treats" },
+      ];
+  const groupNameOf = (id: unknown) =>
+    savedGroups.find((group) => group && group.id === id)?.name?.trim() || "No group";
+
   const recipeSummaries = recipes.slice(0, 30).map((recipe) => {
     const price = Number(recipe.price) || 0;
     const unitCost = round2(unitCostOf(recipe));
     return {
       name: recipe.name,
-      type: recipe.type,
+      group: groupNameOf(recipe.type),
       price,
       unitCost,
       marginPct: price > 0 ? Math.round(((price - unitCost) / price) * 100) : 0,

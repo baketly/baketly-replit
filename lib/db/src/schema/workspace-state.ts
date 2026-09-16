@@ -25,7 +25,9 @@ const recipeRecordSchema = z
   .object({
     id: z.string().min(1).max(120),
     name: z.string().min(1).max(160),
-    type: z.enum(["bread", "babka", "cookie", "treat"]),
+    // the id of the recipe's group: one of the original four, one the baker
+    // made in Settings, or empty for no group
+    type: z.string().max(60),
     icon: z.enum(["loaf", "babka", "focaccia", "brookie", "cookie", "cake", "cup"]),
     price: z.number().finite().min(0).max(10_000),
     yield: z.number().int().min(1).max(10_000),
@@ -173,6 +175,19 @@ export const workspaceStatePayloadSchema = z
           .strict(),
       )
       .max(100)
+      .optional(),
+    // the baker's own recipe groups, in the order they are listed; a recipe's
+    // type holds the id of the group it is in
+    recipeGroups: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).max(60),
+            name: z.string().max(40),
+          })
+          .strict(),
+      )
+      .max(50)
       .optional(),
     currency: z.enum(["USD", "EUR", "GBP"]).optional(),
     hourlyRate: z.number().finite().min(0).max(10_000).optional(),
