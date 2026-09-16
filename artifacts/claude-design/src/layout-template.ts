@@ -66,6 +66,14 @@ function reserveScrollbarGutter(template: string): string {
   return template.split(anchor).join(anchor + ";scrollbar-gutter:stable");
 }
 
+/**
+ * "You kept" became "You earned" everywhere it is shown. The last pass, so it
+ * also reaches any label still in the generated markup, wherever it survives.
+ */
+function sayEarnedNotKept(template: string): string {
+  return template.split(">You kept<").join(">You earned<");
+}
+
 export function applyLayoutBehavior(template: string): string {
-  return reserveScrollbarGutter(fieldsCanShrink(clampGridColumns(template)));
+  return sayEarnedNotKept(reserveScrollbarGutter(fieldsCanShrink(clampGridColumns(template))));
 }

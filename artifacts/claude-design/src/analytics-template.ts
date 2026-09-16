@@ -212,7 +212,7 @@ export function applyAnalyticsBehavior(template: string): string {
 <div style="padding:14px 20px 28px">
   <button class="btn btn-ghost" sc-camel-on-click="{{ backFromAnalyticsDetail }}" style="margin-left:-6px;min-height:44px">‹ Analytics</button>
   <h2 style="font-size:26px;margin:6px 0 0">{{ detailMonthLabel }}</h2>
-  <p class="an-detail-sub">Revenue, costs and what you kept.</p>
+  <p class="an-detail-sub">Revenue, costs and what you earned.</p>
 
   <div class="an-card">
     <div class="an-ledger-row"><span>Revenue</span><span class="an-num">{{ monthRevStr }}</span></div>

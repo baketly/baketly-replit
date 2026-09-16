@@ -123,7 +123,7 @@ const listMarkup = `
                 <span class="text-muted" style="font-feature-settings:'tnum'">−{{ ss.costStr }}</span>
               </div>
               <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:6px">
-                <span style="font-weight:600">You kept</span>
+                <span style="font-weight:600">You earned</span>
                 <span style="font-weight:600;font-feature-settings:'tnum'">{{ ss.keptStr }}</span>
               </div>
             </div>
