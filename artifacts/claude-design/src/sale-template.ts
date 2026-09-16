@@ -111,6 +111,8 @@ const saleController = `      ...(() => {
               evStatus: 'planned',
               evSaved: true,
               evEnteringResults: true,
+              // the results step on its own, without the market's plan above it
+              evResultsOnly: true,
               evPickerOpen: false,
               evPickerSel: [],
               eventDeleteOpen: false,

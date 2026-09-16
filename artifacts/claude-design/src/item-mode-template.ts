@@ -59,6 +59,7 @@ const modeController = `      ...(() => {
         const evOpenFor = openFor === 'ev:' + (this.state.eventCurrentId || '');
         const evEditing = !evSavedAlready || evOpenFor;
         const evWhen = new Date(this.state.eventDate || Date.now());
+        const evResultsOnly = this.state.evResultsOnly === true && this.state.evEnteringResults === true;
 
         return {
           ingEditing: ing.editing,
@@ -84,6 +85,19 @@ const modeController = `      ...(() => {
             : evWhen.toLocaleDateString('en-US', { weekday: 'long' }) + ', ' + evWhen.getDate()
               + ' ' + evWhen.toLocaleDateString('en-US', { month: 'long' }),
           evBoothLabel: CUR + (Number(this.state.eventBoothFee) || 0).toFixed(2),
+
+          // the till's finish opens only the results step
+          evResultsOnly: evResultsOnly,
+          evShowMarketBody: !evResultsOnly,
+          evCancelResultsLabel: evResultsOnly ? 'Back to the till' : 'Cancel',
+          cancelEnteringResults: () => this.setState(st => (st.evResultsOnly === true && st.evEnteringResults === true
+            ? {
+              screen: 'sale', stack: [], saleEventId: st.eventCurrentId || '',
+              evEnteringResults: false, evResultsOnly: false,
+              posQty: {}, posTendered: 0, posStage: 'idle', posPromo: 'none', posCustom: '', posStockNotice: '',
+              sheet: false, saleModeOpen: false, saleEventPickerOpen: false
+            }
+            : { evEnteringResults: false, evResultsOnly: false })),
         };
       })(),
 `;
@@ -327,6 +341,12 @@ function resetRecipeOnOpen(template: string): string {
 const eventPreview =
   `<sc-if value="{{ evPreviewing }}" hint-placeholder-val="{{ false }}">` +
 
+  // Arriving from the till's finish tick, the screen is only the results step:
+  // the market's name, then what sold. The plan is not what is being asked.
+  `<sc-if value="{{ evResultsOnly }}" hint-placeholder-val="{{ false }}">` +
+  `<h2 style="font-size:24px;margin:6px 0 14px">{{ eventName }}</h2></sc-if>` +
+  `<sc-if value="{{ evShowMarketBody }}" hint-placeholder-val="{{ true }}">` +
+
   // where the planner puts its name input
   `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">` +
   `<h2 style="font-size:24px;margin:6px 0 0">{{ eventName }}</h2></div>` +
@@ -398,6 +418,7 @@ const eventPreview =
   `<span style="font-size:14px">{{ oc.label }}</span>` +
   `<span style="font-size:13px;font-feature-settings:'tnum'">{{ oc.amountStr }}</span></div>` +
   `</sc-for></div></sc-if>` +
+  `</sc-if>` +
 
   "<!--finish-here-->" +
   `</sc-if>`;
@@ -420,8 +441,9 @@ function eventScreen(template: string): string {
   const header =
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
     backButton +
+    '<sc-if value="{{ evShowMarketBody }}" hint-placeholder-val="{{ true }}">' +
     itemActions("editEvent", "askDeleteEvent", "event", "evPreviewing", "evCanDelete") +
-    "</div>";
+    "</sc-if></div>";
 
   let out = template
     .replace(backButton, () => header + eventPreview + '<sc-if value="{{ evEditing }}" hint-placeholder-val="{{ true }}">')
@@ -439,9 +461,20 @@ function eventScreen(template: string): string {
   const results = liftBlock(out, '<sc-if value="{{ evEnteringResults }}"');
   out = results.without;
 
+  // Cancel from the results-only step goes back to the market's till, the
+  // place it was opened from, rather than revealing the plan underneath.
+  const cancel =
+    '<button class="btn btn-ghost btn-block" sc-camel-on-click="{{ cancelCompleting }}" style="min-height:44px;margin-bottom:14px">Cancel</button>';
+  if (results.block.split(cancel).length - 1 !== 1) throw new Error("Missing results cancel anchor");
+  const resultsBlock = results.block.replace(
+    cancel,
+    () =>
+      '<button class="btn btn-ghost btn-block" sc-camel-on-click="{{ cancelEnteringResults }}" style="min-height:44px;margin-bottom:14px">{{ evCancelResultsLabel }}</button>',
+  );
+
   const marker = "<!--finish-here-->";
   if (!out.includes(marker)) throw new Error("Missing preview finish marker");
-  return out.replace(marker, () => results.block + markButton.trim());
+  return out.replace(marker, () => resultsBlock + markButton.trim());
 }
 
 /** Cuts one whole sc-if block out of the template, nesting included. */
@@ -474,7 +507,9 @@ function liftBlock(template: string, open: string): { block: string; without: st
 function resetEventOnOpen(template: string): string {
   const anchor = "screen: 'event',";
   if (template.split(anchor).length - 1 === 0) throw new Error("Missing event open anchor");
-  return template.split(anchor).join("screen: 'event', editingKey: '',");
+  // every way in is the full market, unless the till's finish asks otherwise
+  // later in the same update
+  return template.split(anchor).join("screen: 'event', editingKey: '', evResultsOnly: false,");
 }
 
 export function applyItemModeBehavior(template: string): string {
