@@ -438,8 +438,41 @@ function tillCountsPlannedStock(template: string): string {
   );
 }
 
+/**
+ * Cash tendered. The buttons were lit by amount, so on a $10 sale "Exact" and
+ * "$10" were the same number and both lit up at once. A button is now lit by
+ * which one was tapped, and a note equal to the total is not offered twice.
+ * Paying exactly still reads "Change due", at zero, like any other amount.
+ */
+function tenderPicksOneButton(template: string): string {
+  let out = swapOnce(
+    template,
+    "[10, 20, 50, 100].forEach(v => { if (v >= final && opts.length < 4)",
+    "[10, 20, 50, 100].forEach(v => { if (v > final && opts.length < 4)",
+    "tender notes",
+  );
+  out = swapOnce(
+    out,
+    "set: () => this.setState({ posTendered: o.v }),",
+    "set: () => this.setState({ posTendered: o.v, posTenderPick: o.label }),",
+    "tender set",
+  );
+  const lit = "posTendered === o.v && posTendered > 0";
+  const count = out.split(lit).length - 1;
+  if (count !== 3) throw new Error(`Tender highlight: expected 3 anchors, found ${count}`);
+  out = out
+    .split(lit)
+    .join("posTendered === o.v && posTendered > 0 && (this.state.posTenderPick || o.label) === o.label");
+  return swapOnce(
+    out,
+    "posChangeLabel: posTendered <= 0 ? 'Select amount tendered' : (change === 0 ? 'Even' : (change > 0 ? 'Change due' : 'Short')),",
+    "posChangeLabel: posTendered <= 0 ? 'Select amount tendered' : (change >= 0 ? 'Change due' : 'Short'),",
+    "change label",
+  );
+}
+
 export function applySaleBehavior(template: string): string {
-  let out = tillCountsPlannedStock(addSaleController(template));
+  let out = tenderPicksOneButton(tillCountsPlannedStock(addSaleController(template)));
   out = tillShowsTheLineup(out);
   out = closeCategoryBlock(tillHidesCategories(out));
   return fileSaleAgainstEvent(addSaleDialogs(routeSaleEntryPoints(bindSaleTitle(out))));
