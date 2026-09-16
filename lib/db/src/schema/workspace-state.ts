@@ -34,6 +34,12 @@ const recipeRecordSchema = z
     ingredientKeys: z.array(z.string().min(1).max(80)).max(100),
     packagingKeys: z.array(z.string().min(1).max(80)).max(100),
     amounts: quantityRecordSchema,
+    // a small square photo of the bake, shrunk on the phone before saving
+    photo: z
+      .string()
+      .max(200_000)
+      .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/)
+      .optional(),
   })
   .strict();
 const ingredientRecordSchema = z

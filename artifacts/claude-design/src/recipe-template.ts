@@ -407,7 +407,10 @@ function replaceRecipeList(template: string): string {
             tag: cost < r.price * 0.35 ? 'healthy' : 'review price',
             tagCls: cost < r.price * 0.35 ? 'tag-neutral' : 'tag-accent',
             slot: 'rc-' + r.id,
-            iconEl: React.createElement('span', { style: { display: 'grid' }, dangerouslySetInnerHTML: { __html: this.REC_ICONS[r.icon] } }),
+            // a recipe's own photo takes the icon's place wherever it is shown
+            iconEl: r.photo
+              ? React.createElement('img', { src: r.photo, alt: '', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '9px' } })
+              : React.createElement('span', { style: { display: 'grid' }, dangerouslySetInnerHTML: { __html: this.REC_ICONS[r.icon] } }),
             open: () => this.setState(st => ({ screen: 'recipeEditor', stack: [...st.stack, st.screen], activeRecipeId: r.id, recipeDraft: null, recipeDeleteOpen: false, ingPickerOpen: false, packPickerOpen: false }))
           };
         });
@@ -482,6 +485,53 @@ function replaceRecipeEditorLogic(template: string): string {
         return {
           recipeTitle: recipe.name,
           setRecipeTitle: e => updateRecipe({ name: e.target.value.slice(0, 160) }),
+
+          // A photo of the bake, shown in place of its icon. It is cropped
+          // square and shrunk on the phone before it is kept, so a 4 MB camera
+          // shot becomes a few dozen KB that saves with the rest of the recipe.
+          recipePhoto: recipe.photo || '',
+          recipeHasPhoto: !!recipe.photo,
+          recipePhotoAction: recipe.photo ? 'Change photo' : 'Add photo',
+          recipePhotoError: this.state.recipePhotoError || '',
+          recipePhotoEl: recipe.photo
+            ? React.createElement('img', { src: recipe.photo, alt: '', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' } })
+            : React.createElement('span', { style: { display: 'grid', transform: 'scale(1.5)' }, dangerouslySetInnerHTML: { __html: this.REC_ICONS[recipe.icon] || '' } }),
+          setRecipePhoto: e => {
+            const input = e && e.target;
+            const file = input && input.files && input.files[0];
+            if (!file) return;
+            if (String(file.type || '').indexOf('image/') !== 0) {
+              this.setState({ recipePhotoError: 'Choose a picture file.' });
+              return;
+            }
+            const failed = () => this.setState({ recipePhotoError: 'That picture could not be opened. Try a JPEG or PNG.' });
+            const reader = new FileReader();
+            reader.onerror = failed;
+            reader.onload = () => {
+              const img = new Image();
+              img.onerror = failed;
+              img.onload = () => {
+                const SIZE = 400;
+                const side = Math.min(img.naturalWidth, img.naturalHeight);
+                if (!side) { failed(); return; }
+                const canvas = document.createElement('canvas');
+                canvas.width = SIZE;
+                canvas.height = SIZE;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, SIZE, SIZE);
+                ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, SIZE, SIZE);
+                let photo = canvas.toDataURL('image/jpeg', 0.8);
+                if (photo.length > 140000) photo = canvas.toDataURL('image/jpeg', 0.55);
+                this.setState({ recipePhotoError: '' });
+                updateRecipe({ photo });
+              };
+              img.src = String(reader.result || '');
+            };
+            reader.readAsDataURL(file);
+            input.value = '';
+          },
+          removeRecipePhoto: () => { this.setState({ recipePhotoError: '' }); updateRecipe({ photo: undefined }); },
           recipeYield: String(y),
           setRecipeYield: e => { const value = parseInt(e.target.value, 10); updateRecipe({ yield: isNaN(value) || value < 1 ? 1 : value }); },
           recipeMinutes: minutes > 0 ? String(minutes) : '',
@@ -686,6 +736,14 @@ function replaceRecipeEditorMarkup(template: string): string {
   return template
     .replace(
       '<div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:28px;margin:6px 0 2px">{{ recipeTitle }}</h2></div>',
+      '<div style="display:flex;align-items:center;gap:14px;margin:6px 0 10px">' +
+        '<span style="position:relative;flex:none;width:72px;height:72px;border-radius:16px;background:#fff;border:1px solid var(--color-divider);display:grid;place-items:center;overflow:hidden">{{ recipePhotoEl }}</span>' +
+        '<div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0">' +
+        '<label class="btn btn-secondary" style="position:relative;overflow:hidden;min-height:38px;font-size:13px;cursor:pointer">{{ recipePhotoAction }}' +
+        '<input type="file" accept="image/*" sc-camel-on-change="{{ setRecipePhoto }}" aria-label="Choose a photo for this recipe" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer"></label>' +
+        '<sc-if value="{{ recipeHasPhoto }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ removeRecipePhoto }}" style="min-height:30px;padding:0 4px;font-size:12px;color:#b0563e">Remove photo</button></sc-if>' +
+        '<sc-if value="{{ recipePhotoError }}" hint-placeholder-val=""><span style="color:#b0563e;font-size:12px">{{ recipePhotoError }}</span></sc-if>' +
+        '</div></div>' +
       '<div class="field" style="margin:6px 0 12px"><input class="input" value="{{ recipeTitle }}" sc-camel-on-change="{{ setRecipeTitle }}" placeholder="Name your recipe" aria-label="Recipe name" style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 12px"></div>',
     )
     .replace(

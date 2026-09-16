@@ -231,6 +231,10 @@ function resetModeOnOpen(template: string): string {
 const recipePreview =
   `<sc-if value="{{ recPreviewing }}" hint-placeholder-val="{{ false }}">` +
 
+  // the recipe's photo, when it has one, heads the page
+  `<sc-if value="{{ recipeHasPhoto }}" hint-placeholder-val="{{ false }}">` +
+  `<img src="{{ recipePhoto }}" alt="{{ recipeTitle }}" style="display:block;width:100%;height:190px;object-fit:cover;border-radius:var(--radius-md);border:1px solid var(--color-divider);margin:6px 0 2px"></sc-if>` +
+
   // the name field, settled: the label stays, the input becomes the title
   `<div class="field" style="margin:6px 0 12px">` +
   `<div style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 0 0">{{ recipeTitle }}</div></div>` +

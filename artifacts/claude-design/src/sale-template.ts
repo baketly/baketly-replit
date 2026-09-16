@@ -379,6 +379,15 @@ function tillCountsPlannedStock(template: string): string {
     "add handler",
   );
 
+  // a recipe's photo stands in for its icon on the till too
+  out = swapOnce(
+    out,
+    "iconEl: React.createElement('span', { style: { display: 'grid' }, dangerouslySetInnerHTML: { __html: this.REC_ICONS[r.icon] } }),",
+    "iconEl: r.photo ? React.createElement('img', { src: r.photo, alt: '', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '9px' } })" +
+      " : React.createElement('span', { style: { display: 'grid' }, dangerouslySetInnerHTML: { __html: this.REC_ICONS[r.icon] } }),",
+    "till photo",
+  );
+
   // taking one back out means it is no longer sold out, so the notice goes
   out = swapOnce(
     out,
