@@ -136,6 +136,38 @@ const homeController = `      ...(() => {
           };
         });
 
+        // ---- this month, at a glance --------------------------------------
+        // Made is what the ledger took this month, from any kind of sale.
+        // Projected adds what this month's markets still to come are planned
+        // to bring in, at today's prices. Events counts every market dated
+        // this month, done or not.
+        const sales = Array.isArray(st.saleRecords) ? st.saleRecords : [];
+        const monthKey = dayKey(today).slice(0, 7);
+        const inThisMonth = iso => {
+          const when = new Date(iso || 0);
+          return !isNaN(when.getTime()) && dayKey(startOfDay(when)).slice(0, 7) === monthKey;
+        };
+        const madeThisMonth = sales
+          .filter(sale => inThisMonth(sale.occurredAt))
+          .reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
+        const monthEvents = events.filter(event => inThisMonth(event.occurredAt));
+        const plannedValue = event => (event.plannedItems || []).reduce((sum, item) => {
+          const recipe = recipes.find(r => r.id === item.productId);
+          return sum + (Number(item.quantity) || 0) * (recipe ? Number(recipe.price) || 0 : 0);
+        }, 0);
+        const stillToCome = monthEvents
+          .filter(event => event.status !== 'completed' && startOfDay(new Date(event.occurredAt)) >= today)
+          .reduce((sum, event) => sum + plannedValue(event), 0);
+        const money = value => CUR + Math.round(value).toLocaleString('en-US');
+
+        // ---- the next market ------------------------------------------------
+        const nextEvent = events
+          .filter(event => event.status !== 'completed')
+          .map(event => ({ event, day: startOfDay(new Date(event.occurredAt || 0)) }))
+          .filter(entry => !isNaN(entry.day.getTime()) && entry.day >= today)
+          .sort((a, b) => a.day.getTime() - b.day.getTime())[0] || null;
+        const daysToNext = nextEvent ? Math.round((nextEvent.day.getTime() - today.getTime()) / 86400000) : 0;
+
         // ---- what to do next ---------------------------------------------
         const goIngredientNew = () => this.setState(s => ({
           screen: 'ingredientEdit', stack: [...s.stack, s.screen],
@@ -201,6 +233,21 @@ const homeController = `      ...(() => {
           homeDayHasItems: dayItems.length > 0,
           homeDayEmpty: dayItems.length === 0,
 
+          homeMonthLabel: now.toLocaleDateString('en-US', { month: 'long' }),
+          homeProjectedStr: money(madeThisMonth + stillToCome),
+          homeMadeStr: money(madeThisMonth),
+          homeEventsStr: String(monthEvents.length),
+
+          homeHasNext: !!nextEvent,
+          homeNextName: nextEvent ? (nextEvent.event.name || 'Market') : '',
+          homeNextCount: daysToNext === 0 ? 'Today' : (daysToNext === 1 ? 'Tomorrow' : String(daysToNext)),
+          homeNextUnit: daysToNext > 1 ? 'days to go' : '',
+          homeNextDate: nextEvent
+            ? nextEvent.day.toLocaleDateString('en-US', { weekday: 'long' }) + ', ' + nextEvent.day.getDate()
+              + ' ' + nextEvent.day.toLocaleDateString('en-US', { month: 'long' })
+            : '',
+          openNextEvent: nextEvent ? openEvent(nextEvent.event) : () => {},
+
           homeStarter: starter,
           homeHasStarter: starter.length > 0,
           homeTodos: todoRows,
@@ -265,6 +312,45 @@ const homeMarkup = `
     </sc-for>
   </div>
 
+  <div style="display:flex;gap:8px">
+${quickAction("goIngredientNew", "New<br>ingredient", '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path>')}
+${quickAction("goPackagingNew", "New<br>packaging", '<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M3 11h18M12 7v13"></path>')}
+${quickAction("goNewRecipe", "New<br>recipe", '<path d="M6 3h9l4 4v14H6z"></path><path d="M9 12h7M9 16h5"></path>')}
+${quickAction("startNewEvent", "New<br>event", '<rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"></path>')}
+  </div>
+
+  <div style="height:22px"></div>
+  <sc-if value="{{ homeHasNext }}" hint-placeholder-val="{{ false }}">
+    <div class="card" sc-camel-on-click="{{ openNextEvent }}" style="flex-direction:row;align-items:center;gap:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer">
+      <div style="flex:none;min-width:64px;text-align:center;padding:8px 10px;border-radius:14px;background:var(--color-accent-100)">
+        <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1.1;color:var(--color-accent-700);font-feature-settings:'tnum'">{{ homeNextCount }}</div>
+        <div style="font-size:10px;color:var(--color-accent-700)">{{ homeNextUnit }}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <span class="card-kicker">Next market</span>
+        <div style="font-size:15px;font-weight:600;margin-top:2px;overflow-wrap:anywhere">{{ homeNextName }}</div>
+        <div class="text-muted" style="font-size:12px">{{ homeNextDate }}</div>
+      </div>
+      <span class="text-muted" style="flex:none;font-size:17px">›</span>
+    </div>
+  </sc-if>
+
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--color-divider);border-radius:var(--radius-md);background:#fff;margin-bottom:24px">
+    <div style="padding:11px 12px">
+      <div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:3px">Projected</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;font-feature-settings:'tnum';overflow-wrap:anywhere">{{ homeProjectedStr }}</div>
+    </div>
+    <div style="padding:11px 12px;border-left:1px solid var(--color-divider)">
+      <div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:3px">Made</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;font-feature-settings:'tnum';overflow-wrap:anywhere">{{ homeMadeStr }}</div>
+    </div>
+    <div style="padding:11px 12px;border-left:1px solid var(--color-divider)">
+      <div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:3px">Events</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;font-feature-settings:'tnum'">{{ homeEventsStr }}</div>
+    </div>
+    <div class="text-muted" style="grid-column:1 / -1;border-top:1px solid var(--color-divider);padding:7px 12px;font-size:11px">{{ homeMonthLabel }} · projected adds markets to come</div>
+  </div>
+
   <h6 style="margin:0 0 8px">{{ homeDayLabel }}</h6>
   <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
     <sc-for list="{{ homeDayItems }}" as="item" hint-placeholder-count="1">
@@ -315,14 +401,6 @@ const homeMarkup = `
       <span class="text-muted" style="font-size:11px">{{ homeNearbyWhen }}</span>
       <span style="font-size:12px;font-weight:600;color:var(--color-accent-700)">See what changed ›</span>
     </div>
-  </div>
-
-  <h6 style="margin:0 0 8px">Quick actions</h6>
-  <div style="display:flex;gap:8px">
-${quickAction("goIngredientNew", "New<br>ingredient", '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path>')}
-${quickAction("goPackagingNew", "New<br>packaging", '<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M3 11h18M12 7v13"></path>')}
-${quickAction("goNewRecipe", "New<br>recipe", '<path d="M6 3h9l4 4v14H6z"></path><path d="M9 12h7M9 16h5"></path>')}
-${quickAction("startNewEvent", "New<br>event", '<rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"></path>')}
   </div>
 
 </div>
