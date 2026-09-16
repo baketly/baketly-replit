@@ -26,7 +26,9 @@ app.use(
   }),
 );
 app.use(cookieParser(process.env.SESSION_SECRET));
-app.use(express.json());
+// The workspace is saved whole, and recipe photos make it far larger than
+// express's 100 KB default.
+app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

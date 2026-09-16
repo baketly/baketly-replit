@@ -198,12 +198,16 @@ class WorkspaceStateClient {
     const pendingSave = this.queuedState;
     this.queuedState = null;
     this.saving = true;
+    const body = JSON.stringify({ state: pendingSave.state });
     requestState(
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: pendingSave.state }),
-        keepalive: true,
+        body,
+        // Browsers refuse a keepalive request over 64 KB outright, and recipe
+        // photos take a workspace past that, so only small saves may outlive
+        // the page.
+        keepalive: body.length < 60_000,
       },
       5000,
     )
