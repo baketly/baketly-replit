@@ -25,6 +25,15 @@ export interface PipelineOptions {
   budgetMs?: number;
 }
 
+/** A bakery whose website could not be read, for the baker to look at. */
+export interface UnreadBakery {
+  name: string;
+  website: string;
+  distanceKm: number | null;
+  /** why, in words a baker would use */
+  reason: string;
+}
+
 export interface PipelineResult {
   bakeries: Bakery[];
   scannedBakeries: number;
@@ -32,8 +41,26 @@ export interface PipelineResult {
   competitorProducts: number;
   comparisons: ProductComparison[];
   explanation: Explanation;
+  /** nearby shops with a website we could not price from */
+  unread: UnreadBakery[];
   /** a plain-language note per product, model or no model */
   noteFor(comparison: ProductComparison): string;
+}
+
+/** Why a scan produced nothing, said the way a person would say it. */
+function unreadReason(status: string, error: string | null): string {
+  if (error) {
+    if (error.includes("none with a price")) {
+      return "their prices load in the browser, so nothing could be read";
+    }
+    if (error.includes("timed out")) return "their website took too long to answer";
+    if (/status [45]/.test(error)) return "their website turned Baketly away";
+  }
+  if (status === "failed") return "their website could not be reached";
+  // Not "they publish no prices": most of these shops do, somewhere Baketly
+  // could not follow. Claiming otherwise would be telling the baker something
+  // about a competitor that may not be true.
+  return "no prices Baketly could read there";
 }
 
 /** The whole check. Never throws for a stage failing; it reports what it has. */
@@ -87,6 +114,23 @@ export async function runPriceCheck(options: PipelineOptions): Promise<PipelineR
 
   const bakeriesWithProducts = new Set(competitors.map((product) => product.bakeryId)).size;
 
+  // A shop whose site we could not price is not a dead end: the baker can
+  // open it and look. Worth handing them the address rather than dropping the
+  // shop from the report entirely.
+  const priced = new Set(competitors.map((product) => product.bakeryId));
+  const unread: UnreadBakery[] = withWebsite
+    .filter((bakery) => !priced.has(bakery.id))
+    .map((bakery) => {
+      const scan = scans.find((entry) => entry.bakeryId === bakery.id);
+      return {
+        name: bakery.name,
+        website: bakery.website as string,
+        distanceKm: bakery.distanceKm,
+        reason: unreadReason(scan?.status || "failed", scan?.error ?? null),
+      };
+    })
+    .sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9));
+
   return {
     bakeries: discovery.bakeries,
     scannedBakeries: scans.filter((scan) => scan.status === "ok").length,
@@ -94,6 +138,7 @@ export async function runPriceCheck(options: PipelineOptions): Promise<PipelineR
     competitorProducts: competitors.length,
     comparisons,
     explanation,
+    unread,
     noteFor(comparison) {
       return explanation.notes.get(comparison.name) || plainNote(comparison, options.currency);
     },

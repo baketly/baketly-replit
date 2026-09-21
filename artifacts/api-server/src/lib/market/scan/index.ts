@@ -116,6 +116,9 @@ export async function scanBakery(bakery: Bakery, options: ScanOptions): Promise<
   }
 
   const groups: ExtractedProduct[][] = [];
+  // set when the site was reachable but nothing priceable could be read from
+  // it, so the caller can tell the baker why rather than only that
+  let unreadable: string | null = null;
 
   // ---- the platform's own catalogue, where there is one -------------------
   const platform = detectPlatform(homepage.body, homepage.finalUrl);
@@ -258,12 +261,10 @@ export async function scanBakery(bakery: Bakery, options: ScanOptions): Promise<
         // loads, so there is nothing for a parser — or for a model reading the
         // same text — to find. Worth saying plainly: this shop is not missing,
         // it is unreadable without running its JavaScript.
-        log.event("WEBSITE_SCAN_FAILED", {
-          url: homepage.finalUrl,
-          reason:
-            "found " + productUrls.length + " product pages, none with a price in the HTML" +
-            (platform === "unknown" ? "" : " (" + platform + " loads prices in the browser)"),
-        });
+        unreadable =
+          "found " + productUrls.length + " product pages, none with a price in the HTML" +
+          (platform === "unknown" ? "" : " (" + platform + " loads prices in the browser)");
+        log.event("WEBSITE_SCAN_FAILED", { url: homepage.finalUrl, reason: unreadable });
       }
     }
   }
@@ -303,7 +304,7 @@ export async function scanBakery(bakery: Bakery, options: ScanOptions): Promise<
     products: stored,
     pagesDiscovered: pages.filter((page) => page.ok).length,
     status: "ok",
-    error: null,
+    error: stored.length === 0 ? unreadable : null,
   };
 }
 

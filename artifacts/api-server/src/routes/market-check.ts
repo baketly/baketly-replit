@@ -438,6 +438,13 @@ router.post(
         bakeriesScanned: result.scannedBakeries,
         bakeriesWithProducts: result.bakeriesWithProducts,
         competitorProducts: result.competitorProducts,
+        // shops we could not price, for the baker to look at themselves
+        unread: result.unread.slice(0, 12).map((bakery) => ({
+          name: bakery.name.slice(0, 80),
+          website: bakery.website.slice(0, 300),
+          distanceKm: bakery.distanceKm,
+          reason: bakery.reason.slice(0, 120),
+        })),
         sources: fallbackSources,
         searches: fallbackSearches,
       });

@@ -63,6 +63,13 @@ export type MarketCheck = {
   bakeriesScanned?: number;
   bakeriesWithProducts?: number;
   competitorProducts?: number;
+  /** nearby shops Baketly could not read, for the baker to check themselves */
+  unread?: Array<{
+    name: string;
+    website: string;
+    distanceKm: number | null;
+    reason: string;
+  }>;
 };
 
 /** Twice a week. Checked when the app opens, so a quiet week costs nothing. */
@@ -136,6 +143,15 @@ export async function runMarketCheck(
       bakeriesScanned: num(payload.bakeriesScanned) ?? undefined,
       bakeriesWithProducts: num(payload.bakeriesWithProducts) ?? undefined,
       competitorProducts: num(payload.competitorProducts) ?? undefined,
+      unread: (Array.isArray(payload.unread) ? payload.unread : [])
+        .slice(0, 12)
+        .map((entry: Record<string, unknown>) => ({
+          name: String(entry.name || ""),
+          website: String(entry.website || ""),
+          distanceKm: num(entry.distanceKm),
+          reason: String(entry.reason || ""),
+        }))
+        .filter((entry) => entry.name && entry.website),
       products: (Array.isArray(payload.products) ? payload.products : []).map((entry) => ({
         name: String(entry.name || ""),
         price: byName.get(String(entry.name || "")) ?? 0,

@@ -243,6 +243,21 @@ export const workspaceStatePayloadSchema = z
         bakeriesScanned: z.number().int().min(0).max(1_000).optional(),
         bakeriesWithProducts: z.number().int().min(0).max(1_000).optional(),
         competitorProducts: z.number().int().min(0).max(100_000).optional(),
+        // nearby shops whose website could not be priced, with their address
+        // so the baker can check them by hand
+        unread: z
+          .array(
+            z
+              .object({
+                name: z.string().max(80),
+                website: z.string().max(300),
+                distanceKm: z.number().finite().min(0).max(100_000).nullable(),
+                reason: z.string().max(120),
+              })
+              .strict(),
+          )
+          .max(12)
+          .optional(),
         sources: z
           .array(z.object({ title: z.string().max(120), uri: z.string().max(400) }).strict())
           .max(8),

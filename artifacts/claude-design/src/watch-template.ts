@@ -211,6 +211,17 @@ const watchController = `      ...(() => {
               + (Number(check.competitorProducts) || 0) + ' products read'
             : '',
           hasLocalReach: !!(check && Number(check.bakeriesFound) > 0),
+
+          // Shops whose websites Baketly could not read are still shops the
+          // baker can open and look at, so they are listed rather than dropped.
+          unreadBakeries: (check && Array.isArray(check.unread) ? check.unread : []).map(shop => ({
+            name: shop.name,
+            website: shop.website,
+            detail: ((shop.distanceKm !== null && shop.distanceKm !== undefined)
+              ? Number(shop.distanceKm).toFixed(1) + ' km · '
+              : '') + (shop.reason || '')
+          })),
+          hasUnreadBakeries: !!(check && Array.isArray(check.unread) && check.unread.length > 0),
           localSources: check && Array.isArray(check.sources) ? check.sources.map(source => ({ title: source.title || source.uri })) : [],
           hasLocalSources: !!(check && Array.isArray(check.sources) && check.sources.length),
           marketPending: this.state.marketPending === true,
@@ -348,6 +359,21 @@ function replaceWatchScreen(template: string): string {
   </sc-if>
   <sc-if value="{{ hasLocalSources }}" hint-placeholder-val="{{ false }}">
     <div class="text-muted" style="font-size:11px;margin-bottom:10px">Found on: <sc-for list="{{ localSources }}" as="src" hint-placeholder-count="2"><span>{{ src.title }} </span></sc-for></div>
+  </sc-if>
+  <sc-if value="{{ hasUnreadBakeries }}" hint-placeholder-val="{{ false }}">
+    <div class="an-section-title">Worth a look yourself</div>
+    <div class="text-muted" style="font-size:12px;line-height:1.5;margin-bottom:8px">Baketly could not read prices from these nearby bakeries. Their websites open in your browser.</div>
+    <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider);margin-bottom:16px">
+      <sc-for list="{{ unreadBakeries }}" as="shop" hint-placeholder-count="3">
+        <a href="{{ shop.website }}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--color-divider);text-decoration:none;color:inherit;min-height:44px">
+          <span style="flex:1;min-width:0">
+            <span style="font-size:14px;display:block;overflow-wrap:anywhere">{{ shop.name }}</span>
+            <span class="text-muted" style="font-size:11px;overflow-wrap:anywhere">{{ shop.detail }}</span>
+          </span>
+          <span style="flex:none;font-size:12px;font-weight:600;color:var(--color-accent-700)">Open ↗</span>
+        </a>
+      </sc-for>
+    </div>
   </sc-if>
   <sc-if value="{{ marketError }}" hint-placeholder-val="">
     <div style="color:#b0563e;font-size:12px;margin-bottom:8px">{{ marketError }}</div>
