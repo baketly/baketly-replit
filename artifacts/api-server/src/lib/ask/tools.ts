@@ -87,9 +87,13 @@ export function getBakerySummary(workspace: Workspace, args: { period?: string }
       bestSellingByUnits: products.length
         ? [...products].sort((a, b) => b.units - a.units).slice(0, 3).map((row) => ({ name: row.name, units: row.units }))
         : [],
-      mostProfitable: byProfit.slice(0, 3).map((row) => ({ name: row.name, profit: row.profit })),
+      // what these actually kept over the period, from the sales themselves
+      mostProfitable: byProfit
+        .slice(0, 3)
+        .map((row) => ({ name: row.name, recordedProfit: row.profit })),
+      // and what the catalogue keeps at today's costs, which is a different thing
       bestMarginProduct: bestMargin
-        ? { name: bestMargin.name, marginPercent: bestMargin.marginPercent }
+        ? { name: bestMargin.name, marginPercentAtTodaysCost: bestMargin.marginPercent }
         : null,
       events: eventsInPeriod.map((event) => ({
         name: event.name,
@@ -121,6 +125,15 @@ function profitOf(workspace: Workspace, profit: ProductProfit, period: Period) {
     rows.find((row) => row.productId === profit.productId) ||
     rows.find((row) => row.name.toLowerCase() === profit.name.toLowerCase()) ||
     null;
+  // Two different truths, kept apart.
+  //
+  // What a sale actually made is on the sale: the price paid and the cost
+  // recorded at the time. What the product would make today comes from the
+  // recipe at today's ingredient prices, wages and packaging. They diverge the
+  // moment flour gets dearer, and adding one to the other produces a figure
+  // that is true of nothing. Naming them separately is what stops "this
+  // product would lose money at today's costs" being reported as "every sale
+  // of it lost money".
   return {
     ...moneyIn(workspace),
     product: profit.name,
@@ -132,12 +145,16 @@ function profitOf(workspace: Workspace, profit: ProductProfit, period: Period) {
     labourCost: profit.cost.labourCosted ? profit.cost.labourCost : null,
     labourCosted: profit.cost.labourCosted,
     costPerUnit: profit.cost.unitCost,
-    profitPerUnit: profit.profitPerUnit,
-    marginPercent: profit.marginPercent,
+    profitPerUnitAtTodaysCost: profit.profitPerUnit,
+    marginPercentAtTodaysCost: profit.marginPercent,
+    // true only when the recipe now costs more than the product sells for
+    sellingBelowCostToday: profit.profitPerUnit < 0,
     period: { from: period.from, to: period.to, label: period.label },
     unitsSold: sold ? sold.units : 0,
     revenue: sold ? sold.revenue : 0,
-    estimatedTotalProfit: sold ? round2(sold.units * profit.profitPerUnit) : 0,
+    // what those sales actually kept, from the cost recorded on each one
+    recordedProfit: sold ? sold.profit : 0,
+    recordedMarginPercent: sold ? sold.marginPercent : 0,
     averagePriceActuallyPaid: sold ? sold.averagePrice : null,
   };
 }
@@ -212,31 +229,43 @@ export function compareProducts(
     return {
       product: profit.name,
       sellingPrice: profit.sellingPrice,
-      costPerUnit: profit.cost.unitCost,
-      profitPerUnit: profit.profitPerUnit,
-      marginPercent: profit.marginPercent,
+      // what it would cost and keep if baked today
+      costPerUnitToday: profit.cost.unitCost,
+      profitPerUnitAtTodaysCost: profit.profitPerUnit,
+      marginPercentAtTodaysCost: profit.marginPercent,
+      sellingBelowCostToday: profit.profitPerUnit < 0,
+      // and what it actually did over the period, from the sales themselves
       unitsSold: units,
       revenue: sold ? sold.revenue : 0,
-      totalProfit: round2(units * profit.profitPerUnit),
+      recordedProfit: sold ? sold.profit : 0,
+      recordedMarginPercent: sold ? sold.marginPercent : 0,
     };
   });
 
-  const byTotalProfit = [...compared].sort((a, b) => b.totalProfit - a.totalProfit);
-  const byMargin = [...compared].sort((a, b) => b.marginPercent - a.marginPercent);
-  const byPerUnit = [...compared].sort((a, b) => b.profitPerUnit - a.profitPerUnit);
+  // Ranked on what actually happened, not on what today's costs imply.
+  const byRecordedProfit = [...compared].sort((a, b) => b.recordedProfit - a.recordedProfit);
+  const byMargin = [...compared].sort(
+    (a, b) => b.marginPercentAtTodaysCost - a.marginPercentAtTodaysCost,
+  );
+  const byPerUnit = [...compared].sort(
+    (a, b) => b.profitPerUnitAtTodaysCost - a.profitPerUnitAtTodaysCost,
+  );
+  const belowCost = compared.filter((row) => row.sellingBelowCostToday).map((row) => row.product);
 
   return {
     result: {
       ...moneyIn(workspace),
       period: { from: period.from, to: period.to, label: period.label },
       products: compared.slice(0, 12),
-      mostTotalProfit: byTotalProfit[0]?.product ?? null,
+      mostTotalProfit: byRecordedProfit[0]?.product ?? null,
       bestMargin: byMargin[0]?.product ?? null,
       mostProfitPerUnit: byPerUnit[0]?.product ?? null,
+      // named so an answer can warn about them without inferring it
+      productsSellingBelowCostToday: belowCost,
       // the gap, so the answer can say how much better rather than "better"
       profitDifference:
-        byTotalProfit.length > 1
-          ? round2(byTotalProfit[0].totalProfit - byTotalProfit[1].totalProfit)
+        byRecordedProfit.length > 1
+          ? round2(byRecordedProfit[0].recordedProfit - byRecordedProfit[1].recordedProfit)
           : null,
     },
     sources: [

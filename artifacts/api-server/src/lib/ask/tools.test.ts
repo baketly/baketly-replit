@@ -141,7 +141,11 @@ test("1. which product is most profitable, and 2. best margin", () => {
   assert.equal(result.bestMargin, "Chocolate Chip Cookies");
   const products = result.products as Array<Record<string, number | string>>;
   assert.equal(products.length, 2);
-  assert.equal(products[0].totalProfit, 325.6);
+  // what the sales actually kept, from the cost recorded on each one
+  assert.equal(products[0].recordedProfit, 316.8);
+  // and what it would keep if baked at today costs, kept separate
+  assert.equal(products[0].profitPerUnitAtTodaysCost, 14.8);
+  assert.equal(products[0].sellingBelowCostToday, false);
 });
 
 test("3. compare my last two events, with no names given", () => {
@@ -277,4 +281,45 @@ test("suggested questions follow what the baker actually has", () => {
 
   const empty = suggestedQuestions({ ...bakery(), recipes: [], sales: [], events: [] });
   assert.match(empty[0], /What can Baketly do/);
+});
+
+test("a product that is dear to bake today did not lose money on past sales", () => {
+  // The loaf sold at $9 against a $4 cost recorded at the time, so those
+  // sales kept money. Flour and wages since make it cost $20.50 to bake now.
+  // The two facts must arrive separately, or "it would lose money today"
+  // becomes "every sale of it lost money", which is not true.
+  const workspace = bakery();
+  workspace.recipes.push({
+    id: "sourdough",
+    name: "Sourdough Loaf",
+    type: "bread",
+    price: 9,
+    yield: 1,
+    activeMinutes: 25,
+    ingredientKeys: ["flour"],
+    packagingKeys: [],
+    amounts: { flour: 800 },
+  });
+  workspace.sales.push({
+    id: "s4",
+    occurredAt: "2026-08-24T11:00:00.000Z",
+    total: 27,
+    lineItems: [{ productId: "sourdough", name: "Sourdough Loaf", quantity: 3, unitPrice: 9, unitCost: 4 }],
+  });
+
+  const result = runTool(workspace, "compareProducts", {}, silent).result as Record<string, unknown>;
+  const loaf = (result.products as Array<Record<string, unknown>>).find(
+    (row) => row.product === "Sourdough Loaf",
+  );
+
+  // those three sales kept $15, and that is what "earned" means
+  assert.equal(loaf?.recordedProfit, 15);
+  assert.equal(loaf?.revenue, 27);
+  // baking it now would lose $11.50 a loaf, said as its own fact
+  assert.equal(loaf?.profitPerUnitAtTodaysCost, -11.5);
+  assert.equal(loaf?.sellingBelowCostToday, true);
+  // and it is named, so an answer never has to infer it
+  assert.deepEqual(result.productsSellingBelowCostToday, ["Sourdough Loaf"]);
+  // the ranking is on what actually happened
+  assert.equal(result.mostTotalProfit, "Chocolate Chip Cookies");
 });
