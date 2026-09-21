@@ -341,6 +341,125 @@ export function getEventDetails(workspace: Workspace, args: { event?: string }):
   };
 }
 
+/**
+ * What to change about the next market, per product.
+ *
+ * "Bring a bit less" is not advice a baker can act on at 5am. This works out,
+ * for every product taken to a market, how much of it sold against how much
+ * was baked, and turns that into a quantity: sold out means bring more, half
+ * of it coming home means bring fewer, and the number to bring is stated. The
+ * arithmetic is here so the answer can be specific without inventing anything.
+ */
+export function getEventRecommendations(
+  workspace: Workspace,
+  args: { event?: string },
+): ToolOutcome {
+  const wanted = String(args.event || "").trim();
+  const candidates = wanted ? findEvents(workspace, wanted) : pastEvents(workspace).slice(0, 1);
+
+  if (candidates.length === 0) {
+    return {
+      result: {
+        available: false,
+        reason: wanted ? "no market called " + wanted : "no markets on record",
+        marketsOnRecord: pastEvents(workspace)
+          .slice(0, 10)
+          .map((event) => ({ name: event.name, date: (event.occurredAt || "").slice(0, 10) })),
+      },
+      sources: [],
+    };
+  }
+  if (candidates.length > 1) {
+    return {
+      result: {
+        available: false,
+        reason: "more than one market matches " + wanted,
+        candidates: candidates.slice(0, 6).map((event) => ({
+          name: event.name,
+          date: (event.occurredAt || "").slice(0, 10),
+        })),
+      },
+      sources: [],
+    };
+  }
+
+  const rollup = eventRollup(candidates[0], workspace);
+  const soldByKey = new Map<string, number>();
+  for (const row of rollup.products) {
+    soldByKey.set((row.productId || row.name).toLowerCase(), row.units);
+  }
+
+  const planned = (candidates[0].plannedItems || []).filter(
+    (item) => (Number(item?.quantity) || 0) > 0,
+  );
+
+  const lines = planned.map((item) => {
+    const key = (item?.productId || item?.name || "").toLowerCase();
+    const bakedFor = Number(item?.quantity) || 0;
+    const sold = soldByKey.get(key) || 0;
+    const left = Math.max(0, bakedFor - sold);
+    const sellThrough = bakedFor > 0 ? Math.round((sold / bakedFor) * 100) : 0;
+    const recipe = workspace.recipes.find(
+      (entry) => entry.id === item?.productId || entry.name === item?.name,
+    );
+    const perUnit = recipe ? productProfit(recipe, workspace).profitPerUnit : null;
+
+    // Nearly all of it gone means they ran out and could have sold more. A
+    // quarter of it coming home is not a rounding error — it is ingredients,
+    // an oven and an evening spent on stock that sat — so that is the line for
+    // baking fewer, not the half it was first set at.
+    const advice =
+      sellThrough >= 90 ? "bring_more" : sellThrough <= 75 ? "bring_fewer" : "about_right";
+    const suggestedNextTime =
+      advice === "bring_more"
+        ? Math.ceil(sold * 1.25)
+        : advice === "bring_fewer"
+          ? Math.max(1, Math.ceil(sold * 1.1))
+          : bakedFor;
+
+    return {
+      product: item?.name || "Unknown",
+      baked: bakedFor,
+      sold,
+      cameHome: left,
+      sellThroughPercent: sellThrough,
+      profitPerUnitAtTodaysCost: perUnit,
+      // what the ones that came home cost to make, which is the waste
+      valueOfUnsoldAtPrice: recipe ? round2(left * (Number(recipe.price) || 0)) : null,
+      advice,
+      suggestedNextTime,
+    };
+  });
+
+  // Something that sold without being planned for is worth knowing too.
+  const plannedKeys = new Set(
+    planned.map((item) => (item?.productId || item?.name || "").toLowerCase()),
+  );
+  const unplannedSellers = rollup.products
+    .filter((row) => !plannedKeys.has((row.productId || row.name).toLowerCase()))
+    .map((row) => ({ product: row.name, sold: row.units, revenue: row.revenue }));
+
+  return {
+    result: {
+      ...moneyIn(workspace),
+      event: rollup.name,
+      date: rollup.date,
+      revenue: rollup.revenue,
+      profit: rollup.profit,
+      hasPlan: planned.length > 0,
+      products: lines.sort((a, b) => b.cameHome - a.cameHome),
+      bringMore: lines.filter((line) => line.advice === "bring_more").map((line) => line.product),
+      bringFewer: lines.filter((line) => line.advice === "bring_fewer").map((line) => line.product),
+      totalCameHome: lines.reduce((sum, line) => sum + line.cameHome, 0),
+      unplannedSellers,
+      note: planned.length
+        ? "suggestedNextTime is worked out from what sold, not a forecast"
+        : "no lineup was planned for this market, so there is nothing to compare what sold against",
+    },
+    sources: [{ kind: "events", detail: rollup.name + ", " + rollup.date }],
+  };
+}
+
 export function compareEvents(workspace: Workspace, args: { events?: unknown }): ToolOutcome {
   const names = Array.isArray(args.events)
     ? args.events.filter((entry): entry is string => typeof entry === "string").slice(0, 4)

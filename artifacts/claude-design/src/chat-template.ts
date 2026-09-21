@@ -32,7 +32,9 @@ const chatControllerLogic = `      ...(() => {
           }));
           // The bakery no longer travels with the question: the server reads
           // this baker's own records and works the answer out there.
-          window.__baketlyAsk(text, history).then(result => {
+          // the subject of the last answer travels with the next question
+          const lastTools = Array.isArray(this.state.chatLastTools) ? this.state.chatLastTools : [];
+          window.__baketlyAsk(text, history, lastTools).then(result => {
             this.setState(st => {
               if (st.chatRequest !== request) return null;
               const extra = [];
@@ -48,6 +50,7 @@ const chatControllerLogic = `      ...(() => {
               return {
                 chatMsgs: [...(Array.isArray(st.chatMsgs) ? st.chatMsgs : []), ...extra],
                 chatFollowUps: Array.isArray(result.followUps) ? result.followUps : [],
+                chatLastTools: Array.isArray(result.lastTools) ? result.lastTools : [],
                 chatPending: false,
                 chatError: '',
                 chatFailed: ''

@@ -17,6 +17,7 @@ import {
   compareProducts,
   getBakerySummary,
   getEventDetails,
+  getEventRecommendations,
   getProductDetails,
   getSalesTrends,
   type SourceKind,
@@ -92,6 +93,20 @@ export const toolDeclarations = [
     },
   },
   {
+    name: "getEventRecommendations",
+    description:
+      "What to change about the next market, product by product: how many of each were baked, how many sold, how many came home, and how many to bring next time. Use for 'what should I do differently', 'what should I bring more of', 'how do I do better next time'. Always prefer this over getEventDetails for advice about a future market.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        event: {
+          type: "STRING",
+          description: "The market's name. Omit for the most recent one.",
+        },
+      },
+    },
+  },
+  {
     name: "compareEvents",
     description:
       "Compares markets on revenue, cost, profit and return, and says which was better on each. Call with no names to compare the two most recent markets.",
@@ -149,6 +164,7 @@ const HANDLERS: Record<string, Handler> = {
   getProductProfitability: getProductDetails,
   compareProducts,
   getEventDetails,
+  getEventRecommendations,
   compareEvents,
   getSalesTrends,
   getMarketPricing,

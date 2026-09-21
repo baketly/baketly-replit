@@ -14,6 +14,8 @@ export type AskAnswer = {
   followUps: string[];
   /** which records the answer was drawn from */
   sources: Array<{ kind: string; detail: string }>;
+  /** what this answer looked up, handed back so the next question keeps its subject */
+  lastTools: Array<{ name: string; args: Record<string, unknown> }>;
 };
 
 type Meta = Record<string, { name?: string; unit?: string; per?: number } | undefined>;
@@ -293,6 +295,7 @@ export function buildAskContext(
 export async function askBaketly(
   question: string,
   history: Array<{ who: string; text: string }>,
+  lastTools: Array<{ name: string; args: Record<string, unknown> }> = [],
 ): Promise<AskAnswer> {
   const controller = new AbortController();
   // the server may call several tools before it answers
@@ -301,7 +304,7 @@ export async function askBaketly(
     const response = await fetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, history: history.slice(-8) }),
+      body: JSON.stringify({ question, history: history.slice(-8), lastTools }),
       signal: controller.signal,
     });
     const payload = (await response.json().catch(() => ({}))) as Partial<AskAnswer> & { error?: unknown };
@@ -325,6 +328,9 @@ export async function askBaketly(
               detail: String(source.detail),
             }))
             .slice(0, 4)
+        : [],
+      lastTools: Array.isArray(payload.lastTools)
+        ? (payload.lastTools as Array<{ name: string; args: Record<string, unknown> }>).slice(0, 3)
         : [],
     };
   } catch (error) {

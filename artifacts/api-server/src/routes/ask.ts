@@ -83,7 +83,8 @@ const SYSTEM_RULES = [
   "Answer in two or three short sentences, the way you would say it to someone standing at their oven. No headings, no bullet points, no markdown, no field names from the tools, no consultant language.",
   "When there is a decision in it, say what you would do and why, in one sentence, after the numbers.",
   "Money is written like $12.99, in the currency the tools return. Percentages are whole numbers.",
-  "Keep the thread of the conversation. If they ask 'why' or 'would you do it again', it is about whatever you were both just discussing.",
+  "Keep the thread of the conversation. A question with no subject in it — 'why', 'which products', 'what about profit', 'would you do it again' — is about whatever the last answer was about. You are told below what you last looked at: call the same tool with the same market or product before answering, rather than starting again with a general one.",
+  "When you give advice about a future market, name the products and the quantities. 'Bake a few less' is not advice; 'bring 30 sourdough instead of 40, and 12 more cheddar loaves, which sold out' is.",
   "If the bakery has nothing recorded yet, do not report findings about data that is not there. Explain in their terms what Baketly does — turns what they pay for ingredients into what a bake really costs, suggests a price that keeps a margin, tracks what a market kept after its costs — and say which one thing to add first.",
 ].join(" ");
 
@@ -107,6 +108,40 @@ function readHistory(value: unknown): HistoryTurn[] {
     .slice(-MAX_HISTORY_TURNS);
 }
 
+/**
+ * The subject of the last answer, written back into this one's prompt.
+ *
+ * Conversation history alone was not enough: asked "which products?" after an
+ * answer about one market, the model reached for the whole bakery. Naming the
+ * lookup it just made, with the market or product in it, is what keeps a
+ * follow-up on the same thing.
+ */
+function previousLookups(value: unknown): string {
+  if (!Array.isArray(value)) return "";
+  const lines = value
+    .filter(
+      (entry): entry is { name: string; args?: unknown } =>
+        !!entry && typeof entry === "object" && typeof (entry as { name?: unknown }).name === "string",
+    )
+    .slice(-3)
+    .map((entry) => {
+      const args =
+        entry.args && typeof entry.args === "object"
+          ? Object.entries(entry.args as Record<string, unknown>)
+              .filter(([, argument]) => argument !== undefined && argument !== "")
+              .map(([key, argument]) => key + ": " + JSON.stringify(argument).slice(0, 80))
+              .join(", ")
+          : "";
+      return "- " + entry.name + (args ? " (" + args + ")" : "");
+    });
+  if (lines.length === 0) return "";
+  return [
+    "",
+    "Your last answer in this conversation came from these lookups. If the new question does not name its own subject, it is about the same thing:",
+    ...lines,
+  ].join("\n");
+}
+
 router.get("/ask/suggestions", requireUser, async (req: Request, res: Response) => {
   try {
     const workspace = await loadWorkspace(req.user!.id);
@@ -128,7 +163,7 @@ router.post(
     const startedAt = Date.now();
 
     try {
-      const body = req.body as { question?: unknown; history?: unknown };
+      const body = req.body as { question?: unknown; history?: unknown; lastTools?: unknown };
       const question = typeof body.question === "string" ? body.question.trim() : "";
       if (!question) {
         res.status(400).json({ error: "Ask a question first." });
@@ -155,6 +190,10 @@ router.post(
 
       const sources = new Map<string, { kind: SourceKind; detail: string }>();
       const toolsUsed: string[] = [];
+      // What the previous answer was about, handed back by the chat. It is the
+      // difference between "which products?" meaning "at Riverside Night
+      // Market" and it meaning "in my whole bakery".
+      const calledLast: Array<{ name: string; args: Record<string, unknown> }> = [];
 
       const conversation = await converseWithTools({
         apiKey,
@@ -164,6 +203,7 @@ router.post(
           "",
           "Today is " + new Date().toISOString().slice(0, 10) + ".",
           workspace.bakeryName ? "Their bakery is called " + workspace.bakeryName + "." : "",
+          previousLookups(body.lastTools),
           "",
           "The baker asks: " + question,
         ]
@@ -178,6 +218,7 @@ router.post(
         runTool: async (call) => {
           log.event("ASK_BAKETLY_TOOL_REQUESTED", { tool: call.name });
           toolsUsed.push(call.name);
+          calledLast.push({ name: call.name, args: call.args });
           const outcome = runTool(workspace, call.name, call.args, log);
           for (const source of outcome.sources) {
             sources.set(source.kind + "|" + source.detail, source);
@@ -207,6 +248,8 @@ router.post(
         // what the answer rests on, for the chips under it
         sources: [...sources.values()],
         toolsUsed,
+        // handed back with the next question, so a follow-up keeps its subject
+        lastTools: calledLast.slice(-3),
         followUps: suggestedQuestions(workspace),
         requestId: log.requestId,
       });

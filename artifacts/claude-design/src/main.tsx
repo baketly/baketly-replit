@@ -51,6 +51,7 @@ declare global {
     __baketlyAsk: (
       question: string,
       history: Array<{ who: string; text: string }>,
+      lastTools?: Array<{ name: string; args: Record<string, unknown> }>,
     ) => Promise<import("./ask-baketly").AskAnswer>;
     __baketlyAskContext: (
       state: Record<string, unknown>,

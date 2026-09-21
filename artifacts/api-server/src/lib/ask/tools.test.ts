@@ -323,3 +323,45 @@ test("a product that is dear to bake today did not lose money on past sales", ()
   // the ranking is on what actually happened
   assert.equal(result.mostTotalProfit, "Chocolate Chip Cookies");
 });
+
+test("advice about the next market names products and quantities", () => {
+  const result = runTool(bakery(), "getEventRecommendations", { event: "Harbour Craft Fair" }, silent)
+    .result as Record<string, unknown>;
+  const products = result.products as Array<Record<string, unknown>>;
+
+  // twenty cookies baked, fifteen sold: a quarter came home
+  const cookies = products.find((row) => row.product === "Chocolate Chip Cookies");
+  assert.equal(cookies?.baked, 20);
+  assert.equal(cookies?.sold, 15);
+  assert.equal(cookies?.cameHome, 5);
+  assert.equal(cookies?.sellThroughPercent, 75);
+  assert.equal(cookies?.advice, "bring_fewer");
+  // seventeen next time, not "a few less"
+  assert.equal(cookies?.suggestedNextTime, 17);
+
+  assert.deepEqual(result.bringFewer, ["Chocolate Chip Cookies"]);
+  assert.equal(result.totalCameHome, 5);
+  assert.equal(result.event, "Harbour Craft Fair");
+});
+
+test("a product that sold out is one to bring more of", () => {
+  const workspace = bakery();
+  // eight cupcakes planned, and the sales show seven sold; make it a sell-out
+  workspace.events[0].plannedItems = [
+    { productId: "cupcakes", name: "Vanilla Cupcakes", quantity: 7 },
+  ];
+  const result = runTool(workspace, "getEventRecommendations", { event: "Harbour Craft Fair" }, silent)
+    .result as Record<string, unknown>;
+  const cupcakes = (result.products as Array<Record<string, unknown>>)[0];
+  assert.equal(cupcakes.sellThroughPercent, 100);
+  assert.equal(cupcakes.advice, "bring_more");
+  assert.equal(cupcakes.suggestedNextTime, 9);
+  assert.deepEqual(result.bringMore, ["Vanilla Cupcakes"]);
+});
+
+test("a market with no lineup says so rather than advising on nothing", () => {
+  const result = runTool(bakery(), "getEventRecommendations", { event: "School Bake Sale" }, silent)
+    .result as Record<string, unknown>;
+  assert.equal(result.hasPlan, false);
+  assert.match(String(result.note), /no lineup was planned/);
+});
