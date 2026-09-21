@@ -1,59 +1,41 @@
+// Ask Baketly: the baker's own numbers, in plain language.
+//
+// This used to be one prompt. The browser assembled a snapshot of the whole
+// bakery, posted it up with the question, and Gemini did the arithmetic and
+// the answering at once. That made the model the database and the calculator,
+// which is what it is worst at: it compared numbers wrongly, carried figures
+// between months, and there was no way to tell a read number from a guessed
+// one.
+//
+// Now the model is given tools instead of data. It works out what it needs to
+// know, the server looks that up and calculates it from the signed-in baker's
+// records, and the model explains what came back. The workspace never leaves
+// the server, the numbers are never the model's, and every answer can say
+// which records it rests on.
+
 import { json, Router, type IRouter, type NextFunction, type Request, type Response } from "express";
 import {
-  generateJson,
+  converseWithTools,
   GeminiProviderError,
   MissingGeminiKeyError,
 } from "../lib/gemini";
-import {
-  buildTargetPlan,
-  describePlan,
-  findTarget,
-  looksLikePlanning,
-  type PlanProduct,
-} from "../lib/plan";
+import { askLogger } from "../lib/ask/log";
+import { runTool, toolDeclarations } from "../lib/ask/registry";
+import { suggestedQuestions } from "../lib/ask/suggestions";
+import { loadWorkspace, workspaceIsEmpty } from "../lib/ask/workspace";
+import type { SourceKind } from "../lib/ask/tools";
+import { requireUser } from "../lib/session";
 
 const router: IRouter = Router();
 
 const MAX_QUESTION_CHARS = 500;
 const MAX_HISTORY_TURNS = 8;
-const MAX_CONTEXT_BYTES = 24 * 1024;
 const MAX_ACTIVE_ASKS = 3;
 const MAX_ASKS_PER_WINDOW = 30;
 const ASK_WINDOW_MS = 10 * 60_000;
 
 let activeAsks = 0;
 const askWindows = new Map<string, { count: number; resetsAt: number }>();
-
-const answerSchema = {
-  type: "OBJECT",
-  properties: {
-    answer: { type: "STRING" },
-    wins: { type: "ARRAY", items: { type: "STRING" }, maxItems: 1 },
-    followUps: { type: "ARRAY", items: { type: "STRING" } },
-  },
-  required: ["answer", "wins", "followUps"],
-} as const;
-
-// The whole point of the feature: every reply is grounded in this baker's own
-// numbers, and every reply leaves them with something they had not asked about.
-const SYSTEM_RULES = [
-  "You are Baketly, an assistant for a home baker who sells what they bake.",
-  "You are given a JSON snapshot of THIS baker's pantry, recipes, monthly sales and market events. Answer only from that snapshot and from arithmetic you do on it.",
-  "Never invent a number. If the snapshot does not contain what is needed, say plainly what is missing and which screen would record it.",
-  "bestSellers on a month, and bestSellersAllTime, are already worked out. When asked which product sold most, or earned most, take the answer from those fields rather than comparing the product lists yourself.",
-  "Figures belong to the period they are filed under. Never carry a number from one month, or from the lifetime totals, and present it as another month. If a month in the question is not in the snapshot, say you do not have that month rather than answering with a different one.",
-  "Quote the baker's real figures and names when you answer, so the reply is obviously about their bakery and not generic advice.",
-  "productTotalsAllTime covers every sale on record and salesPeriod says which dates that spans; latestMonthProducts covers only the newest month. For a question with no period in it, such as a best seller, answer from the whole record and say what period that is. Use the monthly figures only when the baker asks about a month.",
-  "Money is US dollars, written like $12.99. Percentages are whole numbers.",
-  "Write plainly, as if to a smart person who does not use spreadsheets. Short sentences. No jargon, no headings, no markdown, no bullet characters.",
-  "Never repeat a field name from the snapshot. Say margin, return, cost or revenue in plain words; never write marginPct, roiPct, unitCost or similar.",
-  "TARGETS AND PLANS: when the baker asks how to reach an amount, or what to bake, do the work rather than remarking on whether the figure is realistic. Start from what is already planned if the snapshot has a lineup, work out the gap, then propose actual quantities of their own products and add them up to the target. Favour the ones that keep the most per unit and take the fewest ingredients, and say why those. Give the arithmetic in plain lines, one product per line, ending with the total. If the target is far above anything they have taken before, still give the plan, then say plainly what it would take compared with their best market so far.",
-  "In a plan, add up the lines you actually wrote and state that sum, even if it does not land exactly on the target. Do not restate the target as the total. If the sum overshoots, either say so or reduce a quantity so it lands.",
-  "Keep 'answer' under 90 words, except for a plan, which may run to 160 and may use one short line per product. Never use bullet characters, asterisks or markdown.",
-  "'wins' holds AT MOST ONE finding the baker did NOT ask about: an underpriced product, a margin that slipped, an ingredient driving cost, a market that is not worth its costs, a product worth baking more of. Pick the single most useful one and name the real figure that makes it true. Return an empty list rather than a weak or unsupported finding.",
-  "'followUps' holds up to three short questions the baker could ask next, phrased in their words, each answerable from the snapshot.",
-  "GETTING STARTED: if the snapshot has no sales and no recipes, or the pantry is empty, the baker is new. Do not report findings about data that is not there. Instead explain, in their terms, what Baketly does for them: it turns what they pay for ingredients and packaging into the true cost of one bake, suggests a price that keeps a margin, reads a nutrition label from a photo, and tracks what each market actually kept after booth and travel costs. Say plainly which one thing to add first and where. Keep 'wins' empty, and make every entry in 'followUps' a question about learning or setting up the app rather than about numbers they do not have yet.",
-] .join(" ");
 
 function admitAsk(req: Request, res: Response, next: NextFunction): void {
   const now = Date.now();
@@ -89,30 +71,63 @@ function admitAsk(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-function cleanList(value: unknown, max: number, maxChars: number): string[] {
+const SYSTEM_RULES = [
+  "You are Baketly, talking to one home baker about their own bakery. Your promise is their numbers, in plain language.",
+  "You cannot see their records. Everything you say about their bakery must come from a tool you called in this conversation. Call a tool before answering any question about their products, sales, markets, costs or prices.",
+  "Never do arithmetic the tools have already done, and never adjust a figure they returned. If a tool gives a median of 23, the median is 23.",
+  "Never invent a number, a product, a market or a date. If a tool says something is unavailable, say so plainly and say what would record it — running a local price check, entering an hourly rate, saving a market's results.",
+  "When a tool reports that more than one product or market matches, ask which one they meant. One short question, then stop.",
+  "Separate what is recorded from what you think. A figure from a tool is a fact. A suggestion of what to do next is your opinion, and should sound like one: 'I'd try', 'it may be worth'. Never present advice as something their records show.",
+  "Answer in two or three short sentences, the way you would say it to someone standing at their oven. No headings, no bullet points, no markdown, no field names from the tools, no consultant language.",
+  "When there is a decision in it, say what you would do and why, in one sentence, after the numbers.",
+  "Money is written like $12.99, in the currency the tools return. Percentages are whole numbers.",
+  "Keep the thread of the conversation. If they ask 'why' or 'would you do it again', it is about whatever you were both just discussing.",
+  "If the bakery has nothing recorded yet, do not report findings about data that is not there. Explain in their terms what Baketly does — turns what they pay for ingredients into what a bake really costs, suggests a price that keeps a margin, tracks what a market kept after its costs — and say which one thing to add first.",
+].join(" ");
+
+interface HistoryTurn {
+  role: "user" | "model";
+  text: string;
+}
+
+function readHistory(value: unknown): HistoryTurn[] {
   if (!Array.isArray(value)) return [];
   return value
-    .filter((entry): entry is string => typeof entry === "string")
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-    .slice(0, max)
-    .map((entry) => entry.slice(0, maxChars));
+    .filter(
+      (turn): turn is { who?: unknown; role?: unknown; text: string } =>
+        !!turn && typeof turn === "object" && typeof (turn as { text?: unknown }).text === "string",
+    )
+    .map((turn) => ({
+      role:
+        turn.who === "u" || turn.role === "user" ? ("user" as const) : ("model" as const),
+      text: String(turn.text).slice(0, 600),
+    }))
+    .slice(-MAX_HISTORY_TURNS);
 }
+
+router.get("/ask/suggestions", requireUser, async (req: Request, res: Response) => {
+  try {
+    const workspace = await loadWorkspace(req.user!.id);
+    res.json({ suggestions: suggestedQuestions(workspace) });
+  } catch (error) {
+    req.log.warn({ err: error }, "Ask Baketly suggestions failed");
+    res.json({ suggestions: [] });
+  }
+});
 
 router.post(
   "/ask",
+  requireUser,
   admitAsk,
-  json({ limit: "64kb" }),
+  json({ limit: "16kb" }),
   async (req: Request, res: Response) => {
-    try {
-      const body = req.body as {
-        question?: unknown;
-        context?: unknown;
-        history?: unknown;
-      };
+    const userId = req.user!.id;
+    const log = askLogger(req.log, userId);
+    const startedAt = Date.now();
 
-      const question =
-        typeof body.question === "string" ? body.question.trim() : "";
+    try {
+      const body = req.body as { question?: unknown; history?: unknown };
+      const question = typeof body.question === "string" ? body.question.trim() : "";
       if (!question) {
         res.status(400).json({ error: "Ask a question first." });
         return;
@@ -121,106 +136,77 @@ router.post(
         res.status(400).json({ error: "That question is a bit long. Try shortening it." });
         return;
       }
-      if (!body.context || typeof body.context !== "object") {
-        res.status(400).json({ error: "Baketly could not read your bakery data." });
-        return;
-      }
-
-      const contextText = JSON.stringify(body.context);
-      if (contextText.length > MAX_CONTEXT_BYTES) {
-        res.status(413).json({ error: "There is too much data to summarise at once." });
-        return;
-      }
-
-      const history = Array.isArray(body.history)
-        ? body.history
-            .filter(
-              (turn): turn is { who: string; text: string } =>
-                !!turn &&
-                typeof turn === "object" &&
-                (turn as { who?: unknown }).who !== undefined &&
-                typeof (turn as { text?: unknown }).text === "string",
-            )
-            .slice(-MAX_HISTORY_TURNS)
-            .map(
-              (turn) =>
-                `${turn.who === "u" ? "Baker" : "Baketly"}: ${turn.text.slice(0, 400)}`,
-            )
-        : [];
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new MissingGeminiKeyError();
 
-      // Work a revenue target out here; the model's own sums were unreliable.
-      const context = body.context as {
-        recipes?: PlanProduct[];
-        upcomingEvent?: { plannedLineup?: Array<{ name: string; quantity: number; price: number }> } | null;
-      };
-      const target = findTarget(question);
-      const plan =
-        target && looksLikePlanning(question)
-          ? buildTargetPlan(
-              target,
-              Array.isArray(context.recipes) ? context.recipes : [],
-              context.upcomingEvent?.plannedLineup ?? [],
-            )
-          : null;
+      // The workspace is read here, for this user, and handed only to the
+      // tools. Nothing the browser sent decides whose bakery this is.
+      const workspace = await loadWorkspace(userId);
+      const history = readHistory(body.history);
+      log.event("ASK_BAKETLY_REQUEST", {
+        questionChars: question.length,
+        historyTurns: history.length,
+        empty: workspaceIsEmpty(workspace),
+      });
+      if (workspaceIsEmpty(workspace)) log.event("ASK_BAKETLY_EMPTY_WORKSPACE");
 
-      const prompt = [
-        SYSTEM_RULES,
-        "",
-        "Bakery snapshot (JSON):",
-        contextText,
-        "",
-        ...(plan
-          ? [
-              "A plan for the target in the question has already been worked out. Every number below is correct: use them exactly and never recalculate. But write the plan in your own plain sentences, the way you would say it out loud. Do not copy these labels, and never print words like Target, Gap to cover, Added or Chosen because. Say where the lineup stands, what it still needs, then one short line per product, then what the lineup comes to. Mention the overshoot only if there is one, and give the reason as a sentence.",
-              describePlan(plan),
-              "",
-            ]
-          : []),
-        ...(history.length ? ["Earlier in this conversation:", ...history, ""] : []),
-        `The baker asks: ${question}`,
-      ].join("\n");
+      const sources = new Map<string, { kind: SourceKind; detail: string }>();
+      const toolsUsed: string[] = [];
 
-      const { text, model } = await generateJson({
+      const conversation = await converseWithTools({
         apiKey,
-        parts: [{ text: prompt }],
-        responseSchema: answerSchema,
-        temperature: 0.4,
-        maxOutputTokens: 2048,
+        toolDeclarations,
+        prompt: [
+          SYSTEM_RULES,
+          "",
+          "Today is " + new Date().toISOString().slice(0, 10) + ".",
+          workspace.bakeryName ? "Their bakery is called " + workspace.bakeryName + "." : "",
+          "",
+          "The baker asks: " + question,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        history,
+        temperature: 0.3,
+        maxOutputTokens: 1_024,
         attemptTimeoutMs: 22_000,
-        budgetMs: 48_000,
-        onModelSkipped: (skipped, error) =>
-          req.log.warn(
-            {
-              model: skipped,
-              providerStatus: error.status,
-              providerCode: error.providerCode,
-              providerMessage: error.message,
-            },
-            "Ask Baketly model unavailable, trying the next one",
-          ),
+        budgetMs: 55_000,
+        maxRounds: 4,
+        runTool: async (call) => {
+          log.event("ASK_BAKETLY_TOOL_REQUESTED", { tool: call.name });
+          toolsUsed.push(call.name);
+          const outcome = runTool(workspace, call.name, call.args, log);
+          for (const source of outcome.sources) {
+            sources.set(source.kind + "|" + source.detail, source);
+          }
+          return outcome.result;
+        },
+        onModelSkipped: (model, error) =>
+          log.event("ASK_BAKETLY_GEMINI_ERROR", {
+            model,
+            reason: error.message.slice(0, 160),
+          }),
       });
 
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        throw new GeminiProviderError(502, "unparsable", "Gemini returned malformed JSON");
-      }
-      const source = parsed as Record<string, unknown>;
-      const answer =
-        typeof source.answer === "string" ? source.answer.trim().slice(0, 1_500) : "";
-      if (!answer) {
-        throw new GeminiProviderError(502, "empty", "Gemini returned no answer");
-      }
+      const answer = conversation.text.trim().slice(0, 1_200);
+      if (!answer) throw new GeminiProviderError(502, "empty", "Gemini returned no answer");
 
-      req.log.info({ model }, "Ask Baketly answered");
+      log.event("ASK_BAKETLY_RESPONSE", {
+        ms: Date.now() - startedAt,
+        model: conversation.model,
+        rounds: conversation.rounds,
+        tools: toolsUsed.join(","),
+        answerChars: answer.length,
+      });
+
       res.json({
         answer,
-        wins: cleanList(source.wins, 1, 240),
-        followUps: cleanList(source.followUps, 3, 120),
+        // what the answer rests on, for the chips under it
+        sources: [...sources.values()],
+        toolsUsed,
+        followUps: suggestedQuestions(workspace),
+        requestId: log.requestId,
       });
     } catch (error) {
       if (error instanceof MissingGeminiKeyError) {
@@ -231,16 +217,13 @@ router.post(
         return;
       }
       if (error instanceof GeminiProviderError) {
-        req.log.warn(
-          {
-            providerStatus: error.status,
-            providerCode: error.providerCode,
-            providerMessage: error.message,
-          },
-          "Ask Baketly request failed",
-        );
+        log.event("ASK_BAKETLY_GEMINI_ERROR", {
+          reason: error.message.slice(0, 200),
+          status: error.status,
+          ms: Date.now() - startedAt,
+        });
       } else {
-        req.log.warn({ err: error }, "Ask Baketly failed");
+        req.log.warn({ err: error, requestId: log.requestId }, "Ask Baketly failed");
       }
       res.status(502).json({
         error:
