@@ -30,37 +30,79 @@ const chatControllerLogic = `      ...(() => {
             chatError: '',
             chatRequest: request
           }));
-          let context;
-          try {
-            context = window.__baketlyAskContext(this.state, this.ING_META || {}, this.PACK_META || {}, this.EV_META || []);
-          } catch (error) {
-            this.setState({ chatPending: false, chatError: 'I could not read your bakery data just now.' });
-            return;
-          }
-          window.__baketlyAsk(text, context, history).then(result => {
+          // The bakery no longer travels with the question: the server reads
+          // this baker's own records and works the answer out there.
+          window.__baketlyAsk(text, history).then(result => {
             this.setState(st => {
               if (st.chatRequest !== request) return null;
               const extra = [];
-              if (result.answer) extra.push({ who: 'b', text: result.answer });
+              if (result.answer) {
+                extra.push({
+                  who: 'b',
+                  text: result.answer,
+                  // what the answer was drawn from, shown quietly beneath it
+                  sources: (result.sources || []).map(source => source.detail).slice(0, 3)
+                });
+              }
               (result.wins || []).forEach(win => extra.push({ who: 'b', text: 'Worth knowing: ' + win }));
               return {
                 chatMsgs: [...(Array.isArray(st.chatMsgs) ? st.chatMsgs : []), ...extra],
                 chatFollowUps: Array.isArray(result.followUps) ? result.followUps : [],
                 chatPending: false,
-                chatError: ''
+                chatError: '',
+                chatFailed: ''
               };
             });
           }).catch(error => {
             this.setState(st => st.chatRequest === request
-              ? { chatPending: false, chatError: (error && error.message) ? error.message : 'I could not answer that right now.' }
+              // the question is kept, so it can be asked again with one tap
+              ? {
+                chatPending: false,
+                chatError: (error && error.message) ? error.message : 'I could not answer that right now.',
+                chatFailed: text
+              }
               : null);
           });
         };
 
+        // Asking again after a failure, with nothing retyped.
+        const retry = () => {
+          const failed = String(this.state.chatFailed || '');
+          if (!failed || this.state.chatPending) return;
+          this.setState(st => {
+            const msgs = Array.isArray(st.chatMsgs) ? st.chatMsgs : [];
+            const last = msgs[msgs.length - 1];
+            // drop the question that failed, so it is not asked twice over
+            return {
+              chatMsgs: last && last.who === 'u' && last.text === failed ? msgs.slice(0, -1) : msgs,
+              chatFailed: '',
+              chatError: ''
+            };
+          }, () => send(failed));
+        };
+
+        // The server picks these from what the baker actually has — two
+        // markets on record earns a comparison, a product below the local
+        // median earns a pricing question — so they are worth asking. Fetched
+        // once, quietly; the canned prompts below stand in until they arrive.
+        if (!this.__baketlySuggestionsAsked) {
+          this.__baketlySuggestionsAsked = true;
+          fetch('/api/ask/suggestions')
+            .then(response => (response.ok ? response.json() : null))
+            .then(payload => {
+              const list = payload && Array.isArray(payload.suggestions) ? payload.suggestions : [];
+              if (list.length) this.setState({ chatSuggestions: list.slice(0, 4) });
+            })
+            .catch(() => {});
+        }
+
         const CUR = (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$');
         const gettingStartedPrompts = ['What can Baketly do for me?', 'What should I add first?', 'How should I price what I bake?'];
         const workingPrompts = ['Which product earns the least?', 'Where am I losing margin?', 'How do I hit ' + CUR + '1,500 at the next market?'];
-        const defaultPrompts = justStarting ? gettingStartedPrompts : workingPrompts;
+        const fromServer = Array.isArray(this.state.chatSuggestions) ? this.state.chatSuggestions : [];
+        const defaultPrompts = fromServer.length
+          ? fromServer
+          : (justStarting ? gettingStartedPrompts : workingPrompts);
         const followUps = Array.isArray(this.state.chatFollowUps) && this.state.chatFollowUps.length
           ? this.state.chatFollowUps
           : defaultPrompts;
@@ -125,8 +167,15 @@ const chatControllerLogic = `      ...(() => {
             align: m.who === 'u' ? 'flex-end' : 'flex-start',
             border: m.who === 'u' ? 'var(--color-accent-300)' : 'var(--color-divider)',
             bg: m.who === 'u' ? 'var(--color-accent-100)' : '#fff',
-            radius: m.who === 'u' ? '20px 20px 6px 20px' : '20px 20px 20px 6px'
+            radius: m.who === 'u' ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
+            // "Based on 2 markets · sales, August 2026"
+            sourceLine: Array.isArray(m.sources) && m.sources.length
+              ? 'Based on ' + m.sources.join(' · ')
+              : '',
+            hasSources: Array.isArray(m.sources) && m.sources.length > 0
           })),
+          retryAsk: retry,
+          canRetry: !!this.state.chatFailed && !pending,
           chatDraft: this.state.chatDraft || '',
           setChatDraft: e => this.setState({ chatDraft: e.target.value.slice(0, 500) }),
           sendChat: () => send(this.state.chatDraft),
@@ -188,6 +237,9 @@ const suggestionsMarkup = `  <sc-if value="{{ chatListening }}" hint-placeholder
   <sc-if value="{{ chatError }}" hint-placeholder-val="">
     <div style="color:#b0563e;font-size:12px;margin-bottom:8px">{{ chatError }}</div>
   </sc-if>
+  <sc-if value="{{ canRetry }}" hint-placeholder-val="{{ false }}">
+    <button class="btn btn-secondary" sc-camel-on-click="{{ retryAsk }}" style="min-height:38px;font-size:12px;margin-bottom:10px">Ask that again</button>
+  </sc-if>
 `;
 
 function replaceChatSuggestions(template: string): string {
@@ -204,10 +256,17 @@ function roundChatBubbles(template: string): string {
   const bubble =
     '<div style="align-self:{{ msg.align }};max-width:85%;border:1px solid {{ msg.border }};border-radius:var(--radius-lg);padding:10px 14px;font-size:14px;line-height:1.55;background:{{ msg.bg }}">{{ msg.text }}</div>';
   if (!template.includes(bubble)) throw new Error("Missing chat bubble anchor");
+  // An answer says quietly what it was drawn from — two markets, sales in
+  // August, eleven nearby bakeries — so a baker can tell a figure from their
+  // own records apart from advice about it.
   return template.replace(
     bubble,
     () =>
-      '<div style="align-self:{{ msg.align }};max-width:85%;border:1px solid {{ msg.border }};border-radius:{{ msg.radius }};padding:11px 16px;font-size:14px;line-height:1.55;background:{{ msg.bg }}">{{ msg.text }}</div>',
+      '<div style="align-self:{{ msg.align }};max-width:85%;display:flex;flex-direction:column;gap:4px">' +
+      '<div style="border:1px solid {{ msg.border }};border-radius:{{ msg.radius }};padding:11px 16px;font-size:14px;line-height:1.55;background:{{ msg.bg }}">{{ msg.text }}</div>' +
+      '<sc-if value="{{ msg.hasSources }}" hint-placeholder-val="{{ false }}">' +
+      '<div class="text-muted" style="font-size:10.5px;padding:0 4px">{{ msg.sourceLine }}</div></sc-if>' +
+      "</div>",
   );
 }
 

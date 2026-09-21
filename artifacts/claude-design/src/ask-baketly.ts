@@ -1,14 +1,19 @@
-// Ask Baketly: turns the workspace state into a compact snapshot the model can
-// reason over, and posts it with the baker's question.
+// Ask Baketly, from the browser's side: a question, and the answer.
 //
-// The snapshot is deliberately small and pre-summarised. Raw sales would blow
-// past the request limit within a season, and the model reasons better over
-// monthly totals than over hundreds of individual orders.
+// This used to build a snapshot of the whole bakery and post it with every
+// message. The server now reads the baker's records itself and calls its own
+// tools to work out whatever the question needs, so the browser sends only the
+// question and enough of the conversation to keep its thread.
+//
+// buildAskContext is kept for now because other screens still import it; it no
+// longer travels anywhere.
 
 export type AskAnswer = {
   answer: string;
   wins: string[];
   followUps: string[];
+  /** which records the answer was drawn from */
+  sources: Array<{ kind: string; detail: string }>;
 };
 
 type Meta = Record<string, { name?: string; unit?: string; per?: number } | undefined>;
@@ -277,18 +282,26 @@ export function buildAskContext(
   };
 }
 
+/**
+ * Asks the server a question about this bakery.
+ *
+ * The bakery itself is no longer sent: the server reads the signed-in baker's
+ * own records and works out whatever the question needs. All that goes up is
+ * the question and the recent turns of the conversation, so "why?" still knows
+ * what it is about.
+ */
 export async function askBaketly(
   question: string,
-  context: Record<string, unknown>,
   history: Array<{ who: string; text: string }>,
 ): Promise<AskAnswer> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 40_000);
+  // the server may call several tools before it answers
+  const timeout = window.setTimeout(() => controller.abort(), 60_000);
   try {
     const response = await fetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, context, history: history.slice(-8) }),
+      body: JSON.stringify({ question, history: history.slice(-8) }),
       signal: controller.signal,
     });
     const payload = (await response.json().catch(() => ({}))) as Partial<AskAnswer> & { error?: unknown };
@@ -303,6 +316,16 @@ export async function askBaketly(
       answer: typeof payload.answer === "string" ? payload.answer : "",
       wins: Array.isArray(payload.wins) ? payload.wins : [],
       followUps: Array.isArray(payload.followUps) ? payload.followUps : [],
+      // what the server actually looked at to answer, for the line underneath
+      sources: Array.isArray(payload.sources)
+        ? (payload.sources as Array<{ kind?: unknown; detail?: unknown }>)
+            .filter((source) => source && typeof source.detail === "string")
+            .map((source) => ({
+              kind: String(source.kind || ""),
+              detail: String(source.detail),
+            }))
+            .slice(0, 4)
+        : [],
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {

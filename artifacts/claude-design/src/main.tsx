@@ -50,7 +50,6 @@ declare global {
     __baketlyEmptyWorkspace: () => Record<string, unknown>;
     __baketlyAsk: (
       question: string,
-      context: Record<string, unknown>,
       history: Array<{ who: string; text: string }>,
     ) => Promise<import("./ask-baketly").AskAnswer>;
     __baketlyAskContext: (
