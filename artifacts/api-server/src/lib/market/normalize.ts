@@ -11,6 +11,29 @@
 
 import type { NormalizedProduct, ProductCategory } from "./types";
 
+/**
+ * Things a bakery sells that are not a bake, checked before anything else.
+ *
+ * A bread shop's menu is half sandwiches, and "Sourdough Grilled Cheese" and
+ * "Reuben on Rye" carry the name of a loaf without being one. A café's list is
+ * half drinks, and "Cookie Lover's Hot Chocolate" is not a cookie. Giving them
+ * their own categories is what keeps them out of a loaf's market, because a
+ * category is the one thing a match cannot cross.
+ */
+const NOT_A_BAKE: Array<[RegExp, ProductCategory]> = [
+  [
+    /\b(sandwich(es)?|grilled\s*cheese|panini|melt|toastie|sub|hoagie|wrap|reuben|blt|burger|on\s+(rye|white|wheat|sourdough)\b|breakfast\s+(sandwich|bagel)|lox|schmear)\b/,
+    "savoury",
+  ],
+  [/\b(pizza|calzone|stromboli|quiche|empanada|sausage\s*roll|soup|salad)\b/, "savoury"],
+  [
+    /\b(coffee|latte|cappuccino|espresso|americano|mocha|hot\s*chocolate|cocoa|tea|chai|smoothie|milkshake|shake|lemonade|juice|soda|water|drink|beverage|cold\s*brew|root\s*beer|coke|cola|pepsi|sprite|seltzer|sparkling|kombucha|cider|yerba|mate|horchata|bottle|can)\b/,
+    "drink",
+  ],
+  [/\b(gift\s*card|voucher|merch|t\s*shirt|hat|tote|mug|apron|candle|sticker)\b/, "not_food"],
+  [/\b(class|workshop|ticket|subscription|membership|donation|tip)\b/, "not_food"],
+];
+
 /** Words that name a kind of bake, longest phrases first so "cookie cake" wins. */
 const CATEGORY_WORDS: Array<[RegExp, ProductCategory]> = [
   [/\bcake\s*pops?\b/, "cake_pop"],
@@ -44,6 +67,31 @@ const COMPOUND_CATEGORY: Array<[RegExp, ProductCategory, string]> = [
   [/\bcookie\s*pies?\b/, "cake", "cookie_cake"],
   [/\bbrownie\s*cakes?\b/, "cake", "brownie_cake"],
   [/\bcupcake\s*cakes?\b/, "cake", "cupcake_cake"],
+];
+
+/**
+ * Kinds of loaf. A baker pricing a sourdough is not helped by what a challah
+ * costs: different dough, different work, different price. Naming the kind
+ * lets the matcher keep them apart while still treating every loaf as bread.
+ */
+const BREAD_KINDS: Array<[RegExp, string]> = [
+  [/\bsourdoughs?\b/, "sourdough"],
+  [/\bchallahs?\b/, "challah"],
+  [/\bbaguettes?\b/, "baguette"],
+  [/\bfocaccias?\b/, "focaccia"],
+  [/\bciabattas?\b/, "ciabatta"],
+  [/\bbrioche\b/, "brioche"],
+  [/\bryes?\b/, "rye"],
+  [/\bpumpernickels?\b/, "rye"],
+  [/\bbagels?\b/, "bagel"],
+  [/\bpitas?\b/, "pita"],
+  [/\bnaans?\b/, "naan"],
+  [/\bbanana\s*breads?\b/, "banana_bread"],
+  [/\bcorn\s*breads?\b/, "cornbread"],
+  [/\bbrown\s*breads?\b/, "brown"],
+  [/\bwhole\s*(wheat|meal)\b/, "wholemeal"],
+  [/\bmulti\s*grains?\b/, "multigrain"],
+  [/\bwhite\s*(bread|loaf|tin)\b/, "white"],
 ];
 
 /** Flavours, and the words that mean the same flavour. */
@@ -243,6 +291,25 @@ export function normalizeProduct(
 
   let category: ProductCategory = "unknown";
   let subcategory: string | null = null;
+
+  // a sandwich named after a loaf is a sandwich, so this is asked first
+  for (const [pattern, notBake] of NOT_A_BAKE) {
+    if (pattern.test(nameText)) {
+      return {
+        category: notBake,
+        subcategory: null,
+        flavor: null,
+        quantity: null,
+        unit: null,
+        weight: null,
+        weightUnit: null,
+        diameterInches: null,
+        attributes: [],
+        sourceText: nameText,
+      };
+    }
+  }
+
   for (const [pattern, compoundCategory, compoundSubcategory] of COMPOUND_CATEGORY) {
     if (pattern.test(nameText)) {
       category = compoundCategory;
@@ -265,6 +332,16 @@ export function normalizeProduct(
     for (const [pattern, found] of CATEGORY_WORDS) {
       if (pattern.test(hintText)) {
         category = found;
+        break;
+      }
+    }
+  }
+
+  // which loaf it is, where it is a loaf at all
+  if ((category === "bread" || category === "sourdough") && !subcategory) {
+    for (const [pattern, kind] of BREAD_KINDS) {
+      if (pattern.test(nameText)) {
+        subcategory = kind;
         break;
       }
     }

@@ -116,6 +116,23 @@ export function matchProducts(
     reasons.push("same category");
   }
 
+  // ---- which loaf ---------------------------------------------------------
+  // Bread and sourdough are related categories, so a challah would otherwise
+  // price against a sourdough. Two named kinds of loaf that differ are two
+  // products.
+  const breadish = (category: ProductCategory) => category === "bread" || category === "sourdough";
+  if (breadish(user.category) && breadish(competitor.category)) {
+    const mine = user.subcategory;
+    const theirs = competitor.subcategory;
+    if (mine && theirs && mine !== theirs) {
+      rejections.push("different kind of loaf: " + mine + " vs " + theirs);
+      return { matchScore: 0, matchQuality: "rejected", reasons, rejections };
+    }
+    if (mine && theirs && mine === theirs) reasons.push("same kind of loaf");
+    // one of them unnamed — a plain "loaf" might be anything
+    if (!mine !== !theirs) score -= 0.15;
+  }
+
   // ---- flavour ------------------------------------------------------------
   if (user.flavor && competitor.flavor) {
     if (user.flavor === competitor.flavor) {

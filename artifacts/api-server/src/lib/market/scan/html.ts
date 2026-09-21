@@ -48,6 +48,15 @@ function plausibleName(value: string): boolean {
   }
   // a whole sentence is a description, not a product name
   if (text.split(/\s+/).length > 12) return false;
+  // Prose gives itself away by its punctuation: "Contains nuts. Delicious
+  // peanut butter cookie," is a description that happens to sit near a price.
+  if (/[.!?]\s+\S/.test(text)) return false;
+  if (/[,;:]$/.test(text)) return false;
+  if (/^(contains|made with|served|perfect for|our |we )/i.test(text)) return false;
+  // "Pure, crisp hydration, essential for any moment" is a sentence about a
+  // bottle of water; a product name does not have clauses in it.
+  if (/,\s+[a-z]/.test(text)) return false;
+  if ((text.match(/,/g) || []).length > 1) return false;
   return true;
 }
 
@@ -58,12 +67,14 @@ function build(
   sourceType: SourceType,
   confidence: number,
   pageCurrency: string | null,
+  /** the page this was read from — "…/collections/donuts" says what it is */
+  categoryHint: string | null = null,
 ): ExtractedProduct | null {
   const key = normalizedNameKey(name);
   if (!key) return null;
   const parsed = parsePrice(priceText, pageCurrency);
   if (!parsed) return null;
-  const reading = normalizeProduct(name, null);
+  const reading = normalizeProduct(name, null, categoryHint);
   // A price that says "from" belongs to the cheapest version of something,
   // which is not the same as the price of the thing named.
   const confidenceForPrice = parsed.isFrom ? Math.min(confidence, 0.5) : confidence;
@@ -126,6 +137,11 @@ export function extractHtml(html: string, sourceUrl: string, limit = 60): Extrac
   if (microdata.length) return microdata.slice(0, limit);
 
   const pageCurrency = currencyFrom(cleaned.slice(0, 50_000));
+  // No category is taken from the page itself. A bakery's menu page holds its
+  // cold brew and its bottled water as well as its bread, and a page-wide
+  // "these are loaves" turned Topo Chico into a sourdough. Where a platform
+  // states a type per product — Shopify does — that is used instead; here,
+  // only what the product's own name says counts.
 
   // every candidate name and where it sits on the page
   const names: Array<{ at: number; text: string }> = [];

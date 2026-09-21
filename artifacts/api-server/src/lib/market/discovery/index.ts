@@ -182,7 +182,27 @@ export async function discoverNearbyBakeries(
     });
   }
 
-  const bakeries = mergeBakeries(googleFound, osmFound, log).slice(0, limit);
+  let bakeries = mergeBakeries(googleFound, osmFound, log).slice(0, limit);
+
+  // Map services have bad days, and a bad day should not turn a town full of
+  // bakeries into an empty one. Anything found on a previous check is still
+  // near the baker, so it stands in until the providers answer again.
+  if (bakeries.length === 0) {
+    try {
+      const store = await competitorStore();
+      const remembered = await store.bakeriesNear(origin.latitude, origin.longitude, radiusKm);
+      if (remembered.length) {
+        bakeries = remembered.slice(0, limit);
+        log.event("BAKERY_DISCOVERY_COMPLETE", {
+          count: bakeries.length,
+          reason: "providers returned nothing; using bakeries found on an earlier check",
+        });
+        return { origin, bakeries, sources };
+      }
+    } catch {
+      // nothing remembered either; the caller reports an empty neighbourhood
+    }
+  }
 
   // Storing them is what makes the next check cheaper, and what lets a
   // bakery's products outlive the check that found them.

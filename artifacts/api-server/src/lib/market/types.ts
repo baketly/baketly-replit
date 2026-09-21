@@ -98,6 +98,11 @@ export type ProductCategory =
   | "cake_pop"
   | "dessert_box"
   | "babka"
+  /** things a bakery sells that are not a bake, kept apart so they never
+   *  price against one: sandwiches, drinks, gift cards */
+  | "savoury"
+  | "drink"
+  | "not_food"
   | "unknown";
 
 /** What a product name means, once read rather than matched as a string. */

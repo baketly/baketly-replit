@@ -142,27 +142,47 @@ export async function nearbyBakeriesAt(
       `way["shop"~"^(bakery|pastry|confectionery)$"](around:${radius},${point.lat},${point.lon});` +
       ");out center tags 60;";
 
-    // whichever mirror answers first; a busy one is not an empty town
-    let response: Awaited<ReturnType<typeof withTimeout>> | null = null;
+    // Every mirror at once, and the first good answer wins. Asked one after
+    // another, a busy instance costs its whole timeout before the next is
+    // tried, and three busy instances take longer than anyone waits — which
+    // is how a town full of bakeries came back empty.
     lastOverpassError = null;
-    for (const mirror of OVERPASS_MIRRORS) {
-      try {
-        const attempt = await withTimeout(mirror, OVERPASS_TIMEOUT_MS, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "data=" + encodeURIComponent(query),
-        });
-        if (attempt.ok) {
-          response = attempt;
-          break;
+    const failures: string[] = [];
+    const response = await new Promise<Awaited<ReturnType<typeof withTimeout>> | null>(
+      (resolve) => {
+        let pending = OVERPASS_MIRRORS.length;
+        let settled = false;
+        const give = (value: Awaited<ReturnType<typeof withTimeout>> | null) => {
+          if (settled) return;
+          settled = true;
+          resolve(value);
+        };
+        for (const mirror of OVERPASS_MIRRORS) {
+          withTimeout(mirror, OVERPASS_TIMEOUT_MS, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "data=" + encodeURIComponent(query),
+          })
+            .then((attempt) => {
+              if (attempt.ok) give(attempt);
+              else failures.push(mirror + " returned " + attempt.status);
+            })
+            .catch((error: unknown) => {
+              failures.push(
+                mirror + " " + (error instanceof Error ? error.message : "request failed"),
+              );
+            })
+            .finally(() => {
+              pending -= 1;
+              if (pending === 0) give(null);
+            });
         }
-        lastOverpassError = mirror + " returned " + attempt.status;
-      } catch (error) {
-        lastOverpassError =
-          mirror + " " + (error instanceof Error ? error.message : "request failed");
-      }
+      },
+    );
+    if (!response) {
+      lastOverpassError = failures.join("; ") || "no mirror answered";
+      return [];
     }
-    if (!response) return [];
 
     const payload = (await response.json()) as {
       elements?: Array<{

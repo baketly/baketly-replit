@@ -22,6 +22,7 @@ import {
   fetchShopifyProducts,
   fetchWooProducts,
 } from "./platform";
+import { extractProductPage, sitemapProductUrls } from "./sitemap";
 
 /** How long a bakery's products are trusted before its site is read again. */
 export const SCAN_TTL_MS = 7 * 24 * 60 * 60_000;
@@ -32,6 +33,8 @@ export interface ScanOptions {
   geminiApiKey?: string | null;
   localCurrency?: string | null;
   maxPages?: number;
+  /** how many individual product pages to read from a sitemap */
+  maxProductPages?: number;
   /** re-read even if the last scan was recent */
   force?: boolean;
 }
@@ -209,6 +212,59 @@ export async function scanBakery(bakery: Bakery, options: ScanOptions): Promise<
         model: ai.model,
       });
       groups.push(ai.products);
+    }
+  }
+
+  // ---- the shop's own index of its pages ---------------------------------
+  // Sites that build their catalogue in the browser have given us nothing so
+  // far. Their sitemap still names every product page, and a product page is
+  // one product with one price on it.
+  const foundSoFar = mergeFound(groups).filter((product) => product.price !== null).length;
+  if (foundSoFar < 5) {
+    const productUrls = await sitemapProductUrls(homepage.finalUrl, options.maxProductPages ?? 25);
+    if (productUrls.length) {
+      log.event("ECOMMERCE_PLATFORM_DETECTED", {
+        platform: "sitemap",
+        count: productUrls.length,
+        url: homepage.finalUrl,
+      });
+      const productPages = await fetchPages(productUrls, 4);
+      const fromSitemap: ExtractedProduct[] = [];
+      for (const page of productPages) {
+        if (!page.ok) {
+          log.event("PAGE_FETCH_FAILED", { url: page.url, reason: page.error || "unreachable" });
+          continue;
+        }
+        const jsonLd = extractJsonLd(page.body, page.finalUrl).filter(
+          (product) => product.price !== null,
+        );
+        if (jsonLd.length) {
+          fromSitemap.push(...jsonLd);
+          continue;
+        }
+        const single = extractProductPage(page.body, page.finalUrl);
+        if (single) fromSitemap.push(single);
+      }
+      if (fromSitemap.length) {
+        log.event("PRODUCT_EXTRACTED", {
+          count: fromSitemap.length,
+          sourceType: "sitemap_product_page",
+          url: homepage.finalUrl,
+        });
+        groups.push(fromSitemap);
+      } else {
+        // The pages exist and name their products; the prices are not in them.
+        // Square Online and its like fetch prices into the page after it
+        // loads, so there is nothing for a parser — or for a model reading the
+        // same text — to find. Worth saying plainly: this shop is not missing,
+        // it is unreadable without running its JavaScript.
+        log.event("WEBSITE_SCAN_FAILED", {
+          url: homepage.finalUrl,
+          reason:
+            "found " + productUrls.length + " product pages, none with a price in the HTML" +
+            (platform === "unknown" ? "" : " (" + platform + " loads prices in the browser)"),
+        });
+      }
     }
   }
 

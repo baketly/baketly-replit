@@ -63,8 +63,11 @@ test("cake sizes: two inches apart still compares, four does not", () => {
   assert.ok(eightVsFourteen.matchScore < ACCEPT_THRESHOLD, "8 vs 14 should not compare");
 });
 
-test("sourdough compares with bread, not with cake", () => {
-  assert.ok(accepted("Sourdough Loaf 750g", "White Bread Loaf 800g"));
+test("a loaf compares with a loaf of its own kind, not with cake", () => {
+  // an unnamed "artisan loaf" is close enough to be worth showing
+  assert.ok(accepted("Sourdough Loaf 750g", "Artisan Loaf 800g"));
+  // a white tin loaf is a different bake at a different price
+  assert.ok(!accepted("Sourdough Loaf 750g", "White Bread Loaf 800g"));
   assert.ok(!accepted("Sourdough Loaf 750g", "Chocolate Cake"));
 });
 
@@ -78,4 +81,31 @@ test("a product nobody can categorise is never counted", () => {
   const result = match(SIX_COOKIES, "Seasonal Special");
   assert.equal(result.matchQuality, "rejected");
   assert.equal(result.matchScore, 0);
+});
+
+test("a sandwich named after a loaf is not a loaf", () => {
+  assert.ok(!accepted("Sourdough Loaf", "Sourdough Grilled Cheese"));
+  assert.ok(!accepted("Sourdough Loaf", "Reuben on Rye Bread"));
+  assert.ok(!accepted("Sourdough Loaf", "Turkey Sandwich on Sourdough"));
+  assert.ok(!accepted("Box of 6 Chocolate Chip Cookies", "Breakfast Sandwich"));
+});
+
+test("a drink is never a bake", () => {
+  assert.ok(!accepted("Box of 6 Chocolate Chip Cookies", "Cookie Lover's Hot Chocolate"));
+  assert.ok(!accepted("Box of 6 Chocolate Chip Cookies", "Cookie Butter Latte"));
+  assert.ok(!accepted("Sourdough Loaf", "Fresh Lemonade"));
+});
+
+test("a gift card is not a product to price against", () => {
+  assert.ok(!accepted("Sourdough Loaf", "Gift Card"));
+  assert.ok(!accepted("Box of 6 Chocolate Chip Cookies", "Baking Class Ticket"));
+});
+
+test("one loaf does not price against another kind of loaf", () => {
+  assert.ok(!accepted("Sourdough Loaf", "Challah"));
+  assert.ok(!accepted("Sourdough Loaf", "Baguette"));
+  assert.ok(!accepted("Sourdough Loaf", "Everything Bagel"));
+  // the same loaf, named differently, still compares
+  assert.ok(accepted("Sourdough Loaf", "Country Sourdough Boule"));
+  assert.ok(accepted("Sourdough Loaf 750g", "Rosemary Sourdough Loaf"));
 });

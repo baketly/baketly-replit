@@ -61,11 +61,14 @@ export async function fetchPage(url: string, timeoutMs = TIMEOUT_MS): Promise<Fe
         error: "status " + response.status,
       };
     }
-    // A PDF menu or a video is not something to parse for prices.
+    // A PDF menu or a video is not something to parse for prices. XML is
+    // allowed because a sitemap is XML, and a sitemap is how a site built in
+    // the browser tells us where its product pages are.
     if (
       contentType &&
       !contentType.includes("html") &&
       !contentType.includes("json") &&
+      !contentType.includes("xml") &&
       !contentType.includes("text/plain")
     ) {
       return {
