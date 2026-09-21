@@ -78,25 +78,78 @@ const watchController = `      ...(() => {
         // products that did come back with a price.
         const found = check ? (check.products || []).filter(product => product.grounded === true) : [];
         const missed = check ? (check.products || []).length - found.length : 0;
-        const localRows = found.map(product => ({
-          name: product.name,
-          yourPrice: money(Number(product.price) || 0),
-          rangeStr: (Number(product.localLow) === Number(product.localHigh)
-            ? 'one nearby charges ' + localMoney(Number(product.localLow) || 0)
-            : localMoney(Number(product.localLow) || 0) + ' – ' + localMoney(Number(product.localHigh) || 0) + ' nearby'),
-          note: product.note || '',
-          competitors: (product.competitors || []).map(seller => ({
-            name: seller.name,
-            priceStr: (seller.price !== null && seller.price !== undefined) ? localMoney(Number(seller.price)) : '',
-            uri: seller.uri || ''
-          })),
-          hasCompetitors: (product.competitors || []).length > 0,
-          sellerCountStr: (product.competitors || []).length === 1
-            ? 'from 1 seller'
-            : 'from ' + (product.competitors || []).length + ' sellers',
-          verdictLabel: verdictLabels[product.verdict] || 'In line locally',
-          verdictClass: verdictClasses[product.verdict] || 'tag-neutral'
-        }));
+        // Which way to read a percentage: below the median is the baker's
+        // headroom, above it is worth knowing but not an alarm.
+        const gapOf = product => {
+          const gap = Number(product.differenceFromMedianPercent);
+          if (!isFinite(gap)) return null;
+          return gap;
+        };
+        const localRows = found.map(product => {
+          const gap = gapOf(product);
+          const each = Number(product.unitPrice) || 0;
+          const quantity = Number(product.quantity) || 1;
+          const median = Number(product.median);
+          const suggested = product.suggested || null;
+          const sellers = (product.competitors || []);
+          return {
+            name: product.name,
+            yourPrice: money(Number(product.price) || 0),
+            yourEach: quantity > 1 && each > 0 ? money(each) + ' each' : '',
+            hasYourEach: quantity > 1 && each > 0,
+            medianStr: isFinite(median) ? localMoney(median) : '—',
+            medianEach: isFinite(median) && quantity > 1 ? localMoney(median / quantity) + ' each' : '',
+            hasMedianEach: isFinite(median) && quantity > 1,
+            gapStr: gap === null
+              ? ''
+              : (Math.abs(gap) < 1
+                ? 'level with the local median'
+                : Math.abs(gap).toFixed(1) + '% ' + (gap < 0 ? 'below' : 'above') + ' local median'),
+            gapColor: gap === null || Math.abs(gap) < 1
+              ? 'var(--color-text)'
+              : (gap < 0 ? 'var(--color-accent-700)' : '#b0563e'),
+            rangeStr: (Number(product.localLow) === Number(product.localHigh)
+              ? 'one nearby charges ' + localMoney(Number(product.localLow) || 0)
+              : localMoney(Number(product.localLow) || 0) + ' – ' + localMoney(Number(product.localHigh) || 0)),
+            bakeryCountStr: (Number(product.comparableBakeries) || 0) === 1
+              ? '1 comparable bakery'
+              : (Number(product.comparableBakeries) || 0) + ' comparable bakeries',
+            hasSuggested: !!suggested,
+            competitiveStr: suggested ? localMoney(Number(suggested.competitive)) : '',
+            marketStr: suggested ? localMoney(Number(suggested.market)) : '',
+            premiumStr: suggested ? localMoney(Number(suggested.premium)) : '',
+            note: product.note || '',
+            // Prices read from a shop's own page, and prices a search turned
+            // up, are not the same kind of fact and do not sit in one list.
+            verified: product.provenance !== 'ai_search',
+            unverified: product.provenance === 'ai_search',
+            competitors: sellers.map(seller => ({
+              name: seller.name,
+              product: seller.product || '',
+              hasProduct: !!seller.product,
+              priceStr: (seller.price !== null && seller.price !== undefined)
+                ? localMoney(Number(seller.price)) + (Number(seller.quantity) > 1 ? ' / ' + seller.quantity : '')
+                : '',
+              equivalentStr: (seller.equivalentPrice !== null && seller.equivalentPrice !== undefined)
+                ? localMoney(Number(seller.equivalentPrice))
+                : '',
+              distanceStr: (seller.distanceKm !== null && seller.distanceKm !== undefined)
+                ? Number(seller.distanceKm).toFixed(1) + ' km'
+                : '',
+              matchLabel: seller.matchQuality === 'high'
+                ? 'close match'
+                : (seller.matchQuality === 'medium' ? 'similar' : (seller.matchQuality ? 'loose match' : '')),
+              matchColor: seller.matchQuality === 'high' ? 'var(--color-accent-700)' : '#8a8578',
+              uri: seller.uri || ''
+            })),
+            hasCompetitors: sellers.length > 0,
+            sellerCountStr: sellers.length === 1
+              ? 'from 1 listing'
+              : 'from ' + sellers.length + ' listings',
+            verdictLabel: verdictLabels[product.verdict] || 'In line locally',
+            verdictClass: verdictClasses[product.verdict] || 'tag-neutral'
+          };
+        });
 
         const runCheck = () => {
           const location = (this.state.bakeryLocation || '').trim();
@@ -114,7 +167,7 @@ const watchController = `      ...(() => {
             return;
           }
           this.setState({ marketPending: true, marketError: '' });
-          window.__baketlyMarketCheck(location, products).then(result => {
+          window.__baketlyMarketCheck(location, products, this.state.currency || 'USD').then(result => {
             this.setState({ marketCheck: result, marketPending: false, marketError: '' });
           }).catch(error => {
             this.setState({ marketPending: false, marketError: (error && error.message) ? error.message : 'Couldn\\'t check local prices.' });
@@ -151,6 +204,13 @@ const watchController = `      ...(() => {
           goLocationSettings: () => this.setState(st => ({ screen: 'settings', stack: [...st.stack, st.screen] })),
           localSummary: check && check.summary ? check.summary : '',
           localCheckedLabel: checkedAt ? 'Checked ' + checkedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' + ((check && check.location) || '') : 'Not checked yet',
+          // what the check actually looked at, so a thin result is explicable
+          localReachLabel: check && Number(check.bakeriesFound) > 0
+            ? Number(check.bakeriesFound) + ' bakeries nearby · '
+              + (Number(check.bakeriesWithProducts) || 0) + ' with prices on their website · '
+              + (Number(check.competitorProducts) || 0) + ' products read'
+            : '',
+          hasLocalReach: !!(check && Number(check.bakeriesFound) > 0),
           localSources: check && Array.isArray(check.sources) ? check.sources.map(source => ({ title: source.title || source.uri })) : [],
           hasLocalSources: !!(check && Array.isArray(check.sources) && check.sources.length),
           marketPending: this.state.marketPending === true,
@@ -203,27 +263,76 @@ function replaceWatchScreen(template: string): string {
   <sc-if value="{{ localSummary }}" hint-placeholder-val="">
     <div class="an-card" style="padding:14px"><div style="font-size:14px;line-height:1.5">{{ localSummary }}</div></div>
   </sc-if>
+  <sc-if value="{{ hasLocalReach }}" hint-placeholder-val="{{ false }}">
+    <div class="text-muted" style="font-size:11px;margin:-4px 0 10px">{{ localReachLabel }}</div>
+  </sc-if>
   <sc-if value="{{ hasLocalRows }}" hint-placeholder-val="{{ false }}">
-    <div class="an-card">
-      <sc-for list="{{ localRows }}" as="loc" hint-placeholder-count="3">
-        <div class="an-row">
-          <div class="an-row-main">
-            <div class="an-row-name">{{ loc.name }}</div>
-            <div class="an-row-sub">You charge {{ loc.yourPrice }} · {{ loc.rangeStr }}</div>
-            <div class="an-row-sub" style="margin-top:3px">{{ loc.note }}</div>
-            <sc-if value="{{ loc.hasCompetitors }}" hint-placeholder-val="{{ false }}">
-              <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
-                <span class="text-muted" style="font-size:11px;align-self:center">{{ loc.sellerCountStr }}</span>
-                <sc-for list="{{ loc.competitors }}" as="seller" hint-placeholder-count="2">
-                  <a href="{{ seller.uri }}" target="_blank" rel="noopener noreferrer" style="font-size:12px;text-decoration:none;border:1px solid var(--color-divider);background:#fff;border-radius:999px;padding:5px 11px;color:var(--color-accent-700)">{{ seller.name }} {{ seller.priceStr }} ↗</a>
-                </sc-for>
-              </div>
-            </sc-if>
-          </div>
+    <sc-for list="{{ localRows }}" as="loc" hint-placeholder-count="3">
+      <div class="an-card" style="padding:14px;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:16px;min-width:0;overflow-wrap:anywhere">{{ loc.name }}</div>
           <span class="tag {{ loc.verdictClass }}" style="flex:none">{{ loc.verdictLabel }}</span>
         </div>
-      </sc-for>
-    </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:2px">Your price</div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:19px;font-feature-settings:'tnum'">{{ loc.yourPrice }}</div>
+            <sc-if value="{{ loc.hasYourEach }}" hint-placeholder-val="{{ false }}"><div class="text-muted" style="font-size:11px">{{ loc.yourEach }}</div></sc-if>
+          </div>
+          <div>
+            <div class="text-muted" style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:2px">Local median</div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:19px;font-feature-settings:'tnum'">{{ loc.medianStr }}</div>
+            <sc-if value="{{ loc.hasMedianEach }}" hint-placeholder-val="{{ false }}"><div class="text-muted" style="font-size:11px">{{ loc.medianEach }}</div></sc-if>
+          </div>
+        </div>
+
+        <div style="font-size:13px;font-weight:600;color:{{ loc.gapColor }};margin-bottom:2px">{{ loc.gapStr }}</div>
+        <div class="text-muted" style="font-size:12px;margin-bottom:10px">Market range {{ loc.rangeStr }} · {{ loc.bakeryCountStr }}</div>
+
+        <sc-if value="{{ loc.hasSuggested }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--color-divider);border-radius:var(--radius-md);background:#fff;margin-bottom:10px">
+            <div style="padding:9px 10px">
+              <div class="text-muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Competitive</div>
+              <div style="font-weight:600;font-size:15px;font-feature-settings:'tnum'">{{ loc.competitiveStr }}</div>
+            </div>
+            <div style="padding:9px 10px;border-left:1px solid var(--color-divider)">
+              <div class="text-muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Market</div>
+              <div style="font-weight:600;font-size:15px;font-feature-settings:'tnum'">{{ loc.marketStr }}</div>
+            </div>
+            <div style="padding:9px 10px;border-left:1px solid var(--color-divider)">
+              <div class="text-muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em">Premium</div>
+              <div style="font-weight:600;font-size:15px;font-feature-settings:'tnum'">{{ loc.premiumStr }}</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="font-size:13px;line-height:1.5;margin-bottom:8px">{{ loc.note }}</div>
+
+        <sc-if value="{{ loc.unverified }}" hint-placeholder-val="{{ false }}">
+          <div class="text-muted" style="font-size:11px;line-height:1.45;margin-bottom:8px;padding:8px 10px;border-radius:10px;background:var(--color-accent-100)">Found by web search rather than read from a shop's own page, so it is not counted in the numbers above.</div>
+        </sc-if>
+
+        <sc-if value="{{ loc.hasCompetitors }}" hint-placeholder-val="{{ false }}">
+          <div class="text-muted" style="font-size:11px;margin-bottom:4px">{{ loc.sellerCountStr }} · tap to see the page it came from</div>
+          <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider)">
+            <sc-for list="{{ loc.competitors }}" as="seller" hint-placeholder-count="3">
+              <a href="{{ seller.uri }}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-divider);text-decoration:none;color:inherit">
+                <span style="flex:1;min-width:0">
+                  <span style="font-size:13px;display:block;overflow-wrap:anywhere">{{ seller.name }}</span>
+                  <sc-if value="{{ seller.hasProduct }}" hint-placeholder-val="{{ false }}"><span class="text-muted" style="font-size:11px;display:block;overflow-wrap:anywhere">{{ seller.product }}</span></sc-if>
+                  <span class="text-muted" style="font-size:11px">{{ seller.distanceStr }} · <span style="color:{{ seller.matchColor }}">{{ seller.matchLabel }}</span></span>
+                </span>
+                <span style="flex:none;text-align:right">
+                  <span style="font-size:13px;font-weight:600;font-feature-settings:'tnum';display:block">{{ seller.equivalentStr }}</span>
+                  <span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">{{ seller.priceStr }} ↗</span>
+                </span>
+              </a>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
     <sc-if value="{{ hasMissed }}" hint-placeholder-val="{{ false }}">
       <div class="text-muted" style="font-size:12px;margin:-8px 0 16px">{{ missedNote }}</div>
     </sc-if>

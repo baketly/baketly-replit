@@ -37,6 +37,7 @@ declare global {
     __baketlyMarketCheck: (
       location: string,
       products: Array<{ name: string; price: number }>,
+      currency?: string,
     ) => Promise<import("./market-check").MarketCheck>;
     __baketlyMarketCheckDue: (check: unknown) => boolean;
     __baketlySuggestPlaces: (query: string) => Promise<string[]>;

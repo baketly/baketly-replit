@@ -39,6 +39,37 @@ export interface ProductComparison {
 /** How many competitor rows to keep for the screen, best match first. */
 const MAX_SHOWN = 12;
 
+/**
+ * The same listing read twice is one listing.
+ *
+ * A shop's catalogue and its collection page both carry its cookie tin, and
+ * the two readings rarely produce the same string: Shopify appends the variant
+ * ("Cookie Tin - 12 Count — Chocolate Chip 'N Chunk / 12 COUNT") where the
+ * page shows only the title. Same shop, same price, same count, and one name
+ * inside the other is the same product; two different bakes that happen to
+ * cost the same are not, and both survive.
+ */
+export function dedupeListings(entries: ComparableProduct[]): ComparableProduct[] {
+  const kept: ComparableProduct[] = [];
+  for (const entry of entries) {
+    const name = entry.product.normalizedName;
+    const at = kept.findIndex((existing) => {
+      if (existing.bakery.id !== entry.bakery.id) return false;
+      if (existing.product.price !== entry.product.price) return false;
+      if ((existing.product.quantity ?? null) !== (entry.product.quantity ?? null)) return false;
+      const other = existing.product.normalizedName;
+      return name.startsWith(other) || other.startsWith(name) || name === other;
+    });
+    if (at === -1) {
+      kept.push(entry);
+      continue;
+    }
+    // the better-sourced reading stands for the listing
+    if (entry.product.confidence > kept[at].product.confidence) kept[at] = entry;
+  }
+  return kept;
+}
+
 export function compareProduct(
   product: UserProduct,
   competitors: CompetitorProduct[],
@@ -130,15 +161,17 @@ export function compareProduct(
     });
   }
 
-  const stats = marketStats(accepted, product.price, currency);
-  const ranked = [...accepted]
+  const unique = dedupeListings(accepted);
+
+  const stats = marketStats(unique, product.price, currency);
+  const ranked = [...unique]
     .sort((a, b) => b.match.matchScore - a.match.matchScore || a.equivalentPrice - b.equivalentPrice)
     .slice(0, MAX_SHOWN);
 
   if (!stats) {
-    const bakeriesWithMatch = new Set(accepted.map((entry) => entry.bakery.id)).size;
+    const bakeriesWithMatch = new Set(unique.map((entry) => entry.bakery.id)).size;
     const shortfall =
-      accepted.length === 0
+      unique.length === 0
         ? rejectedCount > 0
           ? "Nothing comparable found nearby: " + rejectedCount + " products were too different."
           : "No nearby bakery published prices for this kind of bake."

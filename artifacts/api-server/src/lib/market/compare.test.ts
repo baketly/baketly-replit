@@ -192,3 +192,38 @@ test("a product Baketly cannot categorise is reported, not guessed at", () => {
   assert.equal(result.stats, null);
   assert.match(result.shortfall || "", /could not tell what kind/);
 });
+
+test("the same listing read from two pages counts once", () => {
+  // Shopify's variant-suffixed name and the collection page's plain one
+  const shopify = product("a", "Cookie Tin - 12 Count — Chocolate Chip / 12 COUNT", 48, 12, {
+    normalizedName: "cookie tin 12 count chocolate chip 12 count",
+    sourceType: "shopify",
+    confidence: 0.92,
+    sourceUrl: "https://a.example/products/tin",
+  });
+  const fromPage = product("a", "Cookie Tin - 12 Count", 48, 12, {
+    normalizedName: "cookie tin 12 count",
+    sourceType: "html",
+    confidence: 0.6,
+    sourceUrl: "https://a.example/collections/cookies",
+  });
+  // a genuinely different bake at the same price is not the same listing
+  const other = product("a", "Cornflake Marshmallow Cookie Tin", 48, 12, {
+    normalizedName: "cornflake marshmallow cookie tin",
+    sourceType: "shopify",
+    confidence: 0.92,
+  });
+
+  const result = compareProduct(
+    { name: "Box of 6 Chocolate Chip Cookies", price: 18 },
+    [shopify, fromPage, other, product("b", "6 Chocolate Chip Cookies", 21, 6)],
+    bakeries,
+    "USD",
+    silent,
+  );
+  const alpha = result.comparables.filter((entry) => entry.bakery.id === "a");
+  assert.equal(alpha.length, 2, "the duplicate should collapse, the other should stay");
+  // and the better-sourced reading is the one kept
+  assert.ok(alpha.some((entry) => entry.product.sourceType === "shopify"));
+  assert.ok(!alpha.some((entry) => entry.product.sourceType === "html"));
+});

@@ -129,27 +129,62 @@ const pricePointSchema = z
   })
   .strict();
 
+const money = z.number().finite().min(0).max(1_000_000);
+
 const marketProductSchema = z
   .object({
     name: z.string().min(1).max(120),
-    price: z.number().finite().min(0).max(1_000_000),
-    localLow: z.number().finite().min(0).max(1_000_000).nullable(),
-    localHigh: z.number().finite().min(0).max(1_000_000).nullable(),
+    price: money,
+    localLow: money.nullable(),
+    localHigh: money.nullable(),
     verdict: z.enum(["under", "in_range", "over", "unknown"]),
-    note: z.string().max(240),
+    note: z.string().max(320),
     grounded: z.boolean(),
+    // Where the numbers came from: read off shops' own pages, found by a web
+    // search and therefore not counted in any calculation, or nothing found.
+    provenance: z.enum(["verified", "ai_search", "none"]).optional(),
+    unitPrice: money.nullable().optional(),
+    quantity: z.number().finite().min(0).max(10_000).optional(),
+    category: z.string().max(40).optional(),
+    median: money.nullable().optional(),
+    average: money.nullable().optional(),
+    p25: money.nullable().optional(),
+    p75: money.nullable().optional(),
+    userPercentile: z.number().finite().min(0).max(100).nullable().optional(),
+    differenceFromMedianPercent: z.number().finite().min(-100_000).max(100_000).nullable().optional(),
+    suggested: z
+      .object({ competitive: money, market: money, premium: money })
+      .strict()
+      .nullable()
+      .optional(),
+    comparableBakeries: z.number().int().min(0).max(1_000).optional(),
+    comparableProducts: z.number().int().min(0).max(10_000).optional(),
+    shortfall: z.string().max(240).nullable().optional(),
     competitors: z
       .array(
         z
           .object({
             name: z.string().max(80),
-            price: z.number().finite().min(0).max(1_000_000).nullable(),
+            price: money.nullable(),
             uri: z.string().max(400),
             sourceTitle: z.string().max(120),
+            // what the shop actually sells, and what it works out at for the
+            // baker's own quantity
+            product: z.string().max(200).optional(),
+            quantity: z.number().finite().min(0).max(10_000).nullable().optional(),
+            equivalentPrice: money.nullable().optional(),
+            unitPrice: money.nullable().optional(),
+            currency: z.string().max(8).nullable().optional(),
+            distanceKm: z.number().finite().min(0).max(100_000).nullable().optional(),
+            sourceType: z.string().max(40).optional(),
+            confidence: z.number().finite().min(0).max(1).optional(),
+            matchQuality: z.string().max(20).optional(),
+            matchScore: z.number().finite().min(0).max(1).optional(),
+            matchReason: z.string().max(200).optional(),
           })
           .strict(),
       )
-      .max(3)
+      .max(12)
       .optional(),
   })
   .strict();
@@ -202,6 +237,12 @@ export const workspaceStatePayloadSchema = z
         currency: z.string().max(8),
         summary: z.string().max(400),
         products: z.array(marketProductSchema).max(12),
+        // how wide the check cast, for the line under the results
+        checkId: z.string().max(40).optional(),
+        bakeriesFound: z.number().int().min(0).max(1_000).optional(),
+        bakeriesScanned: z.number().int().min(0).max(1_000).optional(),
+        bakeriesWithProducts: z.number().int().min(0).max(1_000).optional(),
+        competitorProducts: z.number().int().min(0).max(100_000).optional(),
         sources: z
           .array(z.object({ title: z.string().max(120), uri: z.string().max(400) }).strict())
           .max(8),

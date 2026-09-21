@@ -1,11 +1,26 @@
 // Local price research. Asks the server what comparable products go for near
 // the baker, so they can see when a price is out of step with the area.
 
+/** One competitor listing: what a shop sells, at what price, and where that was read. */
 export type MarketCompetitor = {
   name: string;
   price: number | null;
   uri: string;
   sourceTitle: string;
+  /** the competitor's own product name */
+  product?: string;
+  quantity?: number | null;
+  /** that shop's price for the baker's own quantity */
+  equivalentPrice?: number | null;
+  unitPrice?: number | null;
+  currency?: string | null;
+  distanceKm?: number | null;
+  /** jsonld, shopify, html, ai_extraction, ai_search_fallback… */
+  sourceType?: string;
+  confidence?: number;
+  matchQuality?: string;
+  matchScore?: number;
+  matchReason?: string;
 };
 
 export type MarketProduct = {
@@ -17,6 +32,22 @@ export type MarketProduct = {
   verdict: "under" | "in_range" | "over" | "unknown";
   note: string;
   grounded: boolean;
+  /** verified: read off shops' own pages. ai_search: found by search, never counted. */
+  provenance?: "verified" | "ai_search" | "none";
+  unitPrice?: number | null;
+  quantity?: number;
+  category?: string;
+  median?: number | null;
+  average?: number | null;
+  p25?: number | null;
+  p75?: number | null;
+  userPercentile?: number | null;
+  differenceFromMedianPercent?: number | null;
+  suggested?: { competitive: number; market: number; premium: number } | null;
+  comparableBakeries?: number;
+  comparableProducts?: number;
+  /** why there is no market for this one */
+  shortfall?: string | null;
 };
 
 export type MarketCheck = {
@@ -27,6 +58,11 @@ export type MarketCheck = {
   products: MarketProduct[];
   sources: Array<{ title: string; uri: string }>;
   searches: string[];
+  checkId?: string;
+  bakeriesFound?: number;
+  bakeriesScanned?: number;
+  bakeriesWithProducts?: number;
+  competitorProducts?: number;
 };
 
 /** Twice a week. Checked when the app opens, so a quiet week costs nothing. */
@@ -66,6 +102,7 @@ export async function suggestPlaces(query: string): Promise<string[]> {
 export async function runMarketCheck(
   location: string,
   products: Array<{ name: string; price: number }>,
+  currency = "USD",
 ): Promise<MarketCheck> {
   const controller = new AbortController();
   // grounded research runs two model passes and real searches, so allow for it
@@ -74,7 +111,7 @@ export async function runMarketCheck(
     const response = await fetch("/api/market-check", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ location, products: products.slice(0, 12) }),
+      body: JSON.stringify({ location, products: products.slice(0, 12), currency }),
       signal: controller.signal,
     });
     const payload = (await response.json().catch(() => ({}))) as Partial<MarketCheck> & {
@@ -88,32 +125,71 @@ export async function runMarketCheck(
       );
     }
     const byName = new Map(products.map((product) => [product.name, product.price]));
+    const num = (value: unknown): number | null => (typeof value === "number" ? value : null);
     return {
       checkedAt: typeof payload.checkedAt === "string" ? payload.checkedAt : new Date().toISOString(),
       location,
       currency: typeof payload.currency === "string" ? payload.currency : "",
       summary: typeof payload.summary === "string" ? payload.summary : "",
+      checkId: typeof payload.checkId === "string" ? payload.checkId : undefined,
+      bakeriesFound: num(payload.bakeriesFound) ?? undefined,
+      bakeriesScanned: num(payload.bakeriesScanned) ?? undefined,
+      bakeriesWithProducts: num(payload.bakeriesWithProducts) ?? undefined,
+      competitorProducts: num(payload.competitorProducts) ?? undefined,
       products: (Array.isArray(payload.products) ? payload.products : []).map((entry) => ({
         name: String(entry.name || ""),
         price: byName.get(String(entry.name || "")) ?? 0,
-        localLow: typeof entry.localLow === "number" ? entry.localLow : null,
-        localHigh: typeof entry.localHigh === "number" ? entry.localHigh : null,
+        localLow: num(entry.localLow),
+        localHigh: num(entry.localHigh),
         verdict:
           entry.verdict === "under" || entry.verdict === "over" || entry.verdict === "in_range"
             ? entry.verdict
             : "unknown",
         note: String(entry.note || ""),
         grounded: entry.grounded === true,
-        // The server looks for a spread now rather than a single price, and
-        // caps at six. Cutting to three here would throw away the sellers that
-        // make a range mean anything.
+        provenance:
+          entry.provenance === "verified" || entry.provenance === "ai_search"
+            ? entry.provenance
+            : "none",
+        unitPrice: num(entry.unitPrice),
+        quantity: num(entry.quantity) ?? 1,
+        category: typeof entry.category === "string" ? entry.category : undefined,
+        median: num(entry.median),
+        average: num(entry.average),
+        p25: num(entry.p25),
+        p75: num(entry.p75),
+        userPercentile: num(entry.userPercentile),
+        differenceFromMedianPercent: num(entry.differenceFromMedianPercent),
+        suggested:
+          entry.suggested && typeof entry.suggested === "object"
+            ? {
+                competitive: Number((entry.suggested as Record<string, unknown>).competitive) || 0,
+                market: Number((entry.suggested as Record<string, unknown>).market) || 0,
+                premium: Number((entry.suggested as Record<string, unknown>).premium) || 0,
+              }
+            : null,
+        comparableBakeries: num(entry.comparableBakeries) ?? 0,
+        comparableProducts: num(entry.comparableProducts) ?? 0,
+        shortfall: typeof entry.shortfall === "string" ? entry.shortfall : null,
+        // every competitor row is one the baker can click through and check
         competitors: (Array.isArray(entry.competitors) ? entry.competitors : [])
-          .slice(0, 6)
+          .slice(0, 12)
           .map((seller: Record<string, unknown>) => ({
             name: String(seller.name || ""),
-            price: typeof seller.price === "number" ? seller.price : null,
+            price: num(seller.price),
             uri: String(seller.uri || ""),
             sourceTitle: String(seller.sourceTitle || ""),
+            product: typeof seller.product === "string" ? seller.product : "",
+            quantity: num(seller.quantity),
+            equivalentPrice: num(seller.equivalentPrice),
+            unitPrice: num(seller.unitPrice),
+            currency: typeof seller.currency === "string" ? seller.currency : null,
+            distanceKm: num(seller.distanceKm),
+            sourceType: typeof seller.sourceType === "string" ? seller.sourceType : "",
+            confidence: num(seller.confidence) ?? 0,
+            matchQuality: typeof seller.matchQuality === "string" ? seller.matchQuality : "",
+            matchScore: num(seller.matchScore) ?? 0,
+            matchReason: typeof seller.matchReason === "string" ? seller.matchReason : "",
           })),
       })),
       sources: Array.isArray(payload.sources) ? payload.sources.slice(0, 8) : [],
