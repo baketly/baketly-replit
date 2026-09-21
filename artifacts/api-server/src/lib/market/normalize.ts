@@ -228,7 +228,13 @@ export function parseDiameterInches(text: string): number | null {
 }
 
 /** Everything the matcher needs, read from a product's name and description. */
-export function normalizeProduct(name: string, description?: string | null): NormalizedProduct {
+export function normalizeProduct(
+  name: string,
+  description?: string | null,
+  /** the shop's own label for it — a Shopify product type, a menu heading —
+   *  consulted only when the name itself does not say what kind of bake it is */
+  categoryHint?: string | null,
+): NormalizedProduct {
   const nameText = normalizeText(name || "");
   // the description helps with quantity and size, never with what kind of
   // thing it is: descriptions mention other products too often
@@ -247,6 +253,17 @@ export function normalizeProduct(name: string, description?: string | null): Nor
   if (category === "unknown") {
     for (const [pattern, found] of CATEGORY_WORDS) {
       if (pattern.test(nameText)) {
+        category = found;
+        break;
+      }
+    }
+  }
+  // "Fall Spiced Chocolate Chunk" is a cookie on a page headed Cookies. The
+  // shop's own grouping says so where its product names do not.
+  if (category === "unknown" && categoryHint) {
+    const hintText = normalizeText(categoryHint);
+    for (const [pattern, found] of CATEGORY_WORDS) {
+      if (pattern.test(hintText)) {
         category = found;
         break;
       }
