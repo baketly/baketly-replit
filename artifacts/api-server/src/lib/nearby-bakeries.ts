@@ -11,7 +11,15 @@
 // town and a hope.
 
 const PHOTON = "https://photon.komoot.io/api/";
-const OVERPASS = "https://overpass-api.de/api/interpreter";
+// The main instance is free, popular, and answers 504 when it is busy — which
+// looked from here exactly like a town with no bakeries in it. Mirrors run the
+// same data and the same query language, so a busy one costs a second or two
+// rather than the whole neighbour list.
+const OVERPASS_MIRRORS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
 const USER_AGENT = "Baketly/1.0 (home bakery pricing app)";
 
 const GEOCODE_TIMEOUT_MS = 6_000;
@@ -24,9 +32,18 @@ export interface NearbyBakery {
   km: number;
   town: string;
   website: string;
+  /** "node/123", the map's own identifier, for matching a shop to itself later */
+  osmId?: string;
+  lat?: number;
+  lon?: number;
+  address?: string;
+  country?: string;
 }
 
 const cache = new Map<string, { at: number; found: NearbyBakery[] }>();
+
+/** Why the last lookup came back empty, for callers that log. */
+export let lastOverpassError: string | null = null;
 
 async function withTimeout(url: string, ms: number, init?: RequestInit) {
   const controller = new AbortController();
@@ -43,6 +60,10 @@ async function withTimeout(url: string, ms: number, init?: RequestInit) {
 }
 
 /** Where the baker said they sell, as a point on the map. */
+export async function geocode(place: string): Promise<{ lat: number; lon: number } | null> {
+  return locate(place);
+}
+
 async function locate(place: string): Promise<{ lat: number; lon: number } | null> {
   const response = await withTimeout(
     PHOTON + "?limit=1&lang=en&q=" + encodeURIComponent(place),
@@ -85,9 +106,31 @@ export async function nearbyBakeries(
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at <= CACHE_TTL_MS) return hit.found;
 
+  const point = await locate(place);
+  if (!point) return [];
+  const found = await nearbyBakeriesAt(point.lat, point.lon, radiusKm, limit);
+  if (cache.size > 200) cache.clear();
+  cache.set(key, { at: Date.now(), found });
+  return found;
+}
+
+/**
+ * The same lookup from a point already known, for callers that geocoded it
+ * themselves. Carries the map's own id and coordinates, which the price
+ * pipeline needs to recognise a shop it has seen before.
+ */
+export async function nearbyBakeriesAt(
+  latitude: number,
+  longitude: number,
+  radiusKm = 12,
+  limit = 15,
+): Promise<NearbyBakery[]> {
+  const key = "at|" + latitude.toFixed(3) + "," + longitude.toFixed(3) + "|" + radiusKm;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at <= CACHE_TTL_MS) return hit.found;
+
   try {
-    const point = await locate(place);
-    if (!point) return [];
+    const point = { lat: latitude, lon: longitude };
 
     const radius = Math.round(radiusKm * 1000);
     // shop=bakery and shop=pastry are the two the map uses for what a home
@@ -99,15 +142,32 @@ export async function nearbyBakeries(
       `way["shop"~"^(bakery|pastry|confectionery)$"](around:${radius},${point.lat},${point.lon});` +
       ");out center tags 60;";
 
-    const response = await withTimeout(OVERPASS, OVERPASS_TIMEOUT_MS, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: "data=" + encodeURIComponent(query),
-    });
-    if (!response.ok) return [];
+    // whichever mirror answers first; a busy one is not an empty town
+    let response: Awaited<ReturnType<typeof withTimeout>> | null = null;
+    lastOverpassError = null;
+    for (const mirror of OVERPASS_MIRRORS) {
+      try {
+        const attempt = await withTimeout(mirror, OVERPASS_TIMEOUT_MS, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "data=" + encodeURIComponent(query),
+        });
+        if (attempt.ok) {
+          response = attempt;
+          break;
+        }
+        lastOverpassError = mirror + " returned " + attempt.status;
+      } catch (error) {
+        lastOverpassError =
+          mirror + " " + (error instanceof Error ? error.message : "request failed");
+      }
+    }
+    if (!response) return [];
 
     const payload = (await response.json()) as {
       elements?: Array<{
+        type?: string;
+        id?: number;
         lat?: number;
         lon?: number;
         center?: { lat?: number; lon?: number };
@@ -126,11 +186,17 @@ export async function nearbyBakeries(
       const km = distanceKm(point.lat, point.lon, lat, lon);
       if (km > radiusKm) continue;
       if (found.some((entry) => entry.name.toLowerCase() === name.toLowerCase())) continue;
+      const street = [tags["addr:street"], tags["addr:housenumber"]].filter(Boolean).join(" ");
       found.push({
         name: name.slice(0, 80),
         km: Math.round(km * 10) / 10,
         town: (tags["addr:city"] || tags["addr:town"] || "").slice(0, 60),
         website: (tags.website || tags["contact:website"] || "").slice(0, 200),
+        osmId: element.type && element.id ? element.type + "/" + element.id : undefined,
+        lat,
+        lon,
+        address: street ? street.slice(0, 160) : undefined,
+        country: (tags["addr:country"] || "").slice(0, 60) || undefined,
       });
     }
 

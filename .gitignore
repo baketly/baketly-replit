@@ -51,3 +51,5 @@ Thumbs.db
 # local secrets (API keys) — never commit
 .env
 .env.*
+dist-tests/
+data/
