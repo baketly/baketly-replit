@@ -42,7 +42,7 @@ const ingredientEditorMarkup = `<!-- ══ INGREDIENT EDIT ══ -->
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ cancelIngredientEdit }}" style="margin-left:-6px;min-height:44px">‹ Ingredients</button><sc-if value="{{ ingredientExisting }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ requestDeleteIngredient }}" style="min-height:44px;color:#b0563e">Delete</button></sc-if></div>
   <div class="field" style="margin:6px 0 12px"><label>Ingredient name</label><input class="input" value="{{ ingredientName }}" sc-camel-on-change="{{ setIngredientName }}" placeholder="Name your ingredient" aria-label="Ingredient name" style="font-family:var(--font-heading);font-weight:600;font-size:22px;padding:10px 12px"></div>
   <p class="text-muted" style="font-size:13px;margin-bottom:18px">Update this pantry item. Recipe costs will use the saved unit cost.</p>
-  <sc-if value="{{ ingredientNew }}" hint-placeholder-val="{{ false }}"><div style="padding:12px;border:1px solid var(--color-divider);border-radius:14px;background:#fff;margin-bottom:18px"><div style="font-weight:600;font-size:14px;margin-bottom:4px">Have the package nearby?</div><div class="text-muted" style="font-size:12px;margin-bottom:9px">Let Baketly read the nutrition label and fill in what it can.</div><label class="btn btn-secondary" style="min-height:40px;position:relative;overflow:hidden;cursor:pointer">Scan label with photo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" sc-camel-on-change="{{ scanIngredientLabel }}" aria-label="Scan label with photo" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label><sc-if value="{{ ingredientScanLoading }}" hint-placeholder-val="{{ false }}"><div class="text-muted" style="font-size:12px;margin-top:8px">Reading label…</div></sc-if><sc-if value="{{ ingredientScanError }}" hint-placeholder-val=""><div style="color:#b0563e;font-size:12px;margin-top:8px">{{ ingredientScanError }}</div></sc-if><sc-if value="{{ ingredientScanComplete }}" hint-placeholder-val="{{ false }}"><div style="color:var(--color-accent);font-size:12px;margin-top:8px">Filled what I could. Please review every field before saving.</div></sc-if></div></sc-if>
+  <sc-if value="{{ ingredientNew }}" hint-placeholder-val="{{ false }}"><div style="padding:12px;border:1px solid var(--color-divider);border-radius:14px;background:#fff;margin-bottom:18px"><div style="font-weight:600;font-size:14px;margin-bottom:4px">Have the package nearby?</div><div class="text-muted" style="font-size:12px;margin-bottom:9px">Let Baketly read the nutrition label and fill in what it can.</div><label class="btn btn-secondary" style="min-height:40px;position:relative;overflow:hidden;cursor:pointer">Scan label with photo<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" sc-camel-on-change="{{ scanIngredientLabel }}" aria-label="Scan label with photo" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label><sc-if value="{{ ingredientScanLoading }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:9px;margin-top:10px"><span class="bk-spinner" aria-hidden="true"></span><span class="text-muted" style="font-size:12px">Reading the label… this takes a few seconds.</span></div></sc-if><sc-if value="{{ ingredientScanError }}" hint-placeholder-val=""><div style="color:#b0563e;font-size:12px;margin-top:8px">{{ ingredientScanError }}</div></sc-if><sc-if value="{{ ingredientScanComplete }}" hint-placeholder-val="{{ false }}"><div style="color:var(--color-accent);font-size:12px;margin-top:8px">Filled what I could. Please review every field before saving.</div></sc-if></div></sc-if>
   <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
     <div class="field"><label>Supplier</label><input class="input" value="{{ ingredientSupplier }}" sc-camel-on-change="{{ setIngredientSupplier }}" aria-label="Ingredient supplier"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -273,8 +273,34 @@ ${indent}fromScan: this.state.fromScan === true,
 ${indent}ingTitle:`);
 }
 
+/**
+ * A turning ring, for the waits worth showing.
+ *
+ * Reading a label is a photo going to a model and back — several seconds in
+ * which a line of text that never changes looks like nothing is happening.
+ * The page had no animations at all, so the keyframes go in beside the rest
+ * of its styles rather than in a style attribute, which cannot hold them.
+ * `prefers-reduced-motion` stops it turning for anyone who asked for that.
+ */
+function addSpinnerStyle(template: string): string {
+  const anchor = "    .bk-row:active{background:rgba(60,55,30,.05)}";
+  if (!template.includes(anchor)) throw new Error("Missing stable style anchor");
+  return template.replace(
+    anchor,
+    () =>
+      anchor +
+      "\n    @keyframes bk-spin{to{transform:rotate(360deg)}}" +
+      "\n    .bk-spinner{display:inline-block;flex:none;width:16px;height:16px;border-radius:50%;" +
+      "border:2px solid var(--color-accent-300);border-top-color:var(--color-accent);" +
+      "animation:bk-spin .7s linear infinite}" +
+      "\n    @media (prefers-reduced-motion:reduce){.bk-spinner{animation-duration:2.4s}}",
+  );
+}
+
 export function applyIngredientRecordBehavior(template: string): string {
-  return addIngredientController(
-    replaceIngredientEditor(replaceIngredientList(addIngredientState(template))),
+  return addSpinnerStyle(
+    addIngredientController(
+      replaceIngredientEditor(replaceIngredientList(addIngredientState(template))),
+    ),
   );
 }

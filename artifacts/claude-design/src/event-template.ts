@@ -718,7 +718,7 @@ function describeShoppingList(template: string): string {
     () =>
       '<p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">' +
       'This is the shopping list for your market — everything the lineup needs, in full batches and added up across recipes. ' +
-      'Change any amount to match what you already have.</p>',
+      'Change any amount to match what you need to buy.</p>',
   );
 }
 

@@ -279,6 +279,11 @@ function addHomeController(template: string): string {
   );
 }
 
+// The same cog the General section wears inside Settings. Home used a
+// different drawing of one — spokes rather than a toothed wheel — so the
+// button that opens Settings and the tab it lands on looked like two features.
+import { SETTINGS_GEAR } from "./settings-template";
+
 const iconButton = (handler: string, label: string, path: string) =>
   `<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ ${handler} }}" aria-label="${label}" style="width:40px;height:40px">` +
   `<svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${path}</svg></button>`;
@@ -298,7 +303,7 @@ const homeMarkup = `
     </div>
     <div style="display:flex;gap:6px;flex:none">
       ${iconButton("goChat", "Ask Baketly", '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"></path>')}
-      ${iconButton("goSettings", "Settings", '<circle cx="12" cy="12" r="3.2"></circle><path d="M12 3.4v2.2M12 18.4v2.2M3.4 12h2.2M18.4 12h2.2M5.9 5.9l1.6 1.6M16.5 16.5l1.6 1.6M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6"></path>')}
+      ${iconButton("goSettings", "Settings", SETTINGS_GEAR)}
     </div>
   </div>
 
