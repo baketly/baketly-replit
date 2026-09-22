@@ -10,6 +10,38 @@
 // who is signed in, and what it costs.
 
 const settingsController = `      ...(() => {
+        // Reminders, and the clock they are read in.
+        //
+        // The timezone comes from the phone, not the server: a baker in New
+        // Jersey and a server in Frankfurt disagree about when eight in the
+        // morning is, and the phone is the one standing in the kitchen. It is
+        // captured quietly whenever settings are opened, so a baker who
+        // travels keeps getting reminders at a sensible hour.
+        const defaultReminders = { todosDaily: true, todosAt: '08:00', marketEve: true, marketAt: '18:00', timezone: 'UTC' };
+        const savedReminders = (this.state.reminders && typeof this.state.reminders === 'object')
+          ? this.state.reminders
+          : defaultReminders;
+        const phoneZone = (() => {
+          try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (error) { return 'UTC'; }
+        })();
+        const reminders = { ...defaultReminders, ...savedReminders, timezone: phoneZone };
+        if (!this.__baketlyZoneChecked && savedReminders.timezone !== phoneZone) {
+          this.__baketlyZoneChecked = true;
+          window.setTimeout(() => this.setState({ reminders }), 0);
+        }
+        const setReminders = patch => this.setState(st => ({
+          reminders: { ...defaultReminders, ...(st.reminders || {}), ...patch, timezone: phoneZone }
+        }));
+        // 6am to 10pm in half hours: the span a baker's day actually covers
+        const timeChoices = [];
+        for (let minutes = 6 * 60; minutes <= 22 * 60; minutes += 30) {
+          const hour = String(Math.floor(minutes / 60)).padStart(2, '0');
+          const minute = String(minutes % 60).padStart(2, '0');
+          const value = hour + ':' + minute;
+          const hour12 = ((Math.floor(minutes / 60) + 11) % 12) + 1;
+          timeChoices.push({ value, label: hour12 + ':' + minute + (minutes < 12 * 60 ? 'am' : 'pm') });
+        }
+
         const tab = this.state.settingsTab || 'general';
         const pick = name => () => this.setState({ settingsTab: name });
         const chip = name => ({
@@ -28,7 +60,24 @@ const settingsController = `      ...(() => {
           pickBilling: pick('billing'),
           generalChip: chip('general'),
           accountChip: chip('account'),
-          billingChip: chip('billing')
+          billingChip: chip('billing'),
+
+          remindTodos: reminders.todosDaily === true,
+          toggleRemindTodos: () => setReminders({ todosDaily: !reminders.todosDaily }),
+          remindTodosBg: reminders.todosDaily ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+          remindTodosKnob: reminders.todosDaily ? '22px' : '2px',
+          todosAt: reminders.todosAt,
+          setTodosAt: e => setReminders({ todosAt: e.target.value }),
+
+          remindMarket: reminders.marketEve === true,
+          toggleRemindMarket: () => setReminders({ marketEve: !reminders.marketEve }),
+          remindMarketBg: reminders.marketEve ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+          remindMarketKnob: reminders.marketEve ? '22px' : '2px',
+          marketAt: reminders.marketAt,
+          setMarketAt: e => setReminders({ marketAt: e.target.value }),
+
+          reminderTimes: timeChoices,
+          reminderZoneLabel: 'Times are in ' + phoneZone.replace(/_/g, ' ') + ', from this phone.'
         };
       })(),
 `;
@@ -89,6 +138,57 @@ const settingsScreen = `
           <input class="input" value="{{ hourlyRateText }}" sc-camel-on-change="{{ setHourlyRate }}" aria-label="My hourly rate" inputmode="decimal" placeholder="not set — labor excluded from costs" style="flex:1;min-width:0;font-feature-settings:'tnum'">
         </div>
       </div>
+      <div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;padding:13px 14px;margin-top:6px">
+        <div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">Reminders</div>
+        <div class="text-muted" style="font-size:12px;line-height:1.5;margin-bottom:10px">What Baketly may remind you about, and when.</div>
+
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--color-divider)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px">What's on today's list</div>
+            <div class="text-muted" style="font-size:11px">A morning nudge on days that have to-dos</div>
+          </div>
+          <button sc-camel-on-click="{{ toggleRemindTodos }}" aria-label="Remind me about to-dos" style="flex:none;position:relative;width:44px;height:26px;border-radius:999px;border:0;cursor:pointer;padding:0;background:{{ remindTodosBg }}">
+            <span style="position:absolute;top:2px;left:{{ remindTodosKnob }};width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm)"></span>
+          </button>
+        </div>
+        <sc-if value="{{ remindTodos }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:10px;padding:2px 0 10px">
+            <span class="text-muted" style="font-size:12px;flex:1">Remind me at</span>
+            <div class="an-select-wrap" style="display:block;margin:0;flex:none">
+              <select class="an-select" value="{{ todosAt }}" sc-camel-on-change="{{ setTodosAt }}" aria-label="Time for the daily reminder">
+                <sc-for list="{{ reminderTimes }}" as="slot" hint-placeholder-count="4">
+                  <option value="{{ slot.value }}">{{ slot.label }}</option>
+                </sc-for>
+              </select>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--color-divider)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px">A market tomorrow</div>
+            <div class="text-muted" style="font-size:11px">The evening before, with what there is to bake</div>
+          </div>
+          <button sc-camel-on-click="{{ toggleRemindMarket }}" aria-label="Remind me before a market" style="flex:none;position:relative;width:44px;height:26px;border-radius:999px;border:0;cursor:pointer;padding:0;background:{{ remindMarketBg }}">
+            <span style="position:absolute;top:2px;left:{{ remindMarketKnob }};width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm)"></span>
+          </button>
+        </div>
+        <sc-if value="{{ remindMarket }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:10px;padding:2px 0 10px">
+            <span class="text-muted" style="font-size:12px;flex:1">Remind me at</span>
+            <div class="an-select-wrap" style="display:block;margin:0;flex:none">
+              <select class="an-select" value="{{ marketAt }}" sc-camel-on-change="{{ setMarketAt }}" aria-label="Time for the market reminder">
+                <sc-for list="{{ reminderTimes }}" as="slot" hint-placeholder-count="4">
+                  <option value="{{ slot.value }}">{{ slot.label }}</option>
+                </sc-for>
+              </select>
+            </div>
+          </div>
+        </sc-if>
+
+        <div class="text-muted" style="font-size:11px;line-height:1.45;border-top:1px solid var(--color-divider);padding-top:8px">{{ reminderZoneLabel }} Reminders reach your phone once Baketly is installed as an app; in a browser tab they stay inside Baketly.</div>
+      </div>
+
       <!-- the sample bakery lived in Settings before the sections did; it
            still belongs here rather than being lost to the rearrangement -->
       <div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;padding:13px 14px;margin-top:6px">

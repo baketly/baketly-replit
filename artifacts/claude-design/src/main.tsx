@@ -75,6 +75,7 @@ const durableFields = [
   "ownerName",
   "todoItems",
   "recipeGroups",
+  "reminders",
   "currency",
   "hourlyRate",
   "targetMargin",

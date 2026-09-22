@@ -18,6 +18,8 @@ function workspace(overrides: Partial<Workspace> = {}): Workspace {
     recipes: [],
     sales: [],
     events: [],
+    todoItems: [],
+    reminders: null,
     ingredients: {},
     packaging: {},
     removedIngredientKeys: [],

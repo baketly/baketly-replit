@@ -67,10 +67,21 @@ export interface PackagingRecord {
   unitsPerPack?: number;
 }
 
+/** One line on the home screen's list, and the day it is for. */
+export interface TodoItem {
+  text?: string;
+  done?: boolean;
+  /** YYYY-MM-DD; absent on to-dos saved before they had a day */
+  day?: string;
+}
+
 export interface Workspace {
   recipes: Recipe[];
   sales: Sale[];
   events: EventRecord[];
+  todoItems: TodoItem[];
+  /** when to remind, and in which timezone, as stored */
+  reminders: unknown;
   ingredients: Record<string, IngredientRecord>;
   packaging: Record<string, PackagingRecord>;
   removedIngredientKeys: string[];
@@ -111,6 +122,8 @@ export async function loadWorkspace(userId: string): Promise<Workspace> {
     recipes: list<Recipe>(state.recipeRecords),
     sales: list<Sale>(state.saleRecords),
     events: list<EventRecord>(state.eventRecords),
+    todoItems: list<TodoItem>(state.todoItems),
+    reminders: state.reminders ?? null,
     ingredients: record<IngredientRecord>(state.ingredientRecords),
     packaging: record<PackagingRecord>(state.packagingRecords),
     removedIngredientKeys: list<string>(state.removedIngredientKeys),

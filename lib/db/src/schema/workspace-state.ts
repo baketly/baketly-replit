@@ -223,6 +223,18 @@ export const workspaceStatePayloadSchema = z
       )
       .max(50)
       .optional(),
+    // when Baketly may interrupt, and in whose clock; the timezone comes from
+    // the phone rather than from the server, which is in the wrong place
+    reminders: z
+      .object({
+        todosDaily: z.boolean(),
+        todosAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+        marketEve: z.boolean(),
+        marketAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+        timezone: z.string().max(60),
+      })
+      .strict()
+      .optional(),
     currency: z.enum(["USD", "EUR", "GBP"]).optional(),
     hourlyRate: z.number().finite().min(0).max(10_000).optional(),
     targetMargin: z.number().finite().min(0).max(100).optional(),

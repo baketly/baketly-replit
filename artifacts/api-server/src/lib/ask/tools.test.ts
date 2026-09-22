@@ -84,6 +84,8 @@ function bakery(): Workspace {
         lineItems: [],
       },
     ],
+    todoItems: [],
+    reminders: null,
     ingredients: { flour: { name: "Flour", packagePrice: 10, packageSize: 1000, unit: "g" } },
     packaging: { box: { name: "Box", packPrice: 20, unitsPerPack: 100 } },
     removedIngredientKeys: [],
