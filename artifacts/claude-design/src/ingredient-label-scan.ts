@@ -1,3 +1,5 @@
+import { apiFetch } from "./api";
+
 const MAX_LABEL_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_LABEL_TYPES = new Set([
   "image/jpeg",
@@ -33,7 +35,7 @@ export async function scanIngredientLabel(
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 35_000);
   try {
-    const response = await fetch("/api/ingredient-label-scan", {
+    const response = await apiFetch("/api/ingredient-label-scan", {
       method: "POST",
       headers: { "Content-Type": file.type },
       body: file,

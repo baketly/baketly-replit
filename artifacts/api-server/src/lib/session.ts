@@ -28,25 +28,49 @@ function cookieOptions(maxAgeMs: number) {
   };
 }
 
-export async function startSession(res: Response, userId: string): Promise<void> {
+/**
+ * Starts a session and returns its token.
+ *
+ * The cookie is still set, and the browser still uses it. The token is
+ * returned as well for the phone app: inside a native shell the page is served
+ * from capacitor://localhost while the API is a different site entirely, and
+ * iOS will not carry a cookie across that. The app keeps the token itself and
+ * sends it as a bearer header. Same session, same table, two ways of proving
+ * it is yours.
+ */
+export async function startSession(res: Response, userId: string): Promise<string> {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
   await authStore.createSession(userId, hashToken(token), expiresAt);
   res.cookie(SESSION_COOKIE, token, cookieOptions(SESSION_DAYS * 24 * 60 * 60 * 1000));
+  return token;
+}
+
+/** The session token on a request, from the cookie or the bearer header. */
+function tokenFrom(req: Request): string | null {
+  const cookie = req.signedCookies?.[SESSION_COOKIE];
+  if (typeof cookie === "string" && cookie) return cookie;
+  const header = req.get("authorization") || "";
+  const bearer = header.match(/^Bearer\s+(.+)$/i);
+  return bearer ? bearer[1].trim() : null;
 }
 
 export async function endSession(req: Request, res: Response): Promise<void> {
-  const token = req.signedCookies?.[SESSION_COOKIE];
-  if (typeof token === "string" && token) {
-    await authStore.deleteSession(hashToken(token));
-  }
+  const token = tokenFrom(req);
+  if (token) await authStore.deleteSession(hashToken(token));
   res.clearCookie(SESSION_COOKIE, { ...cookieOptions(0), maxAge: undefined });
 }
 
-/** Resolves the cookie to a user, or null. Never trusts anything else. */
+/**
+ * Resolves the session to a user, or null.
+ *
+ * Only ever the cookie or the bearer token — never a user id, email or
+ * workspace id from a body, query or header, which would let anyone read
+ * another bakery by typing its address.
+ */
 export async function currentUser(req: Request): Promise<User | null> {
-  const token = req.signedCookies?.[SESSION_COOKIE];
-  if (typeof token !== "string" || !token) return null;
+  const token = tokenFrom(req);
+  if (!token) return null;
   const session = await authStore.findSession(hashToken(token));
   if (!session) return null;
   return authStore.findUserById(session.userId);

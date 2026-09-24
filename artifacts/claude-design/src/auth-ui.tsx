@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch, rememberSession } from "./api";
 
 // The sign-in screen is a real React component rendered over the app, not part
 // of the generated template. The template is one large string patched by exact
@@ -10,17 +11,16 @@ export type SignedInUser = { email: string; displayName: string | null; isAdmin:
 type Mode = "signin" | "signup";
 
 async function post(path: string, body?: unknown): Promise<Response> {
-  return fetch(path, {
+  return apiFetch(path, {
     method: "POST",
     headers: body ? { "Content-Type": "application/json" } : {},
     body: body ? JSON.stringify(body) : undefined,
-    credentials: "same-origin",
   });
 }
 
 export async function fetchCurrentUser(): Promise<SignedInUser | null> {
   try {
-    const response = await fetch("/api/auth/me", { credentials: "same-origin" });
+    const response = await apiFetch("/api/auth/me");
     if (!response.ok) return null;
     const payload = (await response.json()) as { user?: SignedInUser | null };
     return payload.user ?? null;
@@ -31,6 +31,8 @@ export async function fetchCurrentUser(): Promise<SignedInUser | null> {
 
 export async function signOut(): Promise<void> {
   await post("/api/auth/logout").catch(() => undefined);
+  // the app keeps its own copy of the session; signing out has to drop it too
+  rememberSession(null);
   // A full reload is deliberate: it clears every trace of the previous baker's
   // workspace from memory rather than trying to unpick it.
   window.location.reload();
@@ -107,7 +109,7 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
   useEffect(() => {
     // Only offer Google when the server actually has it configured, rather than
     // showing a button that dead-ends.
-    fetch("/api/auth/google/available", { credentials: "same-origin" })
+    apiFetch("/api/auth/google/available")
       .then((response) => (response.ok ? response.json() : { available: false }))
       .then((payload: { available?: boolean }) => setGoogleReady(payload.available === true))
       .catch(() => setGoogleReady(false));
@@ -125,12 +127,16 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
       );
       const payload = (await response.json().catch(() => ({}))) as {
         user?: SignedInUser;
+        token?: string;
         error?: string;
       };
       if (!response.ok || !payload.user) {
         setError(payload.error || "Something went wrong. Try again.");
         return;
       }
+      // In a browser the cookie is enough; in the app it is the token that
+      // proves who this is on every later request.
+      if (payload.token) rememberSession(payload.token);
       onSignedIn(payload.user);
     } catch {
       setError("Could not reach Baketly. Check your connection.");

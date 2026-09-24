@@ -5,6 +5,7 @@ import { loginSchema, signupSchema } from "@workspace/db";
 import { authStore } from "../lib/auth-store";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { currentUser, endSession, isAdmin, requireUser, startSession } from "../lib/session";
+import { workspaceStore } from "../lib/workspace-store";
 
 const router: IRouter = Router();
 
@@ -63,9 +64,10 @@ router.post("/auth/signup", json({ limit: "8kb" }), async (req: Request, res: Re
       displayName: displayName ?? null,
       passwordHash: await hashPassword(password),
     });
-    await startSession(res, user.id);
+    // the token goes back as well, for the phone app that cannot keep a cookie
+    const token = await startSession(res, user.id);
     req.log.info({ userId: user.id }, "Account created");
-    res.status(201).json({ user: publicUser(user) });
+    res.status(201).json({ user: publicUser(user), token });
   } catch (error) {
     req.log.warn({ err: error }, "Signup failed");
     res.status(503).json({ error: "Could not create the account. Try again." });
@@ -91,8 +93,8 @@ router.post("/auth/login", json({ limit: "8kb" }), async (req: Request, res: Res
       return;
     }
 
-    await startSession(res, user.id);
-    res.json({ user: publicUser(user) });
+    const token = await startSession(res, user.id);
+    res.json({ user: publicUser(user), token });
   } catch (error) {
     req.log.warn({ err: error }, "Login failed");
     res.status(503).json({ error: "Could not sign you in. Try again." });
@@ -123,6 +125,30 @@ router.post("/auth/logout-everywhere", requireUser, async (req: Request, res: Re
   await authStore.deleteUserSessions(req.user!.id);
   await endSession(req, res);
   res.json({ ok: true });
+});
+
+/**
+ * Leaving, and taking the bakery with them.
+ *
+ * Apple requires any app that lets someone sign up to let them delete the
+ * account from inside it, and it is the right behaviour regardless: a baker
+ * who asks to be forgotten should not leave their recipes, sales and markets
+ * on a server. The workspace goes first — if that fails, the account survives
+ * and can be deleted again, which is better than an orphaned bakery nobody
+ * can reach.
+ */
+router.delete("/auth/account", requireUser, async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  try {
+    await workspaceStore.remove(userId);
+    await authStore.deleteUser(userId);
+    await endSession(req, res);
+    req.log.info({ userId }, "Account deleted");
+    res.json({ ok: true });
+  } catch (error) {
+    req.log.warn({ err: error, userId }, "Account deletion failed");
+    res.status(503).json({ error: "Could not delete the account. Try again." });
+  }
 });
 
 // ── Google ──────────────────────────────────────────────────────────────

@@ -8,6 +8,8 @@
 // buildAskContext is kept for now because other screens still import it; it no
 // longer travels anywhere.
 
+import { apiFetch } from "./api";
+
 export type AskAnswer = {
   answer: string;
   wins: string[];
@@ -301,7 +303,7 @@ export async function askBaketly(
   // the server may call several tools before it answers
   const timeout = window.setTimeout(() => controller.abort(), 60_000);
   try {
-    const response = await fetch("/api/ask", {
+    const response = await apiFetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, history: history.slice(-8), lastTools }),

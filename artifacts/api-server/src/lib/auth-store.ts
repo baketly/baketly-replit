@@ -19,6 +19,9 @@ export interface AuthStore {
   findSession(tokenHash: string): Promise<Session | null>;
   deleteSession(tokenHash: string): Promise<void>;
   deleteUserSessions(userId: string): Promise<void>;
+  /** Removes the account itself. Apple requires an app with sign-up to offer
+   *  this, and a baker who leaves should leave completely. */
+  deleteUser(userId: string): Promise<void>;
 }
 
 /** Sessions are stored by hash; the token itself only lives in the cookie. */
@@ -69,6 +72,10 @@ class DrizzleAuthStore implements AuthStore {
   }
   async deleteUserSessions(userId: string): Promise<void> {
     await db.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
+  }
+  async deleteUser(userId: string): Promise<void> {
+    await db.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
+    await db.delete(usersTable).where(eq(usersTable.id, userId));
   }
 }
 
@@ -127,6 +134,12 @@ class MemoryAuthStore implements AuthStore {
   async deleteUserSessions(userId: string) {
     for (const [key, row] of this.sessions) {
       if (row.userId === userId) this.sessions.delete(key);
+    }
+  }
+  async deleteUser(userId: string) {
+    await this.deleteUserSessions(userId);
+    for (const [key, row] of this.users) {
+      if (row.id === userId) this.users.delete(key);
     }
   }
 }

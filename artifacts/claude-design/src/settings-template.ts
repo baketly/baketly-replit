@@ -77,7 +77,25 @@ const settingsController = `      ...(() => {
           setMarketAt: e => setReminders({ marketAt: e.target.value }),
 
           reminderTimes: timeChoices,
-          reminderZoneLabel: 'Times are in ' + phoneZone.replace(/_/g, ' ') + ', from this phone.'
+          reminderZoneLabel: 'Times are in ' + phoneZone.replace(/_/g, ' ') + ', from this phone.',
+
+          // Leaving. Asked twice on purpose: this takes the recipes, the
+          // markets and the sales with it, and there is no undo.
+          accountDeleteOpen: this.state.accountDeleteOpen === true,
+          askDeleteAccount: () => this.setState({ accountDeleteOpen: true, accountDeleteError: '' }),
+          cancelDeleteAccount: () => this.setState({ accountDeleteOpen: false }),
+          accountDeleteError: this.state.accountDeleteError || '',
+          accountDeleting: this.state.accountDeleting === true,
+          confirmDeleteAccount: () => {
+            if (this.state.accountDeleting) return;
+            this.setState({ accountDeleting: true, accountDeleteError: '' });
+            window.__baketlyDeleteAccount().catch(error => {
+              this.setState({
+                accountDeleting: false,
+                accountDeleteError: (error && error.message) ? error.message : 'Could not delete the account.'
+              });
+            });
+          }
         };
       })(),
 `;
@@ -215,6 +233,31 @@ const settingsScreen = `
         </div>
         <button class="btn btn-secondary" sc-camel-on-click="{{ signOutNow }}" style="flex:none;min-height:40px;padding:0 14px;font-size:13px">Sign out</button>
       </div>
+
+      <div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;padding:14px 16px;margin-top:14px">
+        <div class="text-muted" style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">Delete account</div>
+        <div class="text-muted" style="font-size:12px;line-height:1.5;margin-bottom:10px">Removes your account and everything in it — recipes, ingredients, packaging, sales, markets and prices. This cannot be undone.</div>
+        <button class="btn btn-secondary" sc-camel-on-click="{{ askDeleteAccount }}" style="min-height:40px;font-size:13px;color:#b0563e">Delete my account</button>
+      </div>
+
+      <sc-if value="{{ accountDeleteOpen }}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-modal="true" aria-label="Delete account confirmation" style="position:fixed;inset:0;z-index:60;background:rgba(30,27,22,.45);display:flex;align-items:center;justify-content:center;padding:20px">
+          <div class="card" style="width:min(100%,360px);padding:22px;gap:12px">
+            <h3 style="margin:0">Delete your account?</h3>
+            <p class="text-muted" style="font-size:13px;line-height:1.55;margin:0">Everything goes with it: your recipes and what they cost, your sales, your markets and their results, and the local prices Baketly found for you. Baketly cannot get any of it back.</p>
+            <sc-if value="{{ accountDeleteError }}" hint-placeholder-val="">
+              <div style="color:#b0563e;font-size:12px">{{ accountDeleteError }}</div>
+            </sc-if>
+            <sc-if value="{{ accountDeleting }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:9px"><span class="bk-spinner" aria-hidden="true"></span><span class="text-muted" style="font-size:12px">Deleting…</span></div>
+            </sc-if>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px">
+              <button class="btn btn-secondary" sc-camel-on-click="{{ cancelDeleteAccount }}" style="min-height:44px">Keep my account</button>
+              <button class="btn btn-primary" sc-camel-on-click="{{ confirmDeleteAccount }}" style="min-height:44px;background:#b0563e;border-color:#b0563e">Delete everything</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
     </sc-if>
     <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ false }}">
       <div class="text-muted" style="font-size:13px;line-height:1.5;padding:14px 0">You are not signed in, so nothing is being saved to your account on this device.</div>

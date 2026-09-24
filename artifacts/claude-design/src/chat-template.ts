@@ -90,7 +90,7 @@ const chatControllerLogic = `      ...(() => {
         // once, quietly; the canned prompts below stand in until they arrive.
         if (!this.__baketlySuggestionsAsked) {
           this.__baketlySuggestionsAsked = true;
-          fetch('/api/ask/suggestions')
+          window.__baketlyApiFetch('/api/ask/suggestions')
             .then(response => (response.ok ? response.json() : null))
             .then(payload => {
               const list = payload && Array.isArray(payload.suggestions) ? payload.suggestions : [];

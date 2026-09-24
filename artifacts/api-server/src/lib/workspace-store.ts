@@ -7,6 +7,9 @@ export type WorkspaceRecord = { data: unknown; updatedAt: Date } | null;
 export interface WorkspaceStore {
   get(userId: string): Promise<WorkspaceRecord>;
   put(userId: string, data: unknown): Promise<{ data: unknown; updatedAt: Date }>;
+  /** Deleting an account has to take the bakery with it, or the recipes and
+   *  sales outlive the person who asked to be forgotten. */
+  remove(userId: string): Promise<void>;
 }
 
 class DrizzleWorkspaceStore implements WorkspaceStore {
@@ -28,6 +31,9 @@ class DrizzleWorkspaceStore implements WorkspaceStore {
       .returning();
     return { data: row.data, updatedAt: row.updatedAt };
   }
+  async remove(userId: string): Promise<void> {
+    await db.delete(workspaceStateTable).where(eq(workspaceStateTable.id, userId));
+  }
 }
 
 /**
@@ -44,6 +50,9 @@ class MemoryWorkspaceStore implements WorkspaceStore {
     const row = { data, updatedAt: new Date() };
     this.rows.set(userId, row);
     return row;
+  }
+  async remove(userId: string) {
+    this.rows.delete(userId);
   }
 }
 

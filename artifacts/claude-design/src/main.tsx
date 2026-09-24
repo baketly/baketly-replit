@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { apiFetch, rememberSession } from "./api";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
 import { applyRecipeRecordBehavior } from "./recipe-template";
 import { applyAnalyticsBehavior } from "./analytics-template";
@@ -43,6 +44,9 @@ declare global {
     __baketlySuggestPlaces: (query: string) => Promise<string[]>;
     __baketlySignOut: () => Promise<void>;
     __baketlySignedInEmail: string;
+    /** the injected screens cannot import, so they reach the API through here */
+    __baketlyApiFetch: (path: string, init?: RequestInit) => Promise<Response>;
+    __baketlyDeleteAccount: () => Promise<void>;
     __baketlySampleWorkspace: (
       ingredientMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
       packagingMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
@@ -130,9 +134,8 @@ async function requestState(
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch("/api/workspace-state", {
+    const response = await apiFetch("/api/workspace-state", {
       ...init,
-      credentials: "same-origin",
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`Workspace request failed: ${response.status}`);
@@ -310,6 +313,18 @@ window.__baketlyMarketCheckDue = (check) =>
 window.__baketlySuggestPlaces = suggestPlaces;
 window.__baketlyAsk = askBaketly;
 window.__baketlyAskContext = buildAskContext;
+window.__baketlyApiFetch = apiFetch;
+// Leaving for good: the server forgets the bakery, then the app forgets the
+// session and starts again at the sign-in screen.
+window.__baketlyDeleteAccount = async () => {
+  const response = await apiFetch("/api/auth/account", { method: "DELETE" });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(payload.error || "Could not delete the account.");
+  }
+  rememberSession(null);
+  window.location.reload();
+};
 window.__baketlyReady = workspaceClient.hydrate();
 // The state that says which page is showing. When any of it changes the user
 // has gone somewhere new, and that page should start at its top rather than

@@ -2,6 +2,8 @@
 // the baker, so they can see when a price is out of step with the area.
 
 /** One competitor listing: what a shop sells, at what price, and where that was read. */
+import { apiFetch } from "./api";
+
 export type MarketCompetitor = {
   name: string;
   price: number | null;
@@ -91,7 +93,7 @@ export async function suggestPlaces(query: string): Promise<string[]> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 6_000);
   try {
-    const response = await fetch("/api/places?q=" + encodeURIComponent(query.trim()), {
+    const response = await apiFetch("/api/places?q=" + encodeURIComponent(query.trim()), {
       signal: controller.signal,
     });
     if (!response.ok) return [];
@@ -115,7 +117,7 @@ export async function runMarketCheck(
   // grounded research runs two model passes and real searches, so allow for it
   const timeout = window.setTimeout(() => controller.abort(), 150_000);
   try {
-    const response = await fetch("/api/market-check", {
+    const response = await apiFetch("/api/market-check", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ location, products: products.slice(0, 12), currency }),
