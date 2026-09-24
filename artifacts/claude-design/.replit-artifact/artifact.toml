@@ -1,6 +1,6 @@
 kind = "web"
 version = "1.0.0"
-title = "Claude design"
+title = "Baketly"
 previewPath = "/"
 id = "artifacts/claude-design"
 router = "path"
