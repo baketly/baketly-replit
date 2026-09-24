@@ -2,8 +2,11 @@ import { randomBytes } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import type { User } from "@workspace/db";
 import { authStore, hashToken } from "./auth-store";
+import { SESSION_COOKIE } from "./session-cookie";
+import { tokensFrom } from "./session-token";
 
-export const SESSION_COOKIE = "baketly_session";
+export { SESSION_COOKIE };
+
 const SESSION_DAYS = 30;
 
 declare global {
@@ -46,18 +49,11 @@ export async function startSession(res: Response, userId: string): Promise<strin
   return token;
 }
 
-/** The session token on a request, from the cookie or the bearer header. */
-function tokenFrom(req: Request): string | null {
-  const cookie = req.signedCookies?.[SESSION_COOKIE];
-  if (typeof cookie === "string" && cookie) return cookie;
-  const header = req.get("authorization") || "";
-  const bearer = header.match(/^Bearer\s+(.+)$/i);
-  return bearer ? bearer[1].trim() : null;
-}
 
 export async function endSession(req: Request, res: Response): Promise<void> {
-  const token = tokenFrom(req);
-  if (token) await authStore.deleteSession(hashToken(token));
+  // signing out ends every session this request could have been using, not
+  // just the first one that happened to answer for it
+  for (const token of tokensFrom(req)) await authStore.deleteSession(hashToken(token));
   res.clearCookie(SESSION_COOKIE, { ...cookieOptions(0), maxAge: undefined });
 }
 
@@ -69,19 +65,19 @@ export async function endSession(req: Request, res: Response): Promise<void> {
  * another bakery by typing its address.
  */
 export async function currentUser(req: Request): Promise<User | null> {
-  const token = tokenFrom(req);
-  if (!token) return null;
-  const session = await authStore.findSession(hashToken(token));
-  if (!session) return null;
-  return authStore.findUserById(session.userId);
+  for (const token of tokensFrom(req)) {
+    const session = await authStore.findSession(hashToken(token));
+    if (session) return authStore.findUserById(session.userId);
+  }
+  return null;
 }
 
 /**
  * Gate for anything that touches a baker's data.
  *
- * The identity comes from the signed cookie alone. No route may accept a user
- * id or email from the request body or query: that would let anyone read
- * another account by typing its address.
+ * The identity comes from the session cookie or bearer token alone. No route
+ * may accept a user id or email from the request body or query: that would
+ * let anyone read another account by typing its address.
  */
 export function requireUser(req: Request, res: Response, next: NextFunction): void {
   currentUser(req)
