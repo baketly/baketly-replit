@@ -9,11 +9,19 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@capacitor-community/speech-recognition": "^7.0.1",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/ios": "^7.6.9",
+    "@capacitor/local-notifications": "^7.0.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.9",
     "@vitejs/plugin-react": "^4.3.4",
+    "sharp": "^0.35.4",
     "vite": "^6.0.7"
   }
 }
