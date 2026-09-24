@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { apiFetch, rememberSession } from "./api";
+import { apiBase, apiFetch, rememberSession } from "./api";
+import { canUseNativeGoogle, startNativeGoogleSignIn } from "./native-auth";
 
 // The sign-in screen is a real React component rendered over the app, not part
 // of the generated template. The template is one large string patched by exact
@@ -221,7 +222,20 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
               or
               <span style={{ flex: 1, height: 1, background: "var(--color-divider, #e6e0d4)" }} />
             </div>
-            <a href="/api/auth/google" style={{ ...secondary, textDecoration: "none" }}>
+            {/* In a browser this is an ordinary link. In the app it opens the
+                system's own browser sheet instead, because Google will not
+                accept a sign-in from inside an app's web view. */}
+            <a
+              href={apiBase() + "/api/auth/google"}
+              onClick={(event) => {
+                if (!canUseNativeGoogle()) return;
+                event.preventDefault();
+                startNativeGoogleSignIn().catch(() =>
+                  setError("Could not open Google sign-in. Try your email and password."),
+                );
+              }}
+              style={{ ...secondary, textDecoration: "none" }}
+            >
               <svg width="17" height="17" viewBox="0 0 48 48" aria-hidden="true">
                 <path fill="#4285F4" d="M45 24c0-1.6-.1-2.7-.4-3.9H24v7.1h12c-.2 1.9-1.5 4.7-4.4 6.6l6.7 5.2C42.2 35.5 45 30.3 45 24z" />
                 <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4c-1.8 1.3-4.3 2.2-7.6 2.2-5.8 0-10.7-3.8-12.5-9.1l-7.1 5.5C8 41.1 15.4 46 24 46z" />

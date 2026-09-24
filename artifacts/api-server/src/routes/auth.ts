@@ -152,6 +152,8 @@ router.delete("/auth/account", requireUser, async (req: Request, res: Response) 
 });
 
 // ── Google ──────────────────────────────────────────────────────────────
+/** The app answers to this, and iOS registers it from the Capacitor config. */
+const APP_SCHEME = process.env.APP_URL_SCHEME || "baketly";
 function googleConfig() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -172,7 +174,12 @@ router.get("/auth/google", (req: Request, res: Response) => {
   }
   // A random value echoed back by Google and compared on return, so another
   // site cannot start a sign-in that completes in this browser.
-  const state = randomBytes(16).toString("base64url");
+  // The app cannot finish a sign-in the way a web page does: it has no page
+  // to land on. The round trip is marked here, in the same state value that
+  // Google echoes back, so the end of the flow knows where to send the baker
+  // — back into the app through its own URL scheme, carrying the session.
+  const native = req.query.native === "1";
+  const state = (native ? "native." : "web.") + randomBytes(16).toString("base64url");
   res.cookie(OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
     maxAge: 10 * 60_000,
@@ -247,8 +254,15 @@ router.get("/auth/google/callback", async (req: Request, res: Response) => {
       }
     }
 
-    await startSession(res, user.id);
-    req.log.info({ userId: user.id }, "Signed in with Google");
+    const token = await startSession(res, user.id);
+    req.log.info({ userId: user.id, native: state.startsWith("native.") }, "Signed in with Google");
+    if (state.startsWith("native.")) {
+      // Safari hands this URL to iOS, which opens Baketly with the session on
+      // it. It carries the token rather than relying on the cookie, because
+      // the cookie was set for Safari and the app cannot read it.
+      res.redirect(APP_SCHEME + "://auth?token=" + encodeURIComponent(token));
+      return;
+    }
     res.redirect("/");
   } catch (error) {
     req.log.warn({ err: error }, "Google sign-in failed");

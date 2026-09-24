@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { apiFetch, rememberSession } from "./api";
+import { listenForSignInReturn } from "./native-auth";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
 import { applyRecipeRecordBehavior } from "./recipe-template";
 import { applyAnalyticsBehavior } from "./analytics-template";
@@ -392,6 +393,9 @@ function AuthBoundary() {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    // iOS hands the app back its session after a Google sign-in; when it does,
+    // start again from the top rather than leaving the gate on screen.
+    listenForSignInReturn(() => window.location.reload());
     fetchCurrentUser().then((found) => {
       // the generated Settings screen reads this to show who is signed in
       window.__baketlySignedInEmail = found ? found.email : "";
