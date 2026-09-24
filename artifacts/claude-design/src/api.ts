@@ -27,8 +27,16 @@ export function apiBase(): string {
   return "";
 }
 
-/** True when the page was served by the app rather than by a web server. */
+/**
+ * True when the page was served by the app rather than by a web server.
+ *
+ * The overrides exist so the native layout can be looked at in a browser: until
+ * there is a signed build on a device, "?native=1" is the only way to see what
+ * the phone will show.
+ */
 export function isNativeApp(): boolean {
+  if ((window as { __BAKETLY_FORCE_NATIVE?: unknown }).__BAKETLY_FORCE_NATIVE === true) return true;
+  if (window.location.search.includes("native=1")) return true;
   return /^(capacitor|ionic):$/.test(window.location.protocol);
 }
 
