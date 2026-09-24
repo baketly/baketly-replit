@@ -125,6 +125,9 @@ const chatControllerLogic = `      ...(() => {
         // at all, so wrapping this app for iOS — Capacitor, Cordova, a Home
         // Screen PWA — leaves the button dead unless a native recogniser is
         // plugged in behind it.
+        // Inside the app the browser has no recogniser, so the native one is
+        // used instead; both answer the same three verbs.
+        const native = window.__baketlyNativeSpeech ? window.__baketlyNativeSpeech() : null;
         const Listener = window.SpeechRecognition || window.webkitSpeechRecognition;
         const stopListening = () => {
           if (!this.__baketlyVoice) return;
@@ -133,6 +136,16 @@ const chatControllerLogic = `      ...(() => {
         };
         const toggleVoice = () => {
           if (this.__baketlyVoice) { stopListening(); this.setState({ chatListening: false }); return; }
+          if (native) {
+            const already = String(this.state.chatDraft || '').trim();
+            this.__baketlyVoice = { stop: () => native.stop() };
+            this.setState({ chatListening: true, chatError: '' });
+            native.start(
+              heard => this.setState({ chatDraft: ((already ? already + ' ' : '') + String(heard || '').trim()).slice(0, 500) }),
+              message => { this.__baketlyVoice = null; this.setState({ chatListening: false, chatError: message }); }
+            ).then(() => { this.__baketlyVoice = null; this.setState({ chatListening: false }); });
+            return;
+          }
           if (!Listener) {
             this.setState({ chatError: 'This browser cannot listen. Type your question instead.' });
             return;

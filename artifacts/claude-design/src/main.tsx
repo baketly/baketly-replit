@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { apiFetch, rememberSession } from "./api";
 import { listenForSignInReturn } from "./native-auth";
+import { keepRemindersFresh } from "./native-reminders";
+import { nativeSpeech } from "./native-speech";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
 import { applyRecipeRecordBehavior } from "./recipe-template";
 import { applyAnalyticsBehavior } from "./analytics-template";
@@ -47,6 +49,7 @@ declare global {
     __baketlySignedInEmail: string;
     /** the injected screens cannot import, so they reach the API through here */
     __baketlyApiFetch: (path: string, init?: RequestInit) => Promise<Response>;
+    __baketlyNativeSpeech: () => import("./native-speech").NativeSpeech | null;
     __baketlyDeleteAccount: () => Promise<void>;
     __baketlySampleWorkspace: (
       ingredientMeta: Record<string, { name?: string; unit?: string; per?: number } | undefined>,
@@ -315,6 +318,10 @@ window.__baketlySuggestPlaces = suggestPlaces;
 window.__baketlyAsk = askBaketly;
 window.__baketlyAskContext = buildAskContext;
 window.__baketlyApiFetch = apiFetch;
+// the injected chat screen reaches the phone's own recogniser through this
+window.__baketlyNativeSpeech = nativeSpeech;
+// and the phone raises Baketly's reminders itself, topped up on every launch
+keepRemindersFresh();
 // Leaving for good: the server forgets the bakery, then the app forgets the
 // session and starts again at the sign-in screen.
 window.__baketlyDeleteAccount = async () => {
