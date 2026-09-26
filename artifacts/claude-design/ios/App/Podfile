@@ -1,6 +1,9 @@
 require_relative '../../../../node_modules/.pnpm/@capacitor+ios@7.6.9_@capacitor+core@7.6.9/node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '14.0'
+# Xcode no longer accepts a deployment target below 15.0, and Capacitor
+# generates this project at 14.0. Every pod inherits this line through
+# assertDeploymentTarget below, so raising it here raises all of them.
+platform :ios, '15.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires
