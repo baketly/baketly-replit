@@ -27,4 +27,18 @@ end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
+
+  # Capacitor's helper above pins every pod to exactly 14.0, whatever the
+  # platform line says, and the plugins' own podspecs ask for 14.0 too.
+  # Current Xcode refuses to build anything below 15.0, so each pod is
+  # raised here after the fact. Without this the app and all six pods fail
+  # together, every one of them naming the same deployment target.
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      current = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f
+      if current != 0.0 && current < 15.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      end
+    end
+  end
 end
