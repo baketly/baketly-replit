@@ -47,3 +47,49 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
 }
+
+// A window, in the way iOS now insists on.
+//
+// Built against the iOS 26 SDK, an app that still uses the old
+// application-wide lifecycle is stopped by UIKit before it draws anything.
+// Capacitor generates the old shape, so the migration is done here. For a
+// single-window app it is almost entirely declarative: the scene manifest in
+// Info.plist names this class and the Main storyboard, and UIKit builds the
+// window and Capacitor's view controller from that.
+//
+// The forwarding below is the part that would be missed. Once an app has a
+// scene, UIKit stops calling the application delegate's open-url and
+// continue-activity methods, so Capacitor would never learn about a URL the
+// app was opened with — which is how Google hands a finished sign-in back
+// through baketly://auth.
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+
+    var window: UIWindow?
+
+    func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        // a cold launch that came from a link carries it here instead
+        if let url = connectionOptions.urlContexts.first?.url {
+            _ = ApplicationDelegateProxy.shared.application(
+                UIApplication.shared, open: url, options: [:])
+        }
+        if let activity = connectionOptions.userActivities.first {
+            _ = ApplicationDelegateProxy.shared.application(
+                UIApplication.shared, continue: activity, restorationHandler: { _ in })
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let url = URLContexts.first?.url else { return }
+        _ = ApplicationDelegateProxy.shared.application(
+            UIApplication.shared, open: url, options: [:])
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        _ = ApplicationDelegateProxy.shared.application(
+            UIApplication.shared, continue: userActivity, restorationHandler: { _ in })
+    }
+}
