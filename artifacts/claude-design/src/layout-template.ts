@@ -153,6 +153,19 @@ export function fillTheScreen(template: string, native: boolean): string {
     "app shell",
   );
 
+  // iOS zooms the whole page in when a field's text is smaller than 16px, so
+  // the keyboard can be read — and it does not reliably zoom back out. The
+  // app came back from its first sign-in magnified, needing to be dragged
+  // around to be read. Every control is given the size that stops it.
+  const styleAnchor = "    .bk-row:active{background:rgba(60,55,30,.05)}";
+  if (!out.includes(styleAnchor)) throw new Error("Missing style anchor for field sizes");
+  out = out.replace(
+    styleAnchor,
+    () =>
+      styleAnchor +
+      "\n    input,select,textarea,.input{font-size:16px !important}",
+  );
+
   // olive is the backdrop the site's frame sits on. In the app nothing sits on
   // it except an over-scrolled list, bouncing back against a green wall
   out = once(

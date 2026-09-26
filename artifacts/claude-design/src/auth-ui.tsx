@@ -68,7 +68,9 @@ const field: React.CSSProperties = {
   border: "1px solid var(--color-neutral-300, #d9d3c6)",
   borderRadius: 12,
   padding: "12px 13px",
-  fontSize: 15,
+  // 16px exactly: below it, iOS zooms the page in when the field is focused
+  // and does not zoom back out, which left the app magnified after sign-in
+  fontSize: 16,
   fontFamily: "inherit",
   color: "inherit",
   background: "#fff",
