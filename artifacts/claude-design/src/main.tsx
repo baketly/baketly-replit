@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { apiFetch, rememberSession } from "./api";
 import { listenForSignInReturn } from "./native-auth";
-import { showLoadingScreen } from "./loading-screen";
+import { ensureViewport, showLoadingScreen } from "./loading-screen";
 import { keepRemindersFresh } from "./native-reminders";
 import { nativeSpeech } from "./native-speech";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
@@ -366,6 +366,9 @@ window.__baketlyDeleteAccount = async () => {
 };
 // the placeholder is on screen from the first paint; replace it before the
 // long part of the wait rather than after it
+// before anything is drawn: without a viewport the sign-in screen is laid out
+// for a desktop and scaled down, then jumps when the app template arrives
+ensureViewport();
 showLoadingScreen();
 window.__baketlyReady = workspaceClient.hydrate();
 // The state that says which page is showing. When any of it changes the user
