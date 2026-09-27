@@ -11,7 +11,8 @@
 // and the workspace has to come back from the server before anything can be
 // drawn — so it may as well be a loaf in an oven.
 
-const OVEN = "#0d3b30";
+// the mark's own green, sampled from the artwork
+const OVEN = "#063930";
 const CREAM = "#faf6f0";
 const DOUGH = "#f0dcb4";
 const CRUST = "#c98b3f";
