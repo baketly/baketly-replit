@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { apiFetch, rememberSession } from "./api";
 import { listenForSignInReturn } from "./native-auth";
+import { showLoadingScreen } from "./loading-screen";
 import { keepRemindersFresh } from "./native-reminders";
 import { nativeSpeech } from "./native-speech";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
@@ -130,9 +131,17 @@ function selectDurableState(state: WorkspaceState): WorkspaceState {
   );
 }
 
+/**
+ * A read or write of the workspace.
+ *
+ * The default suits a save, which happens constantly and can be retried
+ * without anyone noticing. The first read is given far longer by its caller:
+ * nothing can be drawn until it answers, and a server that has scaled to zero
+ * takes several seconds to wake.
+ */
 async function requestState(
   init?: RequestInit,
-  timeoutMs = 1500,
+  timeoutMs = 8000,
 ): Promise<WorkspaceState> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -152,6 +161,8 @@ async function requestState(
 
 class WorkspaceStateClient {
   private status: PersistenceStatus = "loading";
+  // true only once the workspace has actually been read back from the server
+  private loaded = false;
   private queuedState: { revision: number; state: WorkspaceState } | null = null;
   private saving = false;
   private timer: number | null = null;
@@ -171,14 +182,28 @@ class WorkspaceStateClient {
     this.listeners.forEach((listener) => listener(status));
   }
 
+  /**
+   * Reads the workspace before anything is drawn.
+   *
+   * Given twenty seconds and two further attempts, because the alternative is
+   * worse than a slow start: an empty workspace looks exactly like a new
+   * baker's, so the app opens on the setup flow — and then saves that
+   * emptiness over a real bakery. Until this succeeds, saving is refused.
+   */
   async hydrate(): Promise<void> {
-    try {
-      window.__baketlyServerState = await requestState();
-      this.setStatus("ready");
-    } catch {
-      window.__baketlyServerState = {};
-      this.setStatus("offline");
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        window.__baketlyServerState = await requestState(undefined, 20_000);
+        this.loaded = true;
+        this.setStatus("ready");
+        return;
+      } catch {
+        // a cold server, or a phone on a poor signal: wait, then ask again
+        if (attempt < 2) await new Promise((wake) => window.setTimeout(wake, 800));
+      }
     }
+    window.__baketlyServerState = {};
+    this.setStatus("offline");
   }
 
   queue(state: WorkspaceState) {
@@ -204,6 +229,12 @@ class WorkspaceStateClient {
   }
 
   flush = () => {
+    // Never write a workspace that was never read. A failed load leaves the
+    // app holding its defaults, and saving those would erase the bakery.
+    if (!this.loaded) {
+      this.setStatus("offline");
+      return;
+    }
     if (this.saving || !this.queuedState) return;
 
     const pendingSave = this.queuedState;
@@ -333,6 +364,9 @@ window.__baketlyDeleteAccount = async () => {
   rememberSession(null);
   window.location.reload();
 };
+// the placeholder is on screen from the first paint; replace it before the
+// long part of the wait rather than after it
+showLoadingScreen();
 window.__baketlyReady = workspaceClient.hydrate();
 // The state that says which page is showing. When any of it changes the user
 // has gone somewhere new, and that page should start at its top rather than
