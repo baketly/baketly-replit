@@ -82,7 +82,11 @@ const homeController = `      ...(() => {
             todoDotColor: isPicked ? '#f5d58f' : '#d4953a',
             bg: isPicked ? 'var(--color-accent)' : (isToday ? 'var(--color-accent-100)' : 'transparent'),
             color: isPicked ? '#ffffff' : 'var(--color-text)',
-            border: isToday && !isPicked ? '1px solid var(--color-accent-300)' : '1px solid transparent',
+            // every day carries its outline, so the row reads as seven
+            // buttons rather than one selected day floating in space
+            border: isPicked
+              ? '1px solid var(--color-accent)'
+              : (isToday ? '1px solid var(--color-accent-300)' : '1px solid var(--color-neutral-400)'),
             pick: () => this.setState({ homeDayIndex: offset })
           });
         }
@@ -294,12 +298,16 @@ const quickAction = (handler: string, label: string, path: string) =>
   `<span style="font-size:9.5px;font-weight:600;line-height:1.2;text-align:center;letter-spacing:-0.01em">${label}</span></button>`;
 
 const homeMarkup = `
-<div style="padding:18px 20px 28px">
+<div style="padding:0 20px 28px">
 
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:22px">
+  <!-- The greeting runs the full width of the screen and carries its own
+       ground, so opening the app lands on something that looks like a
+       morning rather than a list. The negative margins undo the screen's
+       side padding; the rounded bottom keeps it from reading as a bar. -->
+  <div style="margin:0 -20px 20px;padding:22px 20px 24px;background:var(--color-accent-100);border-radius:0 0 26px 26px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
     <div style="min-width:0">
-      <h2 style="font-size:26px;line-height:1.2;margin:0 0 4px">{{ homeGreeting }}</h2>
-      <div class="text-muted" style="font-size:13px">{{ homeToday }}</div>
+      <h2 style="font-size:31px;line-height:1.15;margin:0 0 6px;letter-spacing:-0.01em">{{ homeGreeting }}</h2>
+      <div class="text-muted" style="font-size:13.5px">{{ homeToday }}</div>
     </div>
     <div style="display:flex;gap:6px;flex:none">
       ${iconButton("goChat", "Ask Baketly", '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"></path>')}
@@ -309,9 +317,9 @@ const homeMarkup = `
 
   <div style="display:flex;gap:6px;margin-bottom:20px">
     <sc-for list="{{ homeWeek }}" as="day" hint-placeholder-count="7">
-      <div sc-camel-on-click="{{ day.pick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;border-radius:14px;cursor:pointer;background:{{ day.bg }};color:{{ day.color }};border:{{ day.border }};box-sizing:border-box">
-        <span style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.75">{{ day.letter }}</span>
-        <span style="font-size:15px;font-weight:600;font-feature-settings:'tnum'">{{ day.number }}</span>
+      <div sc-camel-on-click="{{ day.pick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:14px 0 11px;border-radius:18px;cursor:pointer;background:{{ day.bg }};color:{{ day.color }};border:{{ day.border }};box-sizing:border-box">
+        <span style="font-size:17px;font-weight:600;line-height:1.1;font-feature-settings:'tnum'">{{ day.number }}</span>
+        <span style="font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.7">{{ day.letter }}</span>
         <span style="display:flex;gap:3px"><span style="width:4px;height:4px;border-radius:50%;background:{{ day.dotColor }};opacity:{{ day.dotOpacity }}"></span><span style="width:4px;height:4px;border-radius:50%;background:{{ day.todoDotColor }};opacity:{{ day.todoDotOpacity }}"></span></span>
       </div>
     </sc-for>
