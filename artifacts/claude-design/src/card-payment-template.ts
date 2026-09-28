@@ -33,20 +33,23 @@ function retireTheCardButton(template: string): string {
 }
 
 /**
- * Cash becomes what the till opens on.
+ * The till takes cash, full stop.
  *
- * The method was card unless it was cash — an absent choice meant card — so
- * with the card button retired the screen would have opened on a method a
- * baker can no longer choose, showing the card panel and no way back to it.
+ * Not "cash unless card is chosen": there is no way to choose card, so the
+ * card panel — a dashed target inviting a phone to be tapped against it, with
+ * a charge waiting behind it — must not appear at all. Leaving it to the
+ * stored method meant a till that had been on card still opened there and
+ * still offered to take a payment that cannot happen.
+ *
+ * Both flags are decided here rather than read from state, so there is no
+ * value of posMethod that brings the card panel back.
  */
-function cashByDefault(template: string): string {
+function cashOnly(template: string): string {
   const anchor = "posOnCard: posMethod !== 'cash', posOnCash: posMethod === 'cash',";
   if (template.split(anchor).length - 1 !== 1) {
     throw new Error("Missing payment method anchor");
   }
-  return template
-    .split(anchor)
-    .join("posOnCard: posMethod === 'card', posOnCash: posMethod !== 'card',");
+  return template.split(anchor).join("posOnCard: false, posOnCash: true,");
 }
 
 /** And the segment's colours, which followed the same "not cash" rule. */
@@ -56,9 +59,7 @@ function cashLooksChosen(template: string): string {
   if (template.split(anchor).length - 1 !== 1) {
     throw new Error("Missing cash segment anchor");
   }
-  return template
-    .split(anchor)
-    .join("segCashBg: posMethod !== 'card' ? 'var(--color-accent)' : 'transparent',");
+  return template.split(anchor).join("segCashBg: 'var(--color-accent)',");
 }
 
 function cashSegmentInk(template: string): string {
@@ -66,11 +67,9 @@ function cashSegmentInk(template: string): string {
   if (template.split(anchor).length - 1 !== 1) {
     throw new Error("Missing cash segment colour anchor");
   }
-  return template
-    .split(anchor)
-    .join("segCashColor: posMethod !== 'card' ? '#fff' : '#8a8578',");
+  return template.split(anchor).join("segCashColor: '#fff',");
 }
 
 export function applyCardPaymentBehavior(template: string): string {
-  return cashSegmentInk(cashLooksChosen(cashByDefault(retireTheCardButton(template))));
+  return cashSegmentInk(cashLooksChosen(cashOnly(retireTheCardButton(template))));
 }
