@@ -511,18 +511,32 @@ function replaceRecipeEditorLogic(template: string): string {
               const img = new Image();
               img.onerror = failed;
               img.onload = () => {
-                const SIZE = 400;
                 const side = Math.min(img.naturalWidth, img.naturalHeight);
                 if (!side) { failed(); return; }
+                // A photo shown the width of a phone needs about a thousand
+                // pixels on a screen that draws three for every point. Saved
+                // at 400 it was being blown up two and a half times, which is
+                // exactly what it looked like. Each pair below is tried in
+                // turn and the first that fits the limit is kept, so a plain
+                // photo of a loaf stays sharp and a busy one gives up detail
+                // rather than the size it is drawn at.
+                const ladder = [[1024, 0.82], [1024, 0.7], [820, 0.72], [640, 0.7], [480, 0.6]];
+                const LIMIT = 190000;
                 const canvas = document.createElement('canvas');
-                canvas.width = SIZE;
-                canvas.height = SIZE;
                 const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, SIZE, SIZE);
-                ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, SIZE, SIZE);
-                let photo = canvas.toDataURL('image/jpeg', 0.8);
-                if (photo.length > 140000) photo = canvas.toDataURL('image/jpeg', 0.55);
+                let photo = '';
+                for (let attempt = 0; attempt < ladder.length; attempt++) {
+                  const size = ladder[attempt][0];
+                  const quality = ladder[attempt][1];
+                  canvas.width = size;
+                  canvas.height = size;
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillRect(0, 0, size, size);
+                  ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+                  photo = canvas.toDataURL('image/jpeg', quality);
+                  if (photo.length <= LIMIT) break;
+                }
+                if (photo.length > LIMIT) { this.setState({ recipePhotoError: 'That picture is too detailed to save. Try another one.' }); return; }
                 this.setState({ recipePhotoError: '' });
                 updateRecipe({ photo });
               };
