@@ -48,9 +48,11 @@ export function ensureViewport(): void {
  * The mark where the app's own header will be, and three dots to say something
  * is happening.
  *
- * The mark is the icon file rather than a redrawing of it, so it cannot drift
- * from the one on the home screen. That file sits at the root of the app's
- * bundle and of the website alike, which is why the path has no leading slash.
+ * The loaf alone, in green, rather than the whole tile: an icon belongs on a
+ * home screen, and inside the app the shape is enough. It is lifted from the
+ * same artwork the icon is cut from, so the two cannot drift apart, and it
+ * sits at the root of the app's bundle and of the website alike — which is why
+ * the path has no leading slash.
  */
 function markup(): string {
   return `
@@ -62,7 +64,7 @@ function markup(): string {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   #${COVER_ID} .bk-start { display: flex; align-items: center; gap: 12px; }
-  #${COVER_ID} .bk-mark { width: 38px; height: 38px; border-radius: 10px; display: block; }
+  #${COVER_ID} .bk-mark { height: 34px; width: auto; display: block; }
   #${COVER_ID} .bk-dots { display: flex; gap: 5px; align-items: center; }
   #${COVER_ID} .bk-dot {
     width: 6px; height: 6px; border-radius: 50%;
@@ -83,7 +85,7 @@ function markup(): string {
 </style>
 
 <div class="bk-start">
-  <img class="bk-mark" src="icon-192.png" alt="Baketly" width="38" height="38">
+  <img class="bk-mark" src="loaf-mark.png" alt="Baketly" height="34">
   <span class="bk-dots" role="status" aria-label="Opening Baketly">
     <span class="bk-dot"></span><span class="bk-dot"></span><span class="bk-dot"></span>
   </span>
