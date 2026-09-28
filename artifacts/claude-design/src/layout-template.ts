@@ -12,27 +12,46 @@
 
 import { isNativeApp } from "./api";
 
-/** Grid tracks that can shrink, everywhere the page declares equal columns. */
+const CLAMPED = "minmax(0,1fr)";
+// a sentinel no stylesheet would ever contain
+const PARK = String.fromCharCode(1) + "clamped" + String.fromCharCode(1);
+
+/**
+ * Grid tracks that can shrink, wherever a grid is declared.
+ *
+ * `1fr` is shorthand for minmax(auto, 1fr), and that `auto` floor is the
+ * min-content width of whatever sits in the column. An <input> with no size
+ * attribute reports about 205px, and a date input on iOS rather more — so a
+ * row declared `1fr 100px` asks for more width than a phone has, and the
+ * second column is drawn over the first. That is the booth fee sitting on
+ * top of the market date.
+ *
+ * Every `1fr` in every grid is clamped, rather than a list of known rows:
+ * this same fault has been fixed twice already in different screens, and any
+ * grid added tomorrow would arrive carrying it.
+ */
 function clampGridColumns(template: string): string {
-  // longest first: "1fr 1fr" is a prefix of "1fr 1fr 1fr"
-  const swaps: Array<[string, string]> = [
-    ["grid-template-columns:1fr 1fr 1fr", "grid-template-columns:repeat(3,minmax(0,1fr))"],
-    ["grid-template-columns:1fr 1fr", "grid-template-columns:repeat(2,minmax(0,1fr))"],
-    ["grid-template-columns:repeat(2,1fr)", "grid-template-columns:repeat(2,minmax(0,1fr))"],
-    ["grid-template-columns:repeat(3,1fr)", "grid-template-columns:repeat(3,minmax(0,1fr))"],
-    ["grid-template-columns:repeat(4,1fr)", "grid-template-columns:repeat(4,minmax(0,1fr))"],
-    ["grid-template-columns:repeat(5,1fr)", "grid-template-columns:repeat(5,minmax(0,1fr))"],
-  ];
-  let out = template;
-  let changed = 0;
-  for (const [from, to] of swaps) {
-    const hits = out.split(from).length - 1;
-    if (hits) {
-      changed += hits;
-      out = out.split(from).join(to);
-    }
-  }
-  if (!changed) throw new Error("Missing grid column anchors");
+  const declaration = /grid-template-columns:([^;\"'}]+)/g;
+  let seen = 0;
+
+  const out = template.replace(declaration, (whole, columns: string) => {
+    seen++;
+    // a track already written minmax(0,1fr) is parked, so its own 1fr is not
+    // wrapped a second time
+    const parked = columns.split(CLAMPED).join(PARK);
+    // the separator before the track is kept: eating it would join two
+    // columns into one
+    const track = /(^|[\s,(])1fr(?=$|[\s,)])/g;
+    const clamped = parked.replace(track, (_match, before: string) => before + CLAMPED);
+    if (clamped === parked) return whole;
+    return "grid-template-columns:" + clamped.split(PARK).join(CLAMPED);
+  });
+
+  // Nothing needing a clamp is a fine outcome: earlier passes replace whole
+  // screens and already write their grids this way. No grid at all is not —
+  // the generated page is built of them, and finding none means this is no
+  // longer the page the transform was written for.
+  if (!seen) throw new Error("No grid declarations found");
   return out;
 }
 
