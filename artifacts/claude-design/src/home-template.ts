@@ -317,7 +317,7 @@ const homeMarkup = `
 
   <div style="display:flex;gap:6px;margin-bottom:20px">
     <sc-for list="{{ homeWeek }}" as="day" hint-placeholder-count="7">
-      <div sc-camel-on-click="{{ day.pick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:14px 0 11px;border-radius:18px;cursor:pointer;background:{{ day.bg }};color:{{ day.color }};border:{{ day.border }};box-sizing:border-box">
+      <div sc-camel-on-click="{{ day.pick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:30px 0 26px;border-radius:22px;cursor:pointer;background:{{ day.bg }};color:{{ day.color }};border:{{ day.border }};box-sizing:border-box">
         <span style="font-size:17px;font-weight:600;line-height:1.1;font-feature-settings:'tnum'">{{ day.number }}</span>
         <span style="font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.7">{{ day.letter }}</span>
         <span style="display:flex;gap:3px"><span style="width:4px;height:4px;border-radius:50%;background:{{ day.dotColor }};opacity:{{ day.dotOpacity }}"></span><span style="width:4px;height:4px;border-radius:50%;background:{{ day.todoDotColor }};opacity:{{ day.todoDotOpacity }}"></span></span>
