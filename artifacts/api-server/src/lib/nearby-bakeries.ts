@@ -215,10 +215,6 @@ export async function nearbyBakeriesAt(
       `way["shop"~"^(bakery|pastry|confectionery)$"](around:${radius},${point.lat},${point.lon});` +
       ");out center tags 60;";
 
-    // Every mirror at once, and the first good answer wins. Asked one after
-    // another, a busy instance costs its whole timeout before the next is
-    // tried, and three busy instances take longer than anyone waits — which
-    // is how a town full of bakeries came back empty.
     // Every mirror at once, and the first USEFUL answer wins.
     //
     // Not simply the first answer: one mirror carries only part of the map
