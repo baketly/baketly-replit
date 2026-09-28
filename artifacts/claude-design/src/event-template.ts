@@ -305,10 +305,14 @@ const eventController = `      ...(() => {
               evSold: soldBack,
               evStatus: 'planned',
               evSaved: true,
-              // Straight back to the step Complete event was pressed on, with
-              // the quantities still filled in — an undo lands where the
-              // mistake was made, not somewhere you have to navigate from.
-              evEnteringResults: true,
+              // Open, and open for editing. Landing on the results step is
+              // where the mistake was made, but the save button lives outside
+              // that step; landing on the saved market instead shows it
+              // read-only, behind a pencil. Undoing a completion is an
+              // intention to change something, so the screen arrives ready
+              // for it and the save button is there.
+              evEnteringResults: false,
+              editingKey: 'ev:' + event.id,
               evPickerOpen: false,
               evPickerSel: [],
               eventDeleteOpen: false,
