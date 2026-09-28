@@ -379,7 +379,7 @@ function replaceWatchScreen(template: string): string {
     <div style="color:#b0563e;font-size:12px;margin-bottom:8px">{{ marketError }}</div>
   </sc-if>
   <sc-if value="{{ marketPending }}" hint-placeholder-val="{{ false }}">
-    <div class="text-muted" style="font-size:12px;margin-bottom:8px">Checking prices near you…</div>
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span class="bk-spinner" aria-hidden="true"></span><span class="text-muted" style="font-size:12px">Finding bakeries near you and reading their prices… this takes a minute.</span></div>
   </sc-if>
   <button class="btn btn-secondary btn-block" sc-camel-on-click="{{ runMarketCheck }}" style="min-height:44px">Check local prices now</button>
 </div>
