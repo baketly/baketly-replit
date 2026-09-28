@@ -76,7 +76,12 @@ function stackHoldsOpeners(template: string): string {
     "        ? []",
     "        : (s === st.screen ? st.stack : [...st.stack, st.screen]),",
     "      sheet: false,",
-    "      fromScan: false",
+    "      fromScan: false,",
+    // Entering a market's results is a mode of that one screen, not a
+    // setting. Tapping Mark completed and then walking away without
+    // pressing Cancel used to leave it on, and the next market opened
+    // with no Save button at all — the save lives inside that condition.
+    "      evEnteringResults: false",
     "    }));",
     "  }",
   ].join("\n");
