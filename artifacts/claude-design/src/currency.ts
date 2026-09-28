@@ -13,6 +13,27 @@ export const CURRENCIES = [
   { code: "USD", label: "USD $", symbol: "$" },
   { code: "EUR", label: "EUR €", symbol: "€" },
   { code: "GBP", label: "GBP £", symbol: "£" },
+  { code: "ILS", label: "ILS ₪", symbol: "₪" },
+  { code: "CAD", label: "CAD CA$", symbol: "CA$" },
+  { code: "AUD", label: "AUD A$", symbol: "A$" },
+  { code: "NZD", label: "NZD NZ$", symbol: "NZ$" },
+  { code: "CHF", label: "CHF CHF", symbol: "CHF" },
+  { code: "SEK", label: "SEK kr", symbol: "kr" },
+  { code: "NOK", label: "NOK kr", symbol: "kr" },
+  { code: "DKK", label: "DKK kr", symbol: "kr" },
+  { code: "PLN", label: "PLN zł", symbol: "zł" },
+  { code: "CZK", label: "CZK Kč", symbol: "Kč" },
+  { code: "HUF", label: "HUF Ft", symbol: "Ft" },
+  { code: "RON", label: "RON lei", symbol: "lei" },
+  { code: "JPY", label: "JPY ¥", symbol: "¥" },
+  { code: "INR", label: "INR ₹", symbol: "₹" },
+  { code: "MXN", label: "MXN MX$", symbol: "MX$" },
+  { code: "BRL", label: "BRL R$", symbol: "R$" },
+  { code: "ZAR", label: "ZAR R", symbol: "R" },
+  { code: "AED", label: "AED AED", symbol: "AED" },
+  { code: "SGD", label: "SGD S$", symbol: "S$" },
+  { code: "HKD", label: "HKD HK$", symbol: "HK$" },
+  { code: "TRY", label: "TRY ₺", symbol: "₺" },
 ] as const;
 
 export type CurrencyCode = (typeof CURRENCIES)[number]["code"];
@@ -29,6 +50,8 @@ export const currencySymbolExpr = `(${symbolMap}[this.state.currency] || '$')`;
 export const currencyConst = `        const CUR = ${currencySymbolExpr};\n`;
 
 const controller = `      currencySymbol: ${currencySymbolExpr},
+      currencyCode: this.state.currency || 'USD',
+      setCurrency: e => this.setState({ currency: e.target.value }),
       currencyOptions: ${JSON.stringify(CURRENCIES)}.map(option => ({
         label: option.label,
         bg: (this.state.currency || 'USD') === option.code ? 'var(--color-accent)' : 'transparent',
@@ -59,10 +82,10 @@ function bindCurrencyControl(template: string): string {
   return template.replace(
     anchor,
     () =>
-      '<div class="seg">' +
-      '<sc-for list="{{ currencyOptions }}" as="cur" hint-placeholder-count="3">' +
-      '<span class="seg-opt" sc-camel-on-click="{{ cur.pick }}" style="background:{{ cur.bg }};color:{{ cur.fg }}">{{ cur.label }}</span>' +
-      "</sc-for></div>",
+      '<select class="input" value="{{ currencyCode }}" sc-camel-on-change="{{ setCurrency }}"' +
+      ' aria-label="Currency" style="width:100%">' +
+      '<option value="USD">USD $</option><option value="EUR">EUR €</option><option value="GBP">GBP £</option><option value="ILS">ILS ₪</option><option value="CAD">CAD CA$</option><option value="AUD">AUD A$</option><option value="NZD">NZD NZ$</option><option value="CHF">CHF CHF</option><option value="SEK">SEK kr</option><option value="NOK">NOK kr</option><option value="DKK">DKK kr</option><option value="PLN">PLN zł</option><option value="CZK">CZK Kč</option><option value="HUF">HUF Ft</option><option value="RON">RON lei</option><option value="JPY">JPY ¥</option><option value="INR">INR ₹</option><option value="MXN">MXN MX$</option><option value="BRL">BRL R$</option><option value="ZAR">ZAR R</option><option value="AED">AED AED</option><option value="SGD">SGD S$</option><option value="HKD">HKD HK$</option><option value="TRY">TRY ₺</option>' +
+      "</select>",
   );
 }
 

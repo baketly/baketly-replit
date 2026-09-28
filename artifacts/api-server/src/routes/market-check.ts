@@ -68,7 +68,34 @@ function admitCheck(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-const CURRENCY_SYMBOLS: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", ILS: "₪" };
+// The same list the app offers in Settings; a code it does not know keeps
+// its own three letters rather than borrowing a dollar sign.
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  ILS: "₪",
+  CAD: "CA$",
+  AUD: "A$",
+  NZD: "NZ$",
+  CHF: "CHF",
+  SEK: "kr",
+  NOK: "kr",
+  DKK: "kr",
+  PLN: "zł",
+  CZK: "Kč",
+  HUF: "Ft",
+  RON: "lei",
+  JPY: "¥",
+  INR: "₹",
+  MXN: "MX$",
+  BRL: "R$",
+  ZAR: "R",
+  AED: "AED",
+  SGD: "S$",
+  HKD: "HK$",
+  TRY: "₺",
+};
 
 /** The shape the app reads, built from the pipeline's own numbers. */
 function productPayload(comparison: ProductComparison, note: string) {

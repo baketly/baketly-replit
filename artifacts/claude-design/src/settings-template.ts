@@ -149,13 +149,19 @@ const settingsScreen = `
           </sc-for>
         </div>
       </sc-if>
-      <div class="field"><label>Currency</label>
-        <div class="seg"><label class="seg-opt"><input type="radio" name="cur" checked="">USD $</label><label class="seg-opt"><input type="radio" name="cur">EUR €</label><label class="seg-opt"><input type="radio" name="cur">GBP £</label></div>
-      </div>
-      <div class="field"><label>My hourly rate</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="text-muted" style="font-size:15px;flex:none">{{ currencySymbol }}</span>
-          <input class="input" value="{{ hourlyRateText }}" sc-camel-on-change="{{ setHourlyRate }}" aria-label="My hourly rate" inputmode="decimal" placeholder="not set — labor excluded from costs" style="flex:1;min-width:0;font-feature-settings:'tnum'">
+      <!-- Two answers to the same question — what money looks like here —
+           so they share a row. The grid is clamped elsewhere to minmax(0,1fr),
+           which is what keeps a long placeholder from pushing the rate field
+           over the currency beside it. -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Currency</label>
+          <div class="seg"><label class="seg-opt"><input type="radio" name="cur" checked="">USD $</label><label class="seg-opt"><input type="radio" name="cur">EUR €</label><label class="seg-opt"><input type="radio" name="cur">GBP £</label></div>
+        </div>
+        <div class="field"><label>My hourly rate</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="text-muted" style="font-size:15px;flex:none">{{ currencySymbol }}</span>
+            <input class="input" value="{{ hourlyRateText }}" sc-camel-on-change="{{ setHourlyRate }}" aria-label="My hourly rate" inputmode="decimal" placeholder="per hour" style="flex:1;min-width:0;font-feature-settings:'tnum'">
+          </div>
         </div>
       </div>
       <div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;padding:13px 14px;margin-top:6px">

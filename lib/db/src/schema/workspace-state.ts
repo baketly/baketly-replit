@@ -235,7 +235,15 @@ export const workspaceStatePayloadSchema = z
       })
       .strict()
       .optional(),
-    currency: z.enum(["USD", "EUR", "GBP"]).optional(),
+    // Any ISO code rather than a list of three. The app offers a couple of
+    // dozen and will offer more; an enum here means a baker in a country we
+    // added to the picker has their whole workspace save rejected, since this
+    // schema is strict and one bad field fails all of it. The symbol is a
+    // lookup with a fallback, so an unknown code costs a symbol, not a save.
+    currency: z
+      .string()
+      .regex(/^[A-Z]{3}$/)
+      .optional(),
     hourlyRate: z.number().finite().min(0).max(10_000).optional(),
     targetMargin: z.number().finite().min(0).max(100).optional(),
     onboardingComplete: z.boolean().optional(),
