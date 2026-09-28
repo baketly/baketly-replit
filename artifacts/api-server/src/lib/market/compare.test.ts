@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { compareProduct } from "./compare";
+import { oneEachBakery, compareProduct } from "./compare";
 import { marketLogger } from "./log";
 import type { Bakery, CompetitorProduct } from "./types";
 
@@ -226,4 +226,31 @@ test("the same listing read from two pages counts once", () => {
   // and the better-sourced reading is the one kept
   assert.ok(alpha.some((entry) => entry.product.sourceType === "shopify"));
   assert.ok(!alpha.some((entry) => entry.product.sourceType === "html"));
+});
+
+test("a bakery with a long menu is named once, not three times", () => {
+  const result = compareProduct(
+    { name: "Chocolate Chip Cookie", price: 3.5 },
+    [
+      product("a", "Chocolate Chip Cookie", 4.5, 1),
+      product("a", "Double Chocolate Chip Cookie", 4.75, 1),
+      product("a", "Chocolate Chip Walnut Cookie", 5, 1),
+      product("b", "Chocolate Chip Cookie", 4, 1),
+    ],
+    bakeries,
+    "USD",
+    silent,
+  );
+
+  const named = oneEachBakery(result.comparables).map((entry: { bakery: { id: string } }) => entry.bakery.id);
+  assert.deepEqual([...new Set(named)].sort(), ["a", "b"], "both bakeries appear");
+  assert.equal(named.length, new Set(named).size, "no bakery is listed twice");
+
+  // the arithmetic still sees every price that bakery published
+  if (result.stats) {
+    assert.ok(
+      result.stats.comparableProducts >= 4,
+      "statistics count every comparable listing, not just the ones shown",
+    );
+  }
 });

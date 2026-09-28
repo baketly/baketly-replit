@@ -24,7 +24,7 @@ import {
 import { nearbyBakeries } from "../lib/nearby-bakeries";
 import { marketLogger } from "../lib/market/log";
 import { runPriceCheck } from "../lib/market/pipeline";
-import type { ProductComparison } from "../lib/market/compare";
+import { oneEachBakery, type ProductComparison } from "../lib/market/compare";
 
 const router: IRouter = Router();
 
@@ -103,7 +103,7 @@ function productPayload(comparison: ProductComparison, note: string) {
     comparableBakeries: stats ? stats.comparableBakeries : 0,
     comparableProducts: stats ? stats.comparableProducts : 0,
     shortfall: comparison.shortfall,
-    competitors: comparison.comparables.map((entry) => ({
+    competitors: oneEachBakery(comparison.comparables).map((entry) => ({
       // the shop
       name: entry.bakery.name,
       distanceKm: entry.bakery.distanceKm,

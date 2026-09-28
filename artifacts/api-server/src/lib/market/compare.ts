@@ -197,6 +197,30 @@ export function compareProduct(
   return { name: product.name, price: product.price, unitPrice, reading, stats, comparables: ranked, shortfall: null };
 }
 
+/**
+ * One line per bakery, its closest match, for what is shown to a baker.
+ *
+ * A shop with a long menu could fill a comparison on its own — three of its
+ * cookies reading as three separate opinions about the local price — while
+ * the bakery down the road, the one a baker actually wants to see, never
+ * appeared at all. The statistics are untouched: they already take one price
+ * per bakery, so this is about the telling rather than the arithmetic.
+ */
+export function oneEachBakery(entries: ComparableProduct[]): ComparableProduct[] {
+  const best = new Map<string, ComparableProduct>();
+  for (const entry of entries) {
+    const held = best.get(entry.bakery.id);
+    const better =
+      !held ||
+      entry.match.matchScore > held.match.matchScore ||
+      (entry.match.matchScore === held.match.matchScore &&
+        entry.equivalentPrice < held.equivalentPrice);
+    if (better) best.set(entry.bakery.id, entry);
+  }
+  // the entries arrive ranked, and a Map keeps the order it was given
+  return [...best.values()];
+}
+
 /** Every product the baker asked about, against the same stored market. */
 export function compareProducts(
   products: UserProduct[],
