@@ -77,6 +77,7 @@ const settingsController = `      ...(() => {
           setMarketAt: e => setReminders({ marketAt: e.target.value }),
 
           reminderTimes: timeChoices,
+          reminderTimesJson: JSON.stringify(timeChoices),
           reminderZoneLabel: 'Times are in ' + phoneZone.replace(/_/g, ' ') + ', from this phone.',
 
           // Leaving. Asked twice on purpose: this takes the recipes, the
@@ -174,11 +175,7 @@ const settingsScreen = `
           <div style="display:flex;align-items:center;gap:10px;padding:2px 0 10px">
             <span class="text-muted" style="font-size:12px;flex:1">Remind me at</span>
             <div class="an-select-wrap" style="display:block;margin:0;flex:none">
-              <select class="an-select" value="{{ todosAt }}" sc-camel-on-change="{{ setTodosAt }}" aria-label="Time for the daily reminder">
-                <sc-for list="{{ reminderTimes }}" as="slot" hint-placeholder-count="4">
-                  <option value="{{ slot.value }}">{{ slot.label }}</option>
-                </sc-for>
-              </select>
+              <select class="an-select" value="{{ todosAt }}" data-bk-options="{{ reminderTimesJson }}" sc-camel-on-change="{{ setTodosAt }}" aria-label="Time for the daily reminder"></select>
             </div>
           </div>
         </sc-if>
@@ -196,11 +193,7 @@ const settingsScreen = `
           <div style="display:flex;align-items:center;gap:10px;padding:2px 0 10px">
             <span class="text-muted" style="font-size:12px;flex:1">Remind me at</span>
             <div class="an-select-wrap" style="display:block;margin:0;flex:none">
-              <select class="an-select" value="{{ marketAt }}" sc-camel-on-change="{{ setMarketAt }}" aria-label="Time for the market reminder">
-                <sc-for list="{{ reminderTimes }}" as="slot" hint-placeholder-count="4">
-                  <option value="{{ slot.value }}">{{ slot.label }}</option>
-                </sc-for>
-              </select>
+              <select class="an-select" value="{{ marketAt }}" data-bk-options="{{ reminderTimesJson }}" sc-camel-on-change="{{ setMarketAt }}" aria-label="Time for the market reminder"></select>
             </div>
           </div>
         </sc-if>

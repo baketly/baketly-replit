@@ -86,6 +86,10 @@ const calculatorController = `      ...(() => {
             value: recipe.id,
             label: recipe.name || 'Untitled recipe'
           })),
+          calcOptionsJson: JSON.stringify(recipes.map(recipe => ({
+            value: recipe.id,
+            label: recipe.name || 'Untitled recipe'
+          }))),
           calcHasRecipes: recipes.length > 0,
           calcHasNoRecipes: recipes.length === 0,
           calcRecipeId: chosenId,
@@ -145,11 +149,7 @@ const screenMarkup = `<!-- ══ RECIPE CALCULATOR ══ -->
     <div class="field" style="margin-bottom:14px">
       <label>Recipe</label>
       <div class="an-select-wrap" style="display:block;margin:0">
-        <select class="an-select" style="width:100%" value="{{ calcRecipeId }}" sc-camel-on-change="{{ setCalcRecipe }}">
-          <sc-for list="{{ calcOptions }}" as="opt" hint-placeholder-count="3">
-            <option value="{{ opt.value }}">{{ opt.label }}</option>
-          </sc-for>
-        </select>
+        <select class="an-select" style="width:100%" value="{{ calcRecipeId }}" data-bk-options="{{ calcOptionsJson }}" sc-camel-on-change="{{ setCalcRecipe }}"></select>
       </div>
     </div>
 

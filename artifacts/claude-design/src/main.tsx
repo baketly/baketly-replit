@@ -4,6 +4,7 @@ import { apiFetch, rememberSession } from "./api";
 import { listenForSignInReturn } from "./native-auth";
 import { ensureViewport, showLoadingScreen } from "./loading-screen";
 import { listenForSwipeBack } from "./swipe-back";
+import { keepSelectsFilled } from "./select-options";
 import { keepRemindersFresh } from "./native-reminders";
 import { nativeSpeech } from "./native-speech";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
@@ -372,6 +373,7 @@ window.__baketlyDeleteAccount = async () => {
 // long part of the wait rather than after it
 // before anything is drawn: without a viewport the sign-in screen is laid out
 // for a desktop and scaled down, then jumps when the app template arrives
+keepSelectsFilled();
 listenForSwipeBack();
 ensureViewport();
 showLoadingScreen();

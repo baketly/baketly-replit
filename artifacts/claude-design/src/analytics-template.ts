@@ -73,11 +73,7 @@ export function applyAnalyticsBehavior(template: string): string {
 
   <sc-if value="{{ analyticsOverviewTab }}" hint-placeholder-val="{{ true }}">
     <div class="an-select-wrap">
-      <select class="an-select" value="{{ analyticsMonth }}" sc-camel-on-change="{{ setAnalyticsMonth }}">
-        <sc-for list="{{ monthOptions }}" as="opt" hint-placeholder-count="1">
-          <option value="{{ opt.value }}">{{ opt.label }}</option>
-        </sc-for>
-      </select>
+      <select class="an-select" value="{{ analyticsMonth }}" data-bk-options="{{ monthOptionsJson }}" sc-camel-on-change="{{ setAnalyticsMonth }}"></select>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -124,7 +120,7 @@ export function applyAnalyticsBehavior(template: string): string {
   <sc-if value="{{ analyticsProductsTab }}" hint-placeholder-val="{{ false }}">
     <h2 style="font-size:24px;margin:8px 0 4px">Products</h2>
     <p class="text-muted" style="font-size:13px;margin-bottom:20px">Selected month · ranked by revenue.</p>
-    <div class="an-select-wrap"><select class="an-select" value="{{ analyticsMonth }}" sc-camel-on-change="{{ setAnalyticsMonth }}"><sc-for list="{{ monthOptions }}" as="opt" hint-placeholder-count="1"><option value="{{ opt.value }}">{{ opt.label }}</option></sc-for></select></div>
+    <div class="an-select-wrap"><select class="an-select" value="{{ analyticsMonth }}" data-bk-options="{{ monthOptionsJson }}" sc-camel-on-change="{{ setAnalyticsMonth }}"></select></div>
     
     <sc-if value="{{ hasProducts }}" hint-placeholder-val="{{ true }}">
       <div class="an-card" style="padding:0 16px;">
@@ -158,7 +154,7 @@ export function applyAnalyticsBehavior(template: string): string {
   <sc-if value="{{ analyticsEventsTab }}" hint-placeholder-val="{{ false }}">
     <h2 style="font-size:24px;margin:8px 0 4px">Event ROI</h2>
     <p class="text-muted" style="font-size:13px;margin-bottom:20px">Profit after booth fees and production costs.</p>
-    <div class="an-select-wrap"><select class="an-select" value="{{ analyticsMonth }}" sc-camel-on-change="{{ setAnalyticsMonth }}"><sc-for list="{{ monthOptions }}" as="opt" hint-placeholder-count="1"><option value="{{ opt.value }}">{{ opt.label }}</option></sc-for></select></div>
+    <div class="an-select-wrap"><select class="an-select" value="{{ analyticsMonth }}" data-bk-options="{{ monthOptionsJson }}" sc-camel-on-change="{{ setAnalyticsMonth }}"></select></div>
     
     <sc-if value="{{ hasEvents }}" hint-placeholder-val="{{ true }}">
       <sc-for list="{{ eventsData }}" as="ev" hint-placeholder-count="2">
@@ -727,6 +723,7 @@ export function applyAnalyticsBehavior(template: string): string {
           analyticsMonth: selectedMonth,
           setAnalyticsMonth: (e) => this.setState({ analyticsMonth: e.target.value }),
           monthOptions,
+          monthOptionsJson: JSON.stringify(monthOptions),
           monthRevStr: CUR + monthRev.toFixed(2),
            monthProfitStr: (monthProfit < 0 ? ('-' + CUR) : CUR) + Math.abs(monthProfit).toFixed(2),
           monthMarginStr: monthMargin + '%',
@@ -752,6 +749,7 @@ export function applyAnalyticsBehavior(template: string): string {
           hasPastEvents: pastEvents.length > 0,
           hasNoPastEvents: pastEvents.length === 0,
           pastEventPeriods,
+          pastEventPeriodsJson: JSON.stringify(pastEventPeriods),
           marketsPeriod: activePeriod,
           pastEventsCountLabel,
           hasPastEventPeriods: pastPeriodKeys.length > 1,
@@ -816,7 +814,7 @@ export function applyAnalyticsBehavior(template: string): string {
 const pastEventsMarkup = `  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:2px">
     <h6 style="margin:0">Past events</h6>
     <sc-if value="{{ hasPastEventPeriods }}" hint-placeholder-val="{{ false }}">
-      <div class="an-select-wrap" style="margin-bottom:0"><select class="an-select" value="{{ marketsPeriod }}" sc-camel-on-change="{{ setMarketsPeriod }}" aria-label="Jump to a period"><sc-for list="{{ pastEventPeriods }}" as="pp" hint-placeholder-count="3"><option value="{{ pp.value }}">{{ pp.label }}</option></sc-for></select></div>
+      <div class="an-select-wrap" style="margin-bottom:0"><select class="an-select" value="{{ marketsPeriod }}" data-bk-options="{{ pastEventPeriodsJson }}" sc-camel-on-change="{{ setMarketsPeriod }}" aria-label="Jump to a period"></select></div>
     </sc-if>
   </div>
   <div class="text-muted" style="font-size:12px;margin-bottom:6px">{{ pastEventsCountLabel }}</div>
