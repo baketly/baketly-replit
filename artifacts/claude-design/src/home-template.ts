@@ -300,11 +300,15 @@ const quickAction = (handler: string, label: string, path: string) =>
 const homeMarkup = `
 <div style="padding:0 20px 28px">
 
-  <!-- The greeting runs the full width of the screen and carries its own
-       ground, so opening the app lands on something that looks like a
-       morning rather than a list. The negative margins undo the screen's
-       side padding; the rounded bottom keeps it from reading as a bar. -->
-  <div style="margin:0 -20px 20px;padding:22px 20px 24px;background:var(--color-accent-100);border-radius:0 0 26px 26px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+  <!-- Everything a baker looks at first shares one ground: the greeting, the
+       week, the next market when there is one, and the five things they might
+       want to make. It runs the full width of the screen, so opening the app
+       lands on something that looks like a morning rather than a list. The
+       negative margins undo the screen's side padding; the rounded bottom
+       keeps it from reading as a bar. -->
+  <div style="margin:0 -20px 22px;padding:22px 20px 20px;background:var(--color-accent-100);border-radius:0 0 26px 26px">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
     <div style="min-width:0">
       <h2 style="font-size:31px;line-height:1.15;margin:0 0 6px;letter-spacing:-0.01em">{{ homeGreeting }}</h2>
       <div class="text-muted" style="font-size:13.5px">{{ homeToday }}</div>
@@ -325,18 +329,10 @@ const homeMarkup = `
     </sc-for>
   </div>
 
-  <div style="display:flex;gap:5px">
-${quickAction("goIngredientNew", "New<br>ingredient", '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path>')}
-${quickAction("goPackagingNew", "New<br>packaging", '<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M3 11h18M12 7v13"></path>')}
-${quickAction("goNewRecipe", "New<br>recipe", '<path d="M6 3h9l4 4v14H6z"></path><path d="M9 12h7M9 16h5"></path>')}
-${quickAction("startNewEvent", "New<br>event", '<rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"></path>')}
-  </div>
-
-  <div style="height:22px"></div>
   <sc-if value="{{ homeHasNext }}" hint-placeholder-val="{{ false }}">
-    <div class="card" sc-camel-on-click="{{ openNextEvent }}" style="flex-direction:row;align-items:center;gap:14px;padding:14px 16px;margin-bottom:24px;cursor:pointer">
-      <div style="flex:none;min-width:64px;text-align:center;padding:8px 10px;border-radius:14px;background:var(--color-accent-100)">
-        <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1.1;color:var(--color-accent-700);font-feature-settings:'tnum'">{{ homeNextCount }}</div>
+    <div sc-camel-on-click="{{ openNextEvent }}" style="display:flex;flex-direction:row;align-items:center;gap:14px;padding:12px 14px;margin-bottom:14px;cursor:pointer;background:var(--color-bg);border-radius:18px">
+      <div style="flex:none;min-width:58px;text-align:center;padding:7px 9px;border-radius:13px;background:var(--color-accent-100)">
+        <div style="font-family:var(--font-heading);font-weight:600;font-size:21px;line-height:1.1;color:var(--color-accent-700);font-feature-settings:'tnum'">{{ homeNextCount }}</div>
         <div style="font-size:10px;color:var(--color-accent-700)">{{ homeNextUnit }}</div>
       </div>
       <div style="flex:1;min-width:0">
@@ -347,6 +343,15 @@ ${quickAction("startNewEvent", "New<br>event", '<rect x="3" y="5" width="18" hei
       <span class="text-muted" style="flex:none;font-size:17px">›</span>
     </div>
   </sc-if>
+
+  <div style="display:flex;gap:5px">
+${quickAction("goIngredientNew", "New<br>ingredient", '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path>')}
+${quickAction("goPackagingNew", "New<br>packaging", '<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M3 11h18M12 7v13"></path>')}
+${quickAction("goNewRecipe", "New<br>recipe", '<path d="M6 3h9l4 4v14H6z"></path><path d="M9 12h7M9 16h5"></path>')}
+${quickAction("startNewEvent", "New<br>event", '<rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"></path>')}
+  </div>
+
+  </div>
 
   <h6 style="margin:0 0 8px">{{ homeDayLabel }}</h6>
   <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
