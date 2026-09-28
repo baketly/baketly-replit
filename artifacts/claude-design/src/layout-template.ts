@@ -67,7 +67,14 @@ function fieldsCanShrink(template: string): string {
     anchor,
     () =>
       ".field{display:flex;flex-direction:column;gap:6px;min-width:0}" +
-      ".field>.input{width:100%;min-width:0}",
+      ".field>.input{width:100%;min-width:0}" +
+      // And every other control, wherever it sits. A form control's
+      // min-content width is its intrinsic size — around 205px for a bare
+      // <input> — and that floor holds even under flex:1. On the payment
+      // screen the receipt box and its button are a flex row: 205px plus a
+      // button is wider than a phone, so the screen ran off the side. This
+      // only removes a floor; nothing gets narrower than its content needs.
+      "input,select,textarea{min-width:0}",
   );
 }
 
