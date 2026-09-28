@@ -182,7 +182,13 @@ export function fillTheScreen(template: string, native: boolean): string {
     styleAnchor,
     () =>
       styleAnchor +
-      "\n    input,select,textarea,.input{font-size:16px !important}",
+      "\n    input,select,textarea,.input{font-size:16px !important}" +
+      // A button that names no colour of its own is drawn in the system colour,
+      // and in a web view that is iOS blue — which is why “Single sale” and
+      // “Attach to event” read blue on the phone and black everywhere else.
+      // Inheriting puts them back to the page’s ink. Any button that does name
+      // a colour, by class or inline, still wins over this.
+      "\n    button{color:inherit}",
   );
 
   // olive is the backdrop the site's frame sits on. In the app nothing sits on
