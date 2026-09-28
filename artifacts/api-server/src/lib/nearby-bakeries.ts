@@ -28,8 +28,23 @@ const USER_AGENT = "Baketly/1.0 (home bakery pricing app)";
 // callers to be gentle.
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
 const GEOCODE_TIMEOUT_MS = 15_000;
-const OVERPASS_TIMEOUT_MS = 12_000;
+// Longer than the query's own ceiling below, which is the whole point: a
+// busy Overpass is allowed 25 seconds to answer, so a client giving up at
+// twelve was cutting off work that would have arrived. From the deployment
+// every mirror was being aborted at twelve seconds and the neighbour list
+// came back empty, while the same code answered in under two from a desk.
+const OVERPASS_TIMEOUT_MS = 30_000;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60_000;
+
+/** One thing the map returned: a shop, with where it is and what it is called. */
+interface OverpassElement {
+  type?: string;
+  id?: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat?: number; lon?: number };
+  tags?: Record<string, string>;
+}
 
 export interface NearbyBakery {
   name: string;
@@ -49,6 +64,8 @@ const cache = new Map<string, { at: number; found: NearbyBakery[] }>();
 
 /** Why the last lookup came back empty, for callers that log. */
 export let lastOverpassError: string | null = null;
+/** Which mirror answered, so a consistently bad one shows up in the logs. */
+export let lastOverpassMirror: string | null = null;
 
 async function withTimeout(url: string, ms: number, init?: RequestInit) {
   const controller = new AbortController();
@@ -193,7 +210,7 @@ export async function nearbyBakeriesAt(
     // baker competes with; cafes are left out, since their prices are for
     // coffee more often than for cake.
     const query =
-      "[out:json][timeout:20];(" +
+      "[out:json][timeout:25];(" +
       `node["shop"~"^(bakery|pastry|confectionery)$"](around:${radius},${point.lat},${point.lon});` +
       `way["shop"~"^(bakery|pastry|confectionery)$"](around:${radius},${point.lat},${point.lon});` +
       ");out center tags 60;";
@@ -202,54 +219,66 @@ export async function nearbyBakeriesAt(
     // another, a busy instance costs its whole timeout before the next is
     // tried, and three busy instances take longer than anyone waits — which
     // is how a town full of bakeries came back empty.
+    // Every mirror at once, and the first USEFUL answer wins.
+    //
+    // Not simply the first answer: one mirror carries only part of the map
+    // and returns an empty list in under a second, which would win every
+    // race and report a town full of bakeries as having none. So an empty
+    // answer is set aside, and only stands if every mirror agrees.
     lastOverpassError = null;
+    lastOverpassMirror = null;
     const failures: string[] = [];
-    const response = await new Promise<Awaited<ReturnType<typeof withTimeout>> | null>(
-      (resolve) => {
-        let pending = OVERPASS_MIRRORS.length;
-        let settled = false;
-        const give = (value: Awaited<ReturnType<typeof withTimeout>> | null) => {
-          if (settled) return;
-          settled = true;
-          resolve(value);
-        };
-        for (const mirror of OVERPASS_MIRRORS) {
-          withTimeout(mirror, OVERPASS_TIMEOUT_MS, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "data=" + encodeURIComponent(query),
+
+    interface Answer {
+      mirror: string;
+      elements: OverpassElement[];
+    }
+
+    const answer = await new Promise<Answer | null>((resolve) => {
+      let pending = OVERPASS_MIRRORS.length;
+      let settled = false;
+      let empty: Answer | null = null;
+      const give = (value: Answer | null) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+
+      for (const mirror of OVERPASS_MIRRORS) {
+        withTimeout(mirror, OVERPASS_TIMEOUT_MS, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "data=" + encodeURIComponent(query),
+        })
+          .then(async (attempt) => {
+            if (!attempt.ok) {
+              failures.push(mirror + " returned " + attempt.status);
+              return;
+            }
+            const payload = (await attempt.json()) as { elements?: OverpassElement[] };
+            const elements = payload.elements ?? [];
+            if (elements.length) give({ mirror, elements });
+            else empty = empty ?? { mirror, elements };
           })
-            .then((attempt) => {
-              if (attempt.ok) give(attempt);
-              else failures.push(mirror + " returned " + attempt.status);
-            })
-            .catch((error: unknown) => {
-              failures.push(
-                mirror + " " + (error instanceof Error ? error.message : "request failed"),
-              );
-            })
-            .finally(() => {
-              pending -= 1;
-              if (pending === 0) give(null);
-            });
-        }
-      },
-    );
-    if (!response) {
+          .catch((error: unknown) => {
+            failures.push(
+              mirror + " " + (error instanceof Error ? error.message : "request failed"),
+            );
+          })
+          .finally(() => {
+            pending -= 1;
+            // everyone has spoken: an empty answer will have to do
+            if (pending === 0) give(empty);
+          });
+      }
+    });
+
+    if (!answer) {
       lastOverpassError = failures.join("; ") || "no mirror answered";
       return [];
     }
-
-    const payload = (await response.json()) as {
-      elements?: Array<{
-        type?: string;
-        id?: number;
-        lat?: number;
-        lon?: number;
-        center?: { lat?: number; lon?: number };
-        tags?: Record<string, string>;
-      }>;
-    };
+    lastOverpassMirror = answer.mirror;
+    const payload = { elements: answer.elements };
 
     const found: NearbyBakery[] = [];
     for (const element of payload.elements ?? []) {
