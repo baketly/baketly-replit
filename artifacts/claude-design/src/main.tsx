@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { apiFetch, rememberSession } from "./api";
 import { listenForSignInReturn } from "./native-auth";
 import { ensureViewport, showLoadingScreen } from "./loading-screen";
+import { listenForSwipeBack } from "./swipe-back";
 import { keepRemindersFresh } from "./native-reminders";
 import { nativeSpeech } from "./native-speech";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
@@ -24,6 +25,7 @@ import { applySingleSalesBehavior } from "./single-sales-template";
 import { applyNavBehavior } from "./nav-template";
 import { applyItemModeBehavior } from "./item-mode-template";
 import { applyLayoutBehavior } from "./layout-template";
+import { applySwipeBackBehavior } from "./swipe-back-template";
 import { applyRecipeGroupsBehavior } from "./recipe-groups-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
@@ -308,6 +310,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
   }
 
   return applyLayoutBehavior(
+    applySwipeBackBehavior(
     applyRecipeGroupsBehavior(
     applyItemModeBehavior(
     applyNavBehavior(
@@ -336,6 +339,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
           ),
         ),
       ),
+    ),
     ),
     ),
     ),
@@ -368,6 +372,7 @@ window.__baketlyDeleteAccount = async () => {
 // long part of the wait rather than after it
 // before anything is drawn: without a viewport the sign-in screen is laid out
 // for a desktop and scaled down, then jumps when the app template arrives
+listenForSwipeBack();
 ensureViewport();
 showLoadingScreen();
 window.__baketlyReady = workspaceClient.hydrate();
