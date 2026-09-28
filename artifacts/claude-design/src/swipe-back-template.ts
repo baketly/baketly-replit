@@ -48,6 +48,42 @@ function addBackButton(template: string): string {
   return template.slice(0, opens) + button + template.slice(opens);
 }
 
+/**
+ * A stack of what opened what, rather than of everywhere the baker has been.
+ *
+ * Every navigation pushed the current screen, tab taps included, so the
+ * stack was a visit history: from Pantry, back went to whatever screen
+ * happened to precede it — Analytics, say, or a recipe looked at ten minutes
+ * ago — and kept going round. A tab is where a journey starts, so choosing
+ * one begins a new stack, and back on a tab does nothing because there is
+ * nothing above it.
+ *
+ * Landing on the screen already showing is not a move either: it used to
+ * push the screen onto its own stack, so back went nowhere.
+ */
+function stackHoldsOpeners(template: string): string {
+  const anchor =
+    "go(s) { this.setState(st => ({ screen: s, stack: [...st.stack, st.screen], sheet: false, fromScan: false })); }";
+  if (template.split(anchor).length - 1 !== 1) throw new Error("Missing go() anchor");
+
+  // the four tabs: each is the foot of its own stack
+  const replacement = [
+    "go(s) {",
+    "    const roots = ['dash', 'ingredients', 'markets', 'analytics'];",
+    "    this.setState(st => ({",
+    "      screen: s,",
+    "      stack: roots.indexOf(s) !== -1",
+    "        ? []",
+    "        : (s === st.screen ? st.stack : [...st.stack, st.screen]),",
+    "      sheet: false,",
+    "      fromScan: false",
+    "    }));",
+    "  }",
+  ].join("\n");
+
+  return template.split(anchor).join(replacement);
+}
+
 export function applySwipeBackBehavior(template: string): string {
-  return addBackButton(addBackHandler(template));
+  return addBackButton(addBackHandler(stackHoldsOpeners(template)));
 }
