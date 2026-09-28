@@ -74,7 +74,15 @@ function fieldsCanShrink(template: string): string {
       // screen the receipt box and its button are a flex row: 205px plus a
       // button is wider than a phone, so the screen ran off the side. This
       // only removes a floor; nothing gets narrower than its content needs.
-      "input,select,textarea{min-width:0}",
+      "input,select,textarea{min-width:0}" +
+      // A date and a booth fee beside each other, until the screen is too
+      // narrow for them. A date input does not shrink the way other
+      // controls do — iOS gives it the width its formatted date needs and
+      // lets the rest spill — so on a phone the fee was drawn over the
+      // date. Below 460px they take a line each, which no amount of
+      // column clamping could guarantee.
+      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:10px}" +
+      "\n    @media (max-width:460px){.bk-pair{grid-template-columns:minmax(0,1fr);gap:4px}}",
   );
 }
 

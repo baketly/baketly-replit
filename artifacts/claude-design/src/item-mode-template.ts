@@ -351,7 +351,7 @@ const eventPreview =
   `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">` +
   `<h2 style="font-size:24px;margin:6px 0 0">{{ eventName }}</h2></div>` +
 
-  `<div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin:10px 0 18px">` +
+  `<div class="bk-pair" style="margin:10px 0 18px">` +
   `<div class="field"><label>Event date</label>` +
   `<div style="font-size:15px;padding:8px 0 0">{{ evDateLabel }}</div></div>` +
   `<div class="field"><label>Booth fee</label>` +
