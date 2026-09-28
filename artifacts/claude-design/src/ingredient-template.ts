@@ -224,9 +224,12 @@ function addIngredientController(template: string): string {
                  ...(result.protein_g !== null ? { protein: result.protein_g } : {}),
                  ...(result.carbohydrates_g !== null ? { carbs: result.carbohydrates_g } : {}),
                  ...(result.fat_g !== null ? { fat: result.fat_g } : {}),
-                 ...(result.sugar_g !== null ? { sugar: result.sugar_g } : {}),
-                 ...(result.servingSize !== null ? { servingSize: result.servingSize } : {}),
-                 ...(result.servingUnit ? { servingUnit: result.servingUnit } : {})
+                 ...(result.sugar_g !== null ? { sugar: result.sugar_g } : {})
+                 // The serving size and the servings count are not details of
+                 // the ingredient — they are how the package size is worked
+                 // out when the label does not state one, which the server
+                 // does before answering. Writing them onto the ingredient
+                 // left two fields a baker never asked for and cannot use.
                };
                this.setState(st => st.screen === 'ingredientEdit' && !st.activeIngredientKey && st.ingredientScanRequest === request ? { ingredientDraft: { ...(st.ingredientDraft || {}), ...detected }, ingredientScanLoading: false, ingredientScanError: '', ingredientScanComplete: true } : null);
              } catch (error) {

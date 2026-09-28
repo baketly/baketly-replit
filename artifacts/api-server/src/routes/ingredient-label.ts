@@ -44,6 +44,7 @@ const labelResponseSchema = {
       enum: ["g", "kg", "oz", "lb", "ml", "pc"],
       nullable: true,
     },
+    servings_per_package: { type: "NUMBER", nullable: true },
     calories: { type: "NUMBER", nullable: true },
     protein_g: { type: "NUMBER", nullable: true },
     carbohydrates_g: { type: "NUMBER", nullable: true },
@@ -57,6 +58,7 @@ const labelResponseSchema = {
     "basis",
     "serving_size",
     "serving_unit",
+    "servings_per_package",
     "calories",
     "protein_g",
     "carbohydrates_g",
@@ -233,13 +235,31 @@ function normalizeLabelResult(value: unknown): Record<string, unknown> {
   const hasUsefulData =
     nullableString(source.product_name) ||
     finiteNonNegative(source.package_size) !== null ||
+    finiteNonNegative(source.servings_per_package) !== null ||
     Object.values(nutrition).some((number) => number !== null);
   if (!hasUsefulData) throw new UnreadableLabelError();
 
+  // Plenty of labels never print a net weight, but every one of them prints a
+  // serving and how many of them are in the package. That multiplies out to
+  // the same number, and it is the number a baker needs: the price they paid
+  // is for the whole package, so the cost per gram depends on it.
+  const servingsPerPackage = finiteNonNegative(source.servings_per_package);
+  const statedSize = finiteNonNegative(source.package_size);
+  const impliedSize =
+    statedSize === null && servingSize !== null && servingsPerPackage !== null
+      ? Math.round(servingSize * servingsPerPackage * 100) / 100
+      : null;
+  const packageUnit = canonicalUnit(nullableString(source.package_unit, 30));
+
   return {
     productName: nullableString(source.product_name),
-    packageSize: finiteNonNegative(source.package_size),
-    packageUnit: canonicalUnit(nullableString(source.package_unit, 30)),
+    packageSize: statedSize ?? impliedSize,
+    // a size worked out from servings is in the serving's unit, not the
+    // package unit the label may have left blank
+    packageUnit:
+      statedSize === null && impliedSize !== null
+        ? canonicalUnit(servingUnit) || packageUnit
+        : packageUnit,
     servingSize,
     servingUnit: canonicalUnit(servingUnit) || servingUnit,
     nutritionBasis:
@@ -257,6 +277,7 @@ const labelPrompt = [
   "Calories are a number; all macronutrient values are grams.",
   "Map Sugar, Sugars, Total sugars, and their language equivalents to sugar_g; do not substitute carbohydrate values.",
   "package_size is the total package amount, not the serving amount.",
+  "servings_per_package is how many servings the package holds — labels write it as Servings per container, Servings per package, or their equivalent in any language. Return the number alone.",
   "Read this ingredient product label and extract the requested fields.",
 ].join(" ");
 
