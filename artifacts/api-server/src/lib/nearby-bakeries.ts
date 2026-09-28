@@ -22,7 +22,12 @@ const OVERPASS_MIRRORS = [
 ];
 const USER_AGENT = "Baketly/1.0 (home bakery pricing app)";
 
-const GEOCODE_TIMEOUT_MS = 6_000;
+// Photon is free and usually quick, but it has spells of taking the better
+// part of ten seconds. Nominatim runs the same map data and is asked only
+// when Photon has not answered, which keeps the load off a service that asks
+// callers to be gentle.
+const NOMINATIM = "https://nominatim.openstreetmap.org/search";
+const GEOCODE_TIMEOUT_MS = 15_000;
 const OVERPASS_TIMEOUT_MS = 12_000;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60_000;
 
@@ -64,7 +69,17 @@ export async function geocode(place: string): Promise<{ lat: number; lon: number
   return locate(place);
 }
 
-async function locate(place: string): Promise<{ lat: number; lon: number } | null> {
+/** A place a baker typed, once it has been turned into a point. */
+const located = new Map<string, { at: number; point: { lat: number; lon: number } | null }>();
+
+function usablePoint(lat: unknown, lon: unknown): { lat: number; lon: number } | null {
+  const latitude = Number(lat);
+  const longitude = Number(lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return { lat: latitude, lon: longitude };
+}
+
+async function fromPhoton(place: string) {
   const response = await withTimeout(
     PHOTON + "?limit=1&lang=en&q=" + encodeURIComponent(place),
     GEOCODE_TIMEOUT_MS,
@@ -75,10 +90,51 @@ async function locate(place: string): Promise<{ lat: number; lon: number } | nul
   };
   const coordinates = payload.features?.[0]?.geometry?.coordinates;
   if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
-  const lon = Number(coordinates[0]);
-  const lat = Number(coordinates[1]);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  return { lat, lon };
+  return usablePoint(coordinates[1], coordinates[0]);
+}
+
+async function fromNominatim(place: string) {
+  const response = await withTimeout(
+    NOMINATIM + "?format=json&limit=1&q=" + encodeURIComponent(place),
+    GEOCODE_TIMEOUT_MS,
+  );
+  if (!response.ok) return null;
+  const payload = (await response.json()) as Array<{ lat?: unknown; lon?: unknown }>;
+  const first = Array.isArray(payload) ? payload[0] : null;
+  return first ? usablePoint(first.lat, first.lon) : null;
+}
+
+/**
+ * The point a place name stands for.
+ *
+ * Two providers, because one of them being slow should not end the price
+ * check — which is exactly what happened: Photon began taking nine seconds,
+ * the six-second ceiling aborted it, and the abort came out as an exception
+ * rather than an empty answer, so the whole check failed rather than
+ * carrying on without the neighbours.
+ *
+ * The answer is kept for a week. Where a baker sells does not move, and this
+ * is by far the slowest call in the check.
+ */
+async function locate(place: string): Promise<{ lat: number; lon: number } | null> {
+  const key = place.trim().toLowerCase();
+  const remembered = located.get(key);
+  if (remembered && Date.now() - remembered.at < CACHE_TTL_MS) return remembered.point;
+
+  let point: { lat: number; lon: number } | null = null;
+  for (const ask of [fromPhoton, fromNominatim]) {
+    try {
+      point = await ask(place);
+      if (point) break;
+    } catch {
+      // a timeout or a refusal: try the other one, then give up quietly
+    }
+  }
+
+  // a failure is remembered only briefly, so a service having a bad minute
+  // does not cost the baker a week
+  located.set(key, { at: point ? Date.now() : Date.now() - CACHE_TTL_MS + 60_000, point });
+  return point;
 }
 
 /** Straight-line kilometres; close enough for "is this one nearby". */
