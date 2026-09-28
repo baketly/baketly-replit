@@ -36,6 +36,8 @@ export interface UnreadBakery {
 
 export interface PipelineResult {
   bakeries: Bakery[];
+  /** which providers answered: google, osm, or both */
+  discoveredBy: Array<"google" | "osm">;
   scannedBakeries: number;
   bakeriesWithProducts: number;
   competitorProducts: number;
@@ -133,6 +135,10 @@ export async function runPriceCheck(options: PipelineOptions): Promise<PipelineR
 
   return {
     bakeries: discovery.bakeries,
+    // which providers actually answered, carried out to the response: without
+    // it, whether Google Places is configured and working can only be learned
+    // from server logs, and those are not always reachable
+    discoveredBy: discovery.sources,
     scannedBakeries: scans.filter((scan) => scan.status === "ok").length,
     bakeriesWithProducts,
     competitorProducts: competitors.length,

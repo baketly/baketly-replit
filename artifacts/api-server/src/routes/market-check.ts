@@ -435,6 +435,7 @@ router.post(
         summary: result.explanation.summary,
         products: payload,
         bakeriesFound: result.bakeries.length,
+        discoveredBy: result.discoveredBy,
         bakeriesScanned: result.scannedBakeries,
         bakeriesWithProducts: result.bakeriesWithProducts,
         competitorProducts: result.competitorProducts,
