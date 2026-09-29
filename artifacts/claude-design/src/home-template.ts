@@ -303,6 +303,12 @@ function addHomeController(template: string): string {
 // button that opens Settings and the tab it lands on looked like two features.
 import { SETTINGS_GEAR } from "./settings-template";
 
+// An envelope: the one drawing everyone reads as a message, which matters
+// on a button whose label only screen readers hear.
+const ENVELOPE =
+  '<rect x="3" y="5" width="18" height="14" rx="2"></rect>' +
+  '<path d="M3 7l9 6 9-6"></path>';
+
 const iconButton = (handler: string, label: string, path: string) =>
   `<button class="btn btn-icon btn-secondary" sc-camel-on-click="{{ ${handler} }}" aria-label="${label}" style="width:40px;height:40px">` +
   `<svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${path}</svg></button>`;
@@ -330,6 +336,7 @@ const homeMarkup = `
     </div>
     <div style="display:flex;gap:6px;flex:none">
       ${iconButton("goChat", "Ask Baketly", '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"></path>')}
+      ${iconButton("goContact", "Send a message", ENVELOPE)}
       ${iconButton("goSettings", "Settings", SETTINGS_GEAR)}
     </div>
   </div>
