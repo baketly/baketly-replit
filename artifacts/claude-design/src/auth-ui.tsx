@@ -54,12 +54,19 @@ const shell: React.CSSProperties = {
 };
 
 const card: React.CSSProperties = {
-  width: "min(100%, 380px)",
+  width: "min(100%, 400px)",
   background: "#fff",
   border: "1px solid var(--color-divider, #e6e0d4)",
-  borderRadius: 18,
-  padding: "26px 22px",
+  borderRadius: 22,
+  padding: "30px 24px 24px",
   boxShadow: "0 10px 30px rgba(30,27,22,.08)",
+};
+
+const label: React.CSSProperties = {
+  display: "block",
+  fontSize: 14,
+  fontWeight: 700,
+  marginBottom: 7,
 };
 
 const field: React.CSSProperties = {
@@ -67,24 +74,25 @@ const field: React.CSSProperties = {
   boxSizing: "border-box",
   border: "1px solid var(--color-neutral-300, #d9d3c6)",
   borderRadius: 12,
-  padding: "12px 13px",
+  padding: "13px 14px",
   // 16px exactly: below it, iOS zooms the page in when the field is focused
   // and does not zoom back out, which left the app magnified after sign-in
   fontSize: 16,
   fontFamily: "inherit",
   color: "inherit",
   background: "#fff",
-  marginBottom: 10,
 };
 
 const primary: React.CSSProperties = {
   width: "100%",
-  minHeight: 48,
+  minHeight: 50,
   border: 0,
-  borderRadius: 12,
+  // A pill, as in the reference. The provider buttons match it, so the three
+  // read as one stack of choices rather than a button and two afterthoughts.
+  borderRadius: 999,
   background: "var(--color-accent, #7a8c3f)",
   color: "#fff",
-  fontSize: 15,
+  fontSize: 15.5,
   fontWeight: 600,
   fontFamily: "inherit",
   cursor: "pointer",
@@ -92,14 +100,56 @@ const primary: React.CSSProperties = {
 
 const secondary: React.CSSProperties = {
   ...primary,
+  minHeight: 48,
   background: "#fff",
   color: "var(--color-text, #1e1b16)",
   border: "1px solid var(--color-neutral-300, #d9d3c6)",
+  fontSize: 14.5,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: 9,
+  gap: 10,
 };
+
+/** The Sign In / Sign Up pair at the top. */
+function modeTab(active: boolean): React.CSSProperties {
+  return {
+    flex: 1,
+    minHeight: 36,
+    border: 0,
+    borderRadius: 999,
+    padding: "0 10px",
+    font: "inherit",
+    fontSize: 13.5,
+    fontWeight: 600,
+    cursor: "pointer",
+    background: active ? "#fff" : "transparent",
+    color: active ? "var(--color-text, #1e1b16)" : "#8a8578",
+    boxShadow: active ? "0 1px 3px rgba(30,27,22,.16)" : "none",
+  };
+}
+
+const quietLink: React.CSSProperties = {
+  border: 0,
+  background: "none",
+  padding: 0,
+  font: "inherit",
+  fontSize: 12.5,
+  color: "var(--color-accent, #7a8c3f)",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+/** A struck-through eye while the password is showing. */
+function EyeIcon({ open }: { open: boolean }) {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" />
+      <circle cx="12" cy="12" r="2.7" />
+      {open ? <path d="M4 20 20 4" /> : null}
+    </svg>
+  );
+}
 
 export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => void }) {
   const [mode, setMode] = useState<Mode>("signin");
@@ -108,15 +158,53 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [googleReady, setGoogleReady] = useState(false);
+  const [appleReady, setAppleReady] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
+  // "asking" is the forgotten-password panel; "asked" is what it becomes once
+  // the request is in, whether or not that address turned out to have an
+  // account — see the note on forgot() below.
+  const [stage, setStage] = useState<"form" | "asking" | "asked">("form");
 
   useEffect(() => {
     // Only offer Google when the server actually has it configured, rather than
     // showing a button that dead-ends.
-    apiFetch("/api/auth/google/available")
-      .then((response) => (response.ok ? response.json() : { available: false }))
-      .then((payload: { available?: boolean }) => setGoogleReady(payload.available === true))
-      .catch(() => setGoogleReady(false));
+    const asks = (path: string, set: (ready: boolean) => void) =>
+      apiFetch(path)
+        .then((response) => (response.ok ? response.json() : { available: false }))
+        .then((payload: { available?: boolean }) => set(payload.available === true))
+        .catch(() => set(false));
+    asks("/api/auth/google/available", setGoogleReady);
+    asks("/api/auth/apple/available", setAppleReady);
   }, []);
+
+  const forgot = () => {
+    setError("");
+    setStage("asking");
+  };
+
+  /**
+   * Ask for a reset link.
+   *
+   * The answer is the same whether or not that address has an account. Telling
+   * someone "no account with that email" hands anyone who types an address a
+   * way to find out who banks here, and a baker who mistyped their own address
+   * is helped by "check your email" just as well.
+   */
+  const sendResetLink = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await post("/api/auth/forgot", { email });
+      setStage("asked");
+    } catch {
+      setError("Could not reach Baketly. Check your connection.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -139,7 +227,7 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
       }
       // In a browser the cookie is enough; in the app it is the token that
       // proves who this is on every later request.
-      if (payload.token) rememberSession(payload.token);
+      if (payload.token) rememberSession(payload.token, remember);
       onSignedIn(payload.user);
     } catch {
       setError("Could not reach Baketly. Check your connection.");
@@ -148,82 +236,199 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
     }
   };
 
+  if (stage !== "form") {
+    return (
+      <div style={shell}>
+        <div style={card}>
+          <button type="button" onClick={() => setStage("form")} style={{ ...quietLink, marginBottom: 14 }}>
+            ‹ Back to sign in
+          </button>
+          <h1 style={{ fontSize: 24, margin: "0 0 8px", fontFamily: "var(--font-heading, inherit)" }}>
+            {stage === "asked" ? "Check your email" : "Forgotten password"}
+          </h1>
+
+          {stage === "asked" ? (
+            <p style={{ fontSize: 13.5, color: "#8a8578", margin: 0, lineHeight: 1.55 }}>
+              If {email || "that address"} has a Baketly account, a link to set a new password is on
+              its way. It is good for one hour.
+            </p>
+          ) : (
+            <form onSubmit={sendResetLink} noValidate>
+              <p style={{ fontSize: 13.5, color: "#8a8578", margin: "0 0 18px", lineHeight: 1.55 }}>
+                Give us the address you signed up with and we will send a link to set a new one.
+              </p>
+              <label style={label} htmlFor="bk-auth-forgot-email">
+                <span style={{ color: "var(--color-accent, #7a8c3f)" }}>*</span>Email address
+              </label>
+              <input
+                id="bk-auth-forgot-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                placeholder="Your email"
+                style={{ ...field, marginBottom: 18 }}
+                required
+              />
+              {error ? (
+                <div style={{ color: "#b0563e", fontSize: 12.5, margin: "0 0 12px", lineHeight: 1.45 }}>
+                  {error}
+                </div>
+              ) : null}
+              <button type="submit" style={{ ...primary, opacity: busy ? 0.65 : 1 }} disabled={busy}>
+                {busy ? "One moment…" : "Send the link"}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={shell}>
       <div style={card}>
-        <div
+        <h1
           style={{
-            fontSize: 11,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            color: "var(--color-accent, #7a8c3f)",
-            marginBottom: 6,
+            fontSize: 26,
+            margin: "0 0 18px",
+            textAlign: "center",
+            fontFamily: "var(--font-heading, inherit)",
           }}
         >
-          Baketly
-        </div>
-        <h1 style={{ fontSize: 25, margin: "0 0 6px", fontFamily: "var(--font-heading, inherit)" }}>
-          {mode === "signup" ? "Create your account" : "Welcome back"}
+          Hi, Welcome <span aria-hidden="true">👋</span>
         </h1>
-        <p style={{ fontSize: 13, color: "#8a8578", margin: "0 0 18px", lineHeight: 1.5 }}>
-          {mode === "signup"
-            ? "Your ingredients, recipes and sales stay private to you."
-            : "Sign in to your bakery."}
-        </p>
+
+        <div
+          role="tablist"
+          style={{
+            display: "flex",
+            gap: 4,
+            padding: 4,
+            marginBottom: 22,
+            borderRadius: 999,
+            background: "var(--color-neutral-100, #f0ece1)",
+          }}
+        >
+          {(["signin", "signup"] as Mode[]).map((each) => (
+            <button
+              key={each}
+              type="button"
+              role="tab"
+              aria-selected={mode === each}
+              onClick={() => {
+                setMode(each);
+                setError("");
+              }}
+              style={modeTab(mode === each)}
+            >
+              {each === "signin" ? "Sign In" : "Sign Up"}
+            </button>
+          ))}
+        </div>
 
         <form onSubmit={submit} noValidate>
-          <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 5 }}>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              placeholder="you@example.com"
-              style={{ ...field, marginTop: 5 }}
-              required
-            />
+          <label style={label} htmlFor="bk-auth-email">
+            <span style={{ color: "var(--color-accent, #7a8c3f)" }}>*</span>Email address
           </label>
-          <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 5 }}>
-            Password
+          <input
+            id="bk-auth-email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            placeholder="Your email"
+            style={{ ...field, marginBottom: 16 }}
+            required
+          />
+
+          <label style={label} htmlFor="bk-auth-password">
+            <span style={{ color: "var(--color-accent, #7a8c3f)" }}>*</span>Password
+          </label>
+          <div style={{ position: "relative" }}>
             <input
-              type="password"
+              id="bk-auth-password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              placeholder={mode === "signup" ? "At least 8 characters" : ""}
-              style={{ ...field, marginTop: 5 }}
+              placeholder={mode === "signup" ? "At least 8 characters" : "Password"}
+              // room for the eye, so a long password never runs under it
+              style={{ ...field, paddingRight: 46 }}
               required
             />
-          </label>
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              style={{
+                position: "absolute",
+                top: "50%",
+                right: 6,
+                transform: "translateY(-50%)",
+                width: 36,
+                height: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: 0,
+                borderRadius: 999,
+                background: "none",
+                color: "#8a8578",
+                cursor: "pointer",
+              }}
+            >
+              <EyeIcon open={showPassword} />
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              margin: "12px 0 20px",
+            }}
+          >
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(event) => setRemember(event.target.checked)}
+                style={{ width: 17, height: 17, accentColor: "var(--color-accent, #7a8c3f)", margin: 0 }}
+              />
+              Remember me
+            </label>
+            <button type="button" onClick={forgot} style={quietLink}>
+              Forgot password?
+            </button>
+          </div>
 
           {error ? (
-            <div style={{ color: "#b0563e", fontSize: 12.5, margin: "2px 0 10px", lineHeight: 1.45 }}>
+            <div style={{ color: "#b0563e", fontSize: 12.5, margin: "0 0 12px", lineHeight: 1.45 }}>
               {error}
             </div>
           ) : null}
 
           <button type="submit" style={{ ...primary, opacity: busy ? 0.65 : 1 }} disabled={busy}>
-            {busy ? "One moment…" : mode === "signup" ? "Create account" : "Sign in"}
+            {busy ? "One moment…" : mode === "signup" ? "Create account" : "Log in"}
           </button>
         </form>
 
+        {googleReady || appleReady ? (
+          <div
+            style={{
+              height: 1,
+              background: "var(--color-divider, #e6e0d4)",
+              margin: "22px 8px",
+            }}
+          />
+        ) : null}
+
         {googleReady ? (
           <>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                margin: "16px 0",
-                color: "#b9b4a8",
-                fontSize: 12,
-              }}
-            >
-              <span style={{ flex: 1, height: 1, background: "var(--color-divider, #e6e0d4)" }} />
-              or
-              <span style={{ flex: 1, height: 1, background: "var(--color-divider, #e6e0d4)" }} />
-            </div>
             {/* In a browser this is an ordinary link. In the app it opens the
                 system's own browser sheet instead, because Google will not
                 accept a sign-in from inside an app's web view. */}
@@ -249,26 +454,33 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
           </>
         ) : null}
 
-        <div style={{ marginTop: 18, fontSize: 13, textAlign: "center", color: "#8a8578" }}>
-          {mode === "signup" ? "Already have an account?" : "New to Baketly?"}{" "}
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === "signup" ? "signin" : "signup");
-              setError("");
-            }}
-            style={{
-              border: 0,
-              background: "none",
-              padding: 0,
-              font: "inherit",
-              fontWeight: 600,
-              color: "var(--color-accent, #7a8c3f)",
-              cursor: "pointer",
-            }}
+        {appleReady ? (
+          <a
+            href={apiBase() + "/api/auth/apple"}
+            style={{ ...secondary, textDecoration: "none", marginTop: googleReady ? 10 : 0 }}
           >
-            {mode === "signup" ? "Sign in" : "Create one"}
-          </button>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16.4 12.7c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.7.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.5 0-2.8.8-3.6 2.2-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.7 2.2 1.1 0 1.5-.7 2.8-.7s1.6.7 2.8.7c1.1 0 1.9-1 2.6-2.1.8-1.2 1.2-2.4 1.2-2.4-.1 0-2.2-.9-2.2-3.4zM14.2 5.9c.6-.7 1-1.7.9-2.7-.9 0-2 .6-2.6 1.3-.6.6-1.1 1.7-.9 2.6 1 .1 2-.5 2.6-1.2z" />
+            </svg>
+            Continue with Apple
+          </a>
+        ) : null}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            marginTop: 26,
+            fontSize: 12,
+            color: "#8a8578",
+          }}
+        >
+          <a href={apiBase() + "/api/privacy"} style={{ color: "inherit", textDecoration: "none" }}>
+            Privacy Policy
+          </a>
+          <span>@Baketly {new Date().getFullYear()}</span>
         </div>
       </div>
     </div>

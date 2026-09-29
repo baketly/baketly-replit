@@ -42,17 +42,30 @@ export function isNativeApp(): boolean {
 
 export function sessionToken(): string | null {
   try {
-    return window.localStorage.getItem(TOKEN_KEY);
+    // A remembered session outlives the run; the other kind lives in it alone.
+    return window.localStorage.getItem(TOKEN_KEY) ?? window.sessionStorage.getItem(TOKEN_KEY);
   } catch {
     // a browser with storage blocked still has its cookie
     return null;
   }
 }
 
-export function rememberSession(token: string | null): void {
+/**
+ * Keep the session, or keep it only for now.
+ *
+ * "Remember me" has to mean something or it has no business being on the
+ * screen. Ticked, the token is kept where it survives quitting the app;
+ * unticked, it lives in this run alone, and a baker signing in on someone
+ * else's phone is signed out when the app closes.
+ *
+ * Both stores are cleared first either way, so a remembered token from last
+ * time cannot outlive a sign-in that asked not to be remembered.
+ */
+export function rememberSession(token: string | null, persist = true): void {
   try {
-    if (token) window.localStorage.setItem(TOKEN_KEY, token);
-    else window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.sessionStorage.removeItem(TOKEN_KEY);
+    if (token) (persist ? window.localStorage : window.sessionStorage).setItem(TOKEN_KEY, token);
   } catch {
     // nothing to do: the cookie is the fallback, and the app will ask again
   }
