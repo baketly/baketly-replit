@@ -75,14 +75,24 @@ function fieldsCanShrink(template: string): string {
       // button is wider than a phone, so the screen ran off the side. This
       // only removes a floor; nothing gets narrower than its content needs.
       "input,select,textarea{min-width:0}" +
-      // A date and a booth fee beside each other, until the screen is too
-      // narrow for them. A date input does not shrink the way other
-      // controls do — iOS gives it the width its formatted date needs and
-      // lets the rest spill — so on a phone the fee was drawn over the
-      // date. Below 460px they take a line each, which no amount of
-      // column clamping could guarantee.
-      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:10px}" +
-      "\n    @media (max-width:460px){.bk-pair{grid-template-columns:minmax(0,1fr);gap:4px}}",
+      // A date and a booth fee beside each other, but only where each has
+      // room. A date input does not shrink the way other controls do — iOS
+      // gives it the width its formatted date needs and lets the rest spill
+      // — so on a phone the fee was drawn over the date.
+      //
+      // This asks the row how much width it has and never asks the viewport.
+      // A breakpoint was the obvious fix and was wrong twice: it stacked
+      // correctly in a 375px browser and still overlapped on the phone,
+      // because a media query is only as honest as the width the device
+      // reports, and a page whose content overflows is handed a layout
+      // viewport wider than the glass.
+      //
+      // The floor is what does the work. Two fields sit on one line only
+      // when each can have 220px, comfortably more than the ~150px a
+      // formatted date needs; below that they wrap to a line each. There is
+      // no width at which a column is too narrow for what stands in it.
+      "\n    .bk-pair{display:flex;flex-wrap:wrap;gap:10px}" +
+      "\n    .bk-pair>*{flex:1 1 220px;min-width:0}",
   );
 }
 
