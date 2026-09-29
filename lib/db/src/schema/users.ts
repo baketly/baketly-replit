@@ -9,9 +9,14 @@ import { z } from "zod/v4";
  * it. Email stays the thing a person signs in with, held unique and lowercased
  * so "Ada@x.com" and "ada@x.com" cannot become two accounts.
  *
- * passwordHash is null for an account created through Google, and googleSub is
- * null for one created with a password. An account may end up with both, which
- * is what lets someone sign up with a password and later use Google.
+ * passwordHash is null for an account made through Google or Apple, and the
+ * provider columns are null for one made with a password. An account may end
+ * up with several: signing up with a password and later using Google, or
+ * arriving through Apple and setting a password afterwards.
+ *
+ * Each provider gets a column of its own rather than one shared provider
+ * field, because the same person legitimately has all three, and a single
+ * column could only ever hold whichever they used last.
  */
 export const usersTable = pgTable(
   "users",
@@ -21,6 +26,9 @@ export const usersTable = pgTable(
     displayName: text("display_name"),
     passwordHash: text("password_hash"),
     googleSub: text("google_sub"),
+    // Apple's subject is per-developer-account, not global: the same person
+    // signing into someone else's app gets a different one.
+    appleSub: text("apple_sub"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -30,6 +38,7 @@ export const usersTable = pgTable(
   (table) => [
     uniqueIndex("users_email_key").on(table.email),
     uniqueIndex("users_google_sub_key").on(table.googleSub),
+    uniqueIndex("users_apple_sub_key").on(table.appleSub),
   ],
 );
 

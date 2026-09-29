@@ -7,14 +7,17 @@ export type NewUser = {
   displayName?: string | null;
   passwordHash?: string | null;
   googleSub?: string | null;
+  appleSub?: string | null;
 };
 
 export interface AuthStore {
   findUserByEmail(email: string): Promise<User | null>;
   findUserByGoogleSub(sub: string): Promise<User | null>;
+  findUserByAppleSub(sub: string): Promise<User | null>;
   findUserById(id: string): Promise<User | null>;
   createUser(user: NewUser): Promise<User>;
   linkGoogle(userId: string, sub: string): Promise<void>;
+  linkApple(userId: string, sub: string): Promise<void>;
   createSession(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
   findSession(tokenHash: string): Promise<Session | null>;
   deleteSession(tokenHash: string): Promise<void>;
@@ -37,6 +40,10 @@ class DrizzleAuthStore implements AuthStore {
     const [row] = await db.select().from(usersTable).where(eq(usersTable.googleSub, sub));
     return row ?? null;
   }
+  async findUserByAppleSub(sub: string): Promise<User | null> {
+    const [row] = await db.select().from(usersTable).where(eq(usersTable.appleSub, sub));
+    return row ?? null;
+  }
   async findUserById(id: string): Promise<User | null> {
     const [row] = await db.select().from(usersTable).where(eq(usersTable.id, id));
     return row ?? null;
@@ -50,12 +57,16 @@ class DrizzleAuthStore implements AuthStore {
         displayName: user.displayName ?? null,
         passwordHash: user.passwordHash ?? null,
         googleSub: user.googleSub ?? null,
+        appleSub: user.appleSub ?? null,
       })
       .returning();
     return row;
   }
   async linkGoogle(userId: string, sub: string): Promise<void> {
     await db.update(usersTable).set({ googleSub: sub }).where(eq(usersTable.id, userId));
+  }
+  async linkApple(userId: string, sub: string): Promise<void> {
+    await db.update(usersTable).set({ appleSub: sub }).where(eq(usersTable.id, userId));
   }
   async createSession(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
     await db.insert(sessionsTable).values({ id: tokenHash, userId, expiresAt });
@@ -95,6 +106,9 @@ class MemoryAuthStore implements AuthStore {
   async findUserByGoogleSub(sub: string) {
     return [...this.users.values()].find((user) => user.googleSub === sub) ?? null;
   }
+  async findUserByAppleSub(sub: string) {
+    return [...this.users.values()].find((user) => user.appleSub === sub) ?? null;
+  }
   async findUserById(id: string) {
     return this.users.get(id) ?? null;
   }
@@ -106,6 +120,7 @@ class MemoryAuthStore implements AuthStore {
       displayName: user.displayName ?? null,
       passwordHash: user.passwordHash ?? null,
       googleSub: user.googleSub ?? null,
+      appleSub: user.appleSub ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -115,6 +130,10 @@ class MemoryAuthStore implements AuthStore {
   async linkGoogle(userId: string, sub: string) {
     const row = this.users.get(userId);
     if (row) this.users.set(userId, { ...row, googleSub: sub });
+  }
+  async linkApple(userId: string, sub: string) {
+    const row = this.users.get(userId);
+    if (row) this.users.set(userId, { ...row, appleSub: sub });
   }
   async createSession(userId: string, tokenHash: string, expiresAt: Date) {
     this.sessions.set(tokenHash, { id: tokenHash, userId, createdAt: new Date(), expiresAt });

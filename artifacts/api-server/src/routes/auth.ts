@@ -2,6 +2,16 @@ import { randomBytes } from "node:crypto";
 import { json, Router, type IRouter, type Request, type Response } from "express";
 import { OAuth2Client } from "google-auth-library";
 import { loginSchema, signupSchema } from "@workspace/db";
+import {
+  appleAuthorizeUrl,
+  appleConfig,
+  appleDisplayName,
+  appleFallbackEmail,
+  exchangeAppleCode,
+  readState,
+  signState,
+  verifyAppleIdentityToken,
+} from "../lib/apple-signin";
 import { authStore } from "../lib/auth-store";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { currentUser, endSession, isAdmin, requireUser, startSession } from "../lib/session";
@@ -267,6 +277,107 @@ router.get("/auth/google/callback", async (req: Request, res: Response) => {
   } catch (error) {
     req.log.warn({ err: error }, "Google sign-in failed");
     res.status(502).send("Google sign-in failed. Please try again.");
+  }
+});
+
+// Sign in with Apple.
+//
+// Apple is not an alternative to Google here so much as the price of offering
+// it: App Store review turns down an app that signs people in with someone
+// else's account and does not also offer Apple's.
+//
+// The shape follows Google's — availability, a redirect out, a callback that
+// ends in a session — with the differences Apple's flow forces, which live in
+// lib/apple-signin.ts.
+
+/**
+ * The state is signed rather than kept in a cookie.
+ *
+ * Apple returns as a cross-site POST, and a Lax cookie does not travel on one.
+ * The signature does what the cookie did: it proves this round trip began
+ * here. Without SESSION_SECRET it falls back to a value good for this process,
+ * which still holds for a sign-in that starts and finishes inside one run.
+ */
+const STATE_SECRET = process.env.SESSION_SECRET || randomBytes(32).toString("hex");
+
+router.get("/auth/apple/available", (_req: Request, res: Response) => {
+  res.json({ available: appleConfig() !== null });
+});
+
+router.get("/auth/apple", (req: Request, res: Response) => {
+  const config = appleConfig();
+  if (!config) {
+    res.status(503).json({ error: "Apple sign-in is not configured yet." });
+    return;
+  }
+  const native = req.query.native === "1" ? "native" : "web";
+  res.redirect(appleAuthorizeUrl(config, signState(native, STATE_SECRET)));
+});
+
+router.post("/auth/apple/callback", async (req: Request, res: Response) => {
+  const config = appleConfig();
+  if (!config) {
+    res.status(503).send("Apple sign-in is not configured yet.");
+    return;
+  }
+  try {
+    const body = req.body as { code?: string; state?: string; user?: string; error?: string };
+
+    // Backing out of Apple's sheet is an ordinary thing to do, not a failure.
+    if (body.error) {
+      res.redirect("/");
+      return;
+    }
+
+    const where = typeof body.state === "string" ? readState(body.state, STATE_SECRET) : null;
+    if (!where) {
+      res.status(400).send("Sign-in could not be verified. Please try again.");
+      return;
+    }
+    if (!body.code) {
+      res.status(400).send("Apple did not return a sign-in code.");
+      return;
+    }
+
+    const identity = await verifyAppleIdentityToken(
+      await exchangeAppleCode(body.code, config),
+      config,
+    );
+
+    let user = await authStore.findUserByAppleSub(identity.sub);
+    if (!user) {
+      // Only a verified address may claim an account that already exists under
+      // it, for the same reason it may not through Google: otherwise an
+      // unverified address is a way into someone else's bakery.
+      const email = identity.emailVerified ? identity.email : null;
+      const byEmail = email ? await authStore.findUserByEmail(email) : null;
+      if (byEmail) {
+        await authStore.linkApple(byEmail.id, identity.sub);
+        user = { ...byEmail, appleSub: identity.sub };
+      } else {
+        user = await authStore.createUser({
+          // Hide My Email gives a relay address, which works. No address at
+          // all gives a stand-in, so the account still has the one thing every
+          // account here needs.
+          email: email || identity.email || appleFallbackEmail(identity.sub),
+          // Apple offers the name once, on the first authorisation, and never
+          // again — so it is taken here or not at all.
+          displayName: appleDisplayName(body.user),
+          appleSub: identity.sub,
+        });
+      }
+    }
+
+    const token = await startSession(res, user.id);
+    req.log.info({ userId: user.id, native: where === "native" }, "Signed in with Apple");
+    if (where === "native") {
+      res.redirect(APP_SCHEME + "://auth?token=" + encodeURIComponent(token));
+      return;
+    }
+    res.redirect("/");
+  } catch (error) {
+    req.log.warn({ err: error }, "Apple sign-in failed");
+    res.status(502).send("Apple sign-in failed. Please try again.");
   }
 });
 
