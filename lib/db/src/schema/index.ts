@@ -20,3 +20,4 @@
 export * from "./users";
 export * from "./workspace-state";
 export * from "./competitors";
+export * from "./messages";
