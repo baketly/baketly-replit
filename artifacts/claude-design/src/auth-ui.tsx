@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiBase, apiFetch, rememberSession } from "./api";
-import { canUseNativeGoogle, startNativeGoogleSignIn } from "./native-auth";
+import { canUseNativeSignIn, startNativeSignIn } from "./native-auth";
 
 // The sign-in screen is a real React component rendered over the app, not part
 // of the generated template. The template is one large string patched by exact
@@ -435,9 +435,9 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
             <a
               href={apiBase() + "/api/auth/google"}
               onClick={(event) => {
-                if (!canUseNativeGoogle()) return;
+                if (!canUseNativeSignIn()) return;
                 event.preventDefault();
-                startNativeGoogleSignIn().catch(() =>
+                startNativeSignIn("google").catch(() =>
                   setError("Could not open Google sign-in. Try your email and password."),
                 );
               }}
@@ -457,6 +457,13 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
         {appleReady ? (
           <a
             href={apiBase() + "/api/auth/apple"}
+            onClick={(event) => {
+              if (!canUseNativeSignIn()) return;
+              event.preventDefault();
+              startNativeSignIn("apple").catch(() =>
+                setError("Could not open Apple sign-in. Try your email and password."),
+              );
+            }}
             style={{ ...secondary, textDecoration: "none", marginTop: googleReady ? 10 : 0 }}
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

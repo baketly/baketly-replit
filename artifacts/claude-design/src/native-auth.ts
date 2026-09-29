@@ -1,15 +1,15 @@
-// Signing in with Google from inside the app.
+// Signing in with Google or Apple from inside the app.
 //
-// Google refuses OAuth in an embedded web view — an app pretending to be a
-// browser is how credentials get stolen — so the sign-in has to happen in a
-// real browser the system owns. iOS gives us one: a Safari sheet that appears
-// over the app, shares Safari's cookies, and can hand back to the app through
-// its own URL scheme.
+// Neither provider accepts OAuth in an embedded web view — an app pretending
+// to be a browser is how credentials get stolen — so the sign-in has to happen
+// in a real browser the system owns. iOS gives us one: a Safari sheet that
+// appears over the app, shares Safari's cookies, and can hand back to the app
+// through its own URL scheme.
 //
-// So the flow is: open the server's Google route in that sheet, let Google and
-// the server do their usual round trip, and let the server finish by redirecting
-// to baketly://auth?token=… . iOS brings the app forward with that URL, the
-// token is kept, and the sheet closes.
+// So the flow is: open the server's route for that provider in the sheet, let
+// the provider and the server do their usual round trip, and let the server
+// finish by redirecting to baketly://auth?token=… . iOS brings the app forward
+// with that URL, the token is kept, and the sheet closes.
 //
 // Nothing here imports a Capacitor package. The plugins are read off the global
 // the native runtime installs, so this same file builds and runs in a browser,
@@ -29,14 +29,20 @@ function plugins(): CapacitorPlugins | null {
 }
 
 /** True when the app can actually run the native sign-in. */
-export function canUseNativeGoogle(): boolean {
+export function canUseNativeSignIn(): boolean {
   const found = plugins();
   return isNativeApp() && !!found?.Browser?.open && !!found?.App?.addListener;
 }
 
-/** Opens Google in the system's own browser sheet. */
-export async function startNativeGoogleSignIn(): Promise<void> {
-  const url = apiBase() + "/api/auth/google?native=1";
+/**
+ * Opens a provider in the system's own browser sheet.
+ *
+ * Both finish the same way — the server redirects to baketly://auth with the
+ * session on it — so the sheet, the listener and the return path are shared,
+ * and only the route differs.
+ */
+export async function startNativeSignIn(provider: "google" | "apple"): Promise<void> {
+  const url = apiBase() + "/api/auth/" + provider + "?native=1";
   const found = plugins();
   if (found?.Browser?.open) {
     await found.Browser.open({ url, presentationStyle: "popover" });
