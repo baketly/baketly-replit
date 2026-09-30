@@ -11,6 +11,7 @@
 
 import type { AskLogger } from "./log";
 import { getMarketPricing } from "./market-tool";
+import { getNextStep, getPantry } from "./pantry";
 import {
   analyzeProductPrice,
   compareEvents,
@@ -51,6 +52,18 @@ export const toolDeclarations = [
     description:
       "How the bakery is doing overall in a period: revenue, costs, profit, margin, orders, best sellers, most profitable products and any markets in that time. Use for 'how am I doing', 'this month', general questions.",
     parameters: { type: "OBJECT", properties: { period: periodProperty } },
+  },
+  {
+    name: "getPantry",
+    description:
+      "The pantry: every ingredient recorded, what each costs per gram or unit, which products use it, and how much it adds across them. Use for any question about ingredients rather than products — what costs the most, what has gone up, what is not used by anything.",
+    parameters: { type: "OBJECT", properties: {} },
+  },
+  {
+    name: "getNextStep",
+    description:
+      "The one thing this bakery should set up next, and why, worked out from what is recorded. Use when the baker asks what to do next, how to start, what is missing, or why an answer is incomplete — and when their records are too thin for the question they asked.",
+    parameters: { type: "OBJECT", properties: {} },
   },
   {
     name: "getProductDetails",
@@ -169,6 +182,10 @@ const HANDLERS: Record<string, Handler> = {
   getSalesTrends,
   getMarketPricing,
   analyzeProductPrice,
+  getPantry,
+  // the pantry answers both of these; a baker says either
+  getIngredientCosts: getPantry,
+  getNextStep,
 };
 
 export interface DispatchResult {
