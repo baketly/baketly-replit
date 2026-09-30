@@ -53,7 +53,11 @@ export function applyAnalyticsBehavior(template: string): string {
 .an-row-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-row-sub { font-size: 12px; color: var(--color-neutral-500); }
 .an-row-val { font-feature-settings: 'tnum'; font-size: 14px; font-weight: 500; flex: none; text-align: right; }
-.an-mini-bar { height: 6px; border-radius: 3px; background: var(--color-neutral-100); overflow: hidden; margin-top: 8px; }
+/* The track is the half of a bar that says how far it did not get, so it
+   has to be visible. It was var(--color-neutral-100), which this design
+   never defines — the whole track painted transparent and a reader had
+   nothing to measure the fill against. */
+.an-mini-bar { height: 6px; border-radius: 3px; background: var(--color-neutral-200); overflow: hidden; margin-top: 8px; }
 .an-mini-bar > span { display: block; height: 100%; background: var(--color-accent); border-radius: 3px; }
 .an-chips { display: flex; gap: 10px; margin-bottom: 4px; }
 .an-chip { flex: 1; background: #fff; border: 1px solid var(--color-divider); border-radius: 12px; padding: 11px 12px; box-shadow: var(--shadow-sm); }
