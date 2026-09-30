@@ -452,7 +452,7 @@ export function applyAnalyticsBehavior(template: string): string {
         }
         
         const productsArr = Object.values(monthData.products).sort((a, b) => b.revenue - a.revenue);
-        let insightText = "You haven't recorded any sales this month yet. Start tracking cash or POS orders to see insights.";
+        let insightText = "No sales recorded this month yet. Ring one up and Baketly will show you how it is going.";
         if (productsArr.length > 0) {
           const topProduct = productsArr[0];
           const lowMargin = productsArr.find(p => p.revenue > 0 && ((p.revenue - p.cost) / p.revenue) < 0.4);
@@ -461,7 +461,7 @@ export function applyAnalyticsBehavior(template: string): string {
             insightText = topProduct.name + ' is driving revenue, but ' + lowMargin.name + ' has a low margin of ' + margin + '%. Consider raising its price or tweaking the recipe.';
           } else {
             const slowProduct = productsArr[productsArr.length - 1];
-            insightText = topProduct.name + ' is your best earner this month. ' + (slowProduct && slowProduct !== topProduct ? slowProduct.name + ' is the slowest seller at ' + slowProduct.items + ' units, so keep its next bake conservative.' : 'Margins are healthy; keep watching sell-through before increasing the next batch.');
+            insightText = topProduct.name + ' is your best earner this month. ' + (slowProduct && slowProduct !== topProduct ? slowProduct.name + ' is the slowest seller at ' + slowProduct.items + ' units, so keep its next bake conservative.' : 'Margins look good. See how much sells before you bake a bigger batch.');
           }
         }
 
@@ -500,7 +500,7 @@ export function applyAnalyticsBehavior(template: string): string {
              costStr: CUR + p.cost.toFixed(2),
               profitStr: (p.revenue - p.cost < 0 ? ('-' + CUR) : CUR) + Math.abs(p.revenue - p.cost).toFixed(2),
              mixStr: monthRev > 0 ? Math.round(p.revenue / monthRev * 100) + '% of sales' : '0% of sales',
-             guidance: recipe && Number(recipe.price) < target ? ('Current price is below a 60% margin target (~' + CUR) + target.toFixed(2) + ').' : (recipe ? 'Current saved price supports the 60% margin target.' : 'Historical product; no saved recipe price to compare.'),
+             guidance: recipe && Number(recipe.price) < target ? ('Current price is below a 60% margin target (~' + CUR) + target.toFixed(2) + ').' : (recipe ? 'Your saved price already hits your 60% margin.' : 'An older product. There is no saved price to compare it with.'),
             marginStr: margin + '%',
             marginColor: margin >= 60 ? 'var(--color-neutral-700)' : '#b0563e'
           };
@@ -665,7 +665,7 @@ export function applyAnalyticsBehavior(template: string): string {
               // only worth showing once the list spans more than this year
               yearStr: when.getFullYear() === thisYear ? '' : String(when.getFullYear()),
               name: ev.name || 'Market',
-              subStr: 'kept ' + ev.profitStr + ' · ' + ev.marginStr + ' margin',
+              subStr: 'earned ' + ev.profitStr + ' · ' + ev.marginStr + ' margin',
               revStr: ev.revStr,
               open: ev.open
             };
@@ -688,7 +688,7 @@ export function applyAnalyticsBehavior(template: string): string {
         // the same events the Events tab shows, reused on the month screen
         const monthEventRows = eventsData.map(ev => ({
           name: ev.name || 'Market',
-          sub: ev.dateStr + ' · kept ' + ev.profitStr + ' · ' + ev.roiStr + ' return',
+          sub: ev.dateStr + ' · earned ' + ev.profitStr + ' · ' + ev.roiStr + ' return',
           valueStr: ev.revStr,
           open: ev.open
         }));
@@ -699,7 +699,7 @@ export function applyAnalyticsBehavior(template: string): string {
         let marketsInsightText = 'Add a market and I will tell you whether the table paid for itself.';
         if (rankedPastEvents.length === 1) {
           const only = rankedPastEvents[0];
-          marketsInsightText = only.name + ' kept ' + only.profitStr + ' after costs, a ' + only.roiStr + ' return on what it took to be there.';
+          marketsInsightText = only.name + ' earned ' + only.profitStr + ' after costs, a ' + only.roiStr + ' return on what it took to be there.';
         } else if (rankedPastEvents.length > 1) {
           const best = rankedPastEvents[0];
           const worst = rankedPastEvents[rankedPastEvents.length - 1];
@@ -868,7 +868,7 @@ function removeCashTracker(template: string): string {
     template = template.replace(fragment, () => {
       if (fragment === staleCashCopy) return "Enter the quantities you sold.";
       // booth fee and any other costs are now subtracted here
-      if (fragment === staleProfitCopy) return "Actual profit takes off what you baked, the booth fee and any other costs you listed. Labor is not included.";
+      if (fragment === staleProfitCopy) return "Actual profit takes off what you baked, the booth fee and any other costs you added. Your time is not counted.";
       return "";
     });
   }

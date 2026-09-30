@@ -26,6 +26,7 @@ import { applySingleSalesBehavior } from "./single-sales-template";
 import { applyNavBehavior } from "./nav-template";
 import { applyItemModeBehavior } from "./item-mode-template";
 import { applyLayoutBehavior } from "./layout-template";
+import { applyWordingBehavior } from "./wording-template";
 import { applySwipeBackBehavior } from "./swipe-back-template";
 import { applyCardPaymentBehavior } from "./card-payment-template";
 import { applyContactBehavior } from "./contact-template";
@@ -312,7 +313,9 @@ window.__baketlyApplyRecipeRecords = (template) => {
     recipeTemplate = removeKnownPackagingPlaceholders(template);
   }
 
-  return applyLayoutBehavior(
+  // Outermost, so it rewrites the text that actually reaches the screen.
+  return applyWordingBehavior(
+    applyLayoutBehavior(
     applyContactBehavior(
     applyCardPaymentBehavior(
     applySwipeBackBehavior(
@@ -344,6 +347,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
           ),
         ),
       ),
+    ),
     ),
     ),
     ),

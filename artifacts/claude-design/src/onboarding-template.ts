@@ -56,7 +56,7 @@ const onboardingController = `      ...(() => {
           setHourlyRate: setNumber('hourlyRateText', 'hourlyRate', 10000),
           obRateSummary: rate > 0
             ? 'Your time is set at ' + CUR + rate.toFixed(2) + ' an hour, and every recipe will count it.'
-            : 'Leave it blank and a margin counts ingredients and packaging only. You can set it later in Settings.',
+            : 'Leave it blank and margins count ingredients and packaging only. You can add it later in Settings.',
           obNearby: town
             ? 'Baketly will look at what bakeries in ' + town + ' charge.'
             : 'Without it, Baketly can still cost your recipes — it just cannot tell you how your prices compare.',
@@ -110,7 +110,7 @@ const stepWhatIsBaketly = `
     <h2 style="font-size:30px;line-height:1.15;margin:0 0 10px">Know what every bake really costs</h2>
     <p class="text-muted" style="font-size:14px;line-height:1.6;margin-bottom:22px">Tell Baketly what you buy and what you bake, and it works out the rest.</p>
     ${point("Your pantry", "Enter what a sack of flour costs once. Baketly works out the price of every gram you use.")}
-    ${point("Your recipes", "Each one prices itself from that pantry, so you can see what it costs and what it keeps.")}
+    ${point("Your recipes", "Baketly works out what each one costs to make, and what you earn when you sell it.")}
     ${point("Your markets", "Plan what to bake, sell from your phone, and see what the day was actually worth.")}
     <p class="text-muted" style="font-size:13px;line-height:1.5;margin-top:6px">It takes a minute, and you can change any answer later in Settings.</p>
     <button class="btn btn-primary btn-block" sc-camel-on-click="{{ obGoStep2 }}" style="min-height:48px;margin-top:auto">Get started</button>

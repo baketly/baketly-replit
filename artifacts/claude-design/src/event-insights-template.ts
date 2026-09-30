@@ -162,8 +162,8 @@ const eventInsightsController = `      ...(() => {
           eventAdvice: advice,
           hasEventAdvice: advice.length > 0,
           sortExplainer: sortBy === 'margin'
-            ? 'Ordered by margin — the share of the price you keep after ingredients and packaging. Best first.'
-            : 'Ordered by how much of each bake sold at the table. Worst first, so what is coming home is at the top.',
+            ? 'Sorted by margin — how much of the price you earn once ingredients and packaging are paid for. Best first.'
+            : 'Sorted by how much of each bake sold at the stall. Worst first, so what came home is at the top.',
           sortByRate: sortBy === 'rate',
           sortByMargin: sortBy === 'margin',
           rateChipBg: sortBy === 'rate' ? 'var(--color-accent)' : '#fff',
