@@ -46,15 +46,28 @@ async function seed(token, state) {
   if (!res.ok) throw new Error(`could not seed: ${res.status} ${(await res.text()).slice(0, 200)}`);
 }
 
+const wait = (ms) => new Promise((go) => setTimeout(go, ms));
+
+// The server allows thirty questions in ten minutes per address, and a run of
+// this asks thirteen. Two runs back to back trip it, which is the limit doing
+// its job — so the suite waits it out rather than dying half way and leaving
+// you unsure whether the cases that did not run would have passed.
 async function ask(token, question, history) {
-  const res = await fetch(`${API}/api/ask`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ question, history }),
-  });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`ask failed ${res.status}: ${payload.error ?? ""}`);
-  return String(payload.answer ?? "");
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API}/api/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ question, history }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (res.ok) return String(payload.answer ?? "");
+    if (res.status !== 429 || attempt >= 6) {
+      throw new Error(`ask failed ${res.status}: ${payload.error ?? ""}`);
+    }
+    const pause = 30_000 * (attempt + 1);
+    console.log(`      ${DIM}rate limited, waiting ${pause / 1000}s${OFF}`);
+    await wait(pause);
+  }
 }
 
 // ---- run ----------------------------------------------------------------

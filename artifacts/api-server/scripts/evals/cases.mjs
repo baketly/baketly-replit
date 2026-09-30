@@ -115,7 +115,13 @@ export const CASES = [
       // it is at .00" is plainly about the loaf without naming it, and an
       // earlier version of this check failed that perfectly good answer.
       says("answers about the loaf", /sourdough|price|recipe|batch|bake/i),
-      never("changes the subject to markets", /market/i),
+      // Naming market results as evidence it does not have is honest. The
+      // defect was answering about markets instead of the loaf: 'you have
+      // no markets recorded, so add one' to a question about a price.
+      never(
+        "pivots to advice about markets",
+        /add (a|your) (first )?market|start by (adding|logging|saving)[^.]{0,30}market|nothing to change there/i,
+      ),
     ],
   },
 
