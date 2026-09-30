@@ -49,12 +49,12 @@ const REWRITES: readonly Rewrite[] = [
   // and could not change. It is a label for the field under it, so it says so.
   [">Saturday Market Prep<", ">Event name<"],
 
-  // What this was trying to say, in the order a baker would ask it: you
-  // cannot bake part of a batch; the same flour in two recipes is one line on
-  // the list; and ticking things off is shopping, not accounting.
+  // What this was trying to say, in the order a baker would ask it: the list
+  // is for exactly what you plan to bake; the same flour in two recipes is
+  // one line; and ticking things off is shopping, not accounting.
   [
     "Each recipe is rounded up to full batches — 40 babkas ÷ 12 per batch = 4 batches — then matching ingredients are combined. Ticking items tracks collection only; it doesn't change costs.",
-    "You cannot bake part of a batch, so each recipe is rounded up to whole ones — 40 babkas at 12 a batch means 4 batches. Anything used in more than one recipe is then added together, so flour is one line and not three. Ticking things off is your shopping list only; it changes nothing about the costs.",
+    "The list is for exactly what you plan to bake, part batches and all — 40 babkas from a recipe that makes 12 buys three and a third batches of ingredients, and the recipe calculator scales the baking to match. Anything used in more than one recipe is added together, so flour is one line and not three. Ticking things off is your shopping list only; it changes nothing about the costs.",
   ],
 
   // --- sentences that needed saying differently -------------------------

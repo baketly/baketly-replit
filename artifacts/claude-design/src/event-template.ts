@@ -537,8 +537,12 @@ function shoppingFromLineup(template: string): string {
             const wanted = Math.max(0, Number(evQty[product.id]) || 0);
             if (!recipe || wanted <= 0) return;
             const made = Math.max(1, Number(recipe.yield) || 1);
-            // you cannot bake half a batch, so shop for whole ones
-            const batches = Math.ceil(wanted / made);
+            // Part of a batch is a thing you can bake — the recipe calculator
+            // scales a recipe to whatever number you ask of it. So the list
+            // buys for exactly what is planned: 40 babkas from a recipe that
+            // makes 12 is three and a third batches of ingredients, not four.
+            // Rounding up put a whole extra batch of everything in the basket.
+            const batches = wanted / made;
             (recipe.ingredientKeys || []).forEach(key => {
               const perBatch = Number((recipe.amounts || {})[key]) || 0;
               if (perBatch <= 0) return;
@@ -721,7 +725,7 @@ function describeShoppingList(template: string): string {
     anchor,
     () =>
       '<p class="text-muted" style="font-size:13px;line-height:1.5;margin-bottom:14px">' +
-      'This is the shopping list for your market — everything the lineup needs, in full batches and added up across recipes. ' +
+      'This is the shopping list for your market — everything your lineup needs, added up across your recipes. ' +
       'Change any amount to match what you need to buy.</p>',
   );
 }
