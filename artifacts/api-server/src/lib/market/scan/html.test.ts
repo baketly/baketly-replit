@@ -116,6 +116,16 @@ test("a one-sentence blurb is not read as the product's name", () => {
   );
 });
 
+test("a menu's footnote marker is not part of the name", () => {
+  const page = `
+    <div><span class="product-title">Pain au Levain*</span><span class="price">$6.50</span></div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  assert.equal(found[0]?.name, "Pain au Levain");
+  // and it is still read as the sourdough it is
+  assert.equal(found[0]?.subcategory, "sourdough");
+});
+
 test("a theme's price label is not a product", () => {
   const page = `
     <div>

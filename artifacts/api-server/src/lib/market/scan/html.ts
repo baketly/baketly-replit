@@ -79,6 +79,18 @@ function blurbBetween(markup: string): string {
   return decode(markup.replace(/<[^>]*>/g, " ")).slice(0, 160);
 }
 
+/**
+ * A menu's footnote markers, off the end of a name.
+ *
+ * Portland's market came back with "Pain au Levain*", where the asterisk
+ * points at a line about wheat at the bottom of the page. It is the shop
+ * talking to its customers, not part of what the bake is called, and the
+ * baker comparing prices is shown it on a row of its own.
+ */
+function withoutFootnote(value: string): string {
+  return value.replace(/[*\u2020\u2021\u00a7]+\s*$/, "").trim();
+}
+
 /** A name a person would recognise as a product rather than a button. */
 function plausibleName(value: string): boolean {
   const text = value.trim();
@@ -141,7 +153,7 @@ function build(
   // which is not the same as the price of the thing named.
   const confidenceForPrice = parsed.isFrom ? Math.min(confidence, 0.5) : confidence;
   return {
-    name: name.slice(0, 200),
+    name: withoutFootnote(name).slice(0, 200),
     normalizedName: key,
     category: reading.category === "unknown" ? null : reading.category,
     subcategory: reading.subcategory,
