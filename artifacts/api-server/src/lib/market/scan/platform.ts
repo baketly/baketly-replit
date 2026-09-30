@@ -153,12 +153,28 @@ export async function fetchWooProducts(
   } catch {
     return [];
   }
-  const endpoint = new URL(
-    "/wp-json/wc/store/products?per_page=" + Math.min(100, limit),
-    base,
-  ).toString();
-  const page = await fetchPage(endpoint);
-  if (!page.ok) return [];
+  // Two spellings of the same catalogue, newest first.
+  //
+  // WooCommerce moved its Store API under /v1/ years ago and the old path
+  // answers 404 on anything current. Asking only the old one meant a shop
+  // whose whole catalogue is public JSON was logged as "loads prices in the
+  // browser" and left unpriced.
+  const per = Math.min(100, limit);
+  const endpoints = [
+    new URL("/wp-json/wc/store/v1/products?per_page=" + per, base).toString(),
+    new URL("/wp-json/wc/store/products?per_page=" + per, base).toString(),
+  ];
+  let page: Awaited<ReturnType<typeof fetchPage>> | null = null;
+  let endpoint = endpoints[0];
+  for (const candidate of endpoints) {
+    const attempt = await fetchPage(candidate);
+    if (attempt.ok) {
+      page = attempt;
+      endpoint = candidate;
+      break;
+    }
+  }
+  if (!page) return [];
 
   interface WooProduct {
     name?: string;

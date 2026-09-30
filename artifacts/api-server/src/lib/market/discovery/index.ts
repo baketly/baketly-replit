@@ -119,7 +119,29 @@ export function mergeBakeries(
       reason: "same shop from both providers",
     });
   }
-  return merged.sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9));
+  // Shops that published a website come first, then the rest, each by
+  // distance.
+  //
+  // The list is cut to a fixed length afterwards, and it used to be cut by
+  // distance alone — so a bakery with no website, which can never produce a
+  // price, took a slot from one that had a menu online, for being fifty metres
+  // closer. Adding Google made that worse rather than better: more shops in
+  // the pool, the same number of slots, and the scrapable ones pushed out. A
+  // Brooklyn check went from three hundred and sixty-five products to seventy
+  // six by gaining a second source.
+  //
+  // The ones without a site are not dropped. They fill whatever slots are
+  // left, nearest first, and they are what the "worth a look yourself" list is
+  // made of — a real bakery round the corner with no menu online is still
+  // worth knowing about.
+  const byDistance = (a: Bakery, b: Bakery) =>
+    (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9);
+  const canBePriced = (bakery: Bakery) => !!bakery.website;
+
+  return [
+    ...merged.filter(canBePriced).sort(byDistance),
+    ...merged.filter((bakery) => !canBePriced(bakery)).sort(byDistance),
+  ];
 }
 
 /**
