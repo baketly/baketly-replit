@@ -75,24 +75,30 @@ function fieldsCanShrink(template: string): string {
       // button is wider than a phone, so the screen ran off the side. This
       // only removes a floor; nothing gets narrower than its content needs.
       "input,select,textarea{min-width:0}" +
-      // A date and a booth fee beside each other, but only where each has
-      // room. A date input does not shrink the way other controls do — iOS
-      // gives it the width its formatted date needs and lets the rest spill
-      // — so on a phone the fee was drawn over the date.
+      // A date and a booth fee, on one line, on a phone.
       //
-      // This asks the row how much width it has and never asks the viewport.
-      // A breakpoint was the obvious fix and was wrong twice: it stacked
-      // correctly in a 375px browser and still overlapped on the phone,
-      // because a media query is only as honest as the width the device
-      // reports, and a page whose content overflows is handed a layout
-      // viewport wider than the glass.
+      // Two earlier goes at this were wrong in opposite directions. A
+      // breakpoint stacked them correctly in a 375px browser and still drew
+      // the fee over the date on the phone — a media query is only as honest
+      // as the width the device reports. Then a wrapping row with a 220px
+      // floor never overlapped, but wrapped on every phone, which is not what
+      // a date and a fee should do: they belong side by side, and they are
+      // short enough to be.
       //
-      // The floor is what does the work. Two fields sit on one line only
-      // when each can have 220px, comfortably more than the ~150px a
-      // formatted date needs; below that they wrap to a line each. There is
-      // no width at which a column is too narrow for what stands in it.
-      "\n    .bk-pair{display:flex;flex-wrap:wrap;gap:10px}" +
-      "\n    .bk-pair>*{flex:1 1 220px;min-width:0}",
+      // So: two tracks that always sit on one line, the date given the larger
+      // share because a formatted date is the wider thing by far, and the fee
+      // only ever a symbol and a number.
+      //
+      // Overlapping is then made impossible rather than avoided. minmax(0,…)
+      // lets a track go under its content's own idea of a minimum, min-width:0
+      // lets the control follow it, and overflow:hidden on the field means
+      // that even where iOS insists on more room for its date control than the
+      // track allows, it is clipped at its own edge instead of painting across
+      // its neighbour. A clipped date is legible and obviously tight; a date
+      // with a fee written over it is neither.
+      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:10px}" +
+      "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
+      "\n    .bk-pair .input{max-width:100%}",
   );
 }
 
