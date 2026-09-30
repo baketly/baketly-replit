@@ -25,7 +25,42 @@ const FIELDS = [
   "places.websiteUri",
   "places.rating",
   "places.userRatingCount",
+  // asked for so an ice cream chain can be told from a bakery
+  "places.types",
+  "places.primaryType",
 ].join(",");
+
+// Google's dessert_shop covers far more than bakeries, and a home baker
+// pricing a sourdough is not competing with Cold Stone Creamery. Searching
+// four types across five towns returned ninety-nine places, and twenty-two of
+// them were ice cream parlours, gelato counters, chocolatiers, a card shop, a
+// cocktail bar and a boat rental that happens to sell cones — each one taking
+// a slot from a bakery and filling the product pool with things no loaf can be
+// priced against.
+//
+// A place is dropped if it carries one of these types at all, and that is safe
+// because of the line above it: Google gives every real bakery the "bakery"
+// type, so a bakery that also sells chocolates or candy is kept on its own
+// bakery-ness before these types are ever consulted. Of the twenty-two
+// dropped across those towns, none carried "bakery".
+const FROZEN_TYPES = new Set([
+  "ice_cream_shop",
+  "frozen_yogurt_shop",
+  "juice_shop",
+  "candy_store",
+  "chocolate_shop",
+]);
+
+function sellsBakes(types: string[] | undefined, primaryType: string | undefined): boolean {
+  const all = new Set(types ?? []);
+  // its own bakery-ness settles it, whatever else it also sells
+  if (all.has("bakery") || primaryType === "bakery") return true;
+  if (primaryType && FROZEN_TYPES.has(primaryType)) return false;
+  for (const type of all) {
+    if (FROZEN_TYPES.has(type)) return false;
+  }
+  return true;
+}
 
 export function googlePlacesConfigured(): boolean {
   return !!process.env.GOOGLE_PLACES_API_KEY;
@@ -45,6 +80,8 @@ interface PlacesResponse {
     addressComponents?: AddressComponent[];
     location?: { latitude?: number; longitude?: number };
     websiteUri?: string;
+    types?: string[];
+    primaryType?: string;
     rating?: number;
     userRatingCount?: number;
   }>;
@@ -94,8 +131,14 @@ export async function googlePlacesBakeries(
       signal: controller.signal,
       body: JSON.stringify({
         includedTypes: INCLUDED_TYPES,
-        // Google caps this at 20 per search
-        maxResultCount: Math.min(20, Math.max(1, limit)),
+        // Always Google's full page, never just the number of slots to fill.
+        //
+        // Asking for exactly `limit` and then dropping the parlours left the
+        // list SHORT of the limit, because a dropped place freed a slot no
+        // other bakery could take: one town went from fifteen bakeries to
+        // nine, and from seven priceable menus to three, purely from this.
+        // One search costs the same whatever this number is.
+        maxResultCount: 20,
         rankPreference: "DISTANCE",
         locationRestriction: {
           circle: {
@@ -126,6 +169,7 @@ export async function googlePlacesBakeries(
     const longitude = Number(place.location?.longitude);
     const hasPoint = Number.isFinite(latitude) && Number.isFinite(longitude);
     const normalizedName = normalizeBakeryName(name);
+    if (!sellsBakes(place.types, place.primaryType)) continue;
     const website = place.websiteUri || null;
     const domain = websiteDomain(website);
     const googlePlaceId = place.id || null;
