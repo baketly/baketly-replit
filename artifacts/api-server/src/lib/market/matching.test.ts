@@ -64,11 +64,50 @@ test("cake sizes: two inches apart still compares, four does not", () => {
 });
 
 test("a loaf compares with a loaf of its own kind, not with cake", () => {
-  // an unnamed "artisan loaf" is close enough to be worth showing
-  assert.ok(accepted("Sourdough Loaf 750g", "Artisan Loaf 800g"));
+  assert.ok(accepted("Sourdough Loaf 750g", "Country Sourdough 800g"));
   // a white tin loaf is a different bake at a different price
   assert.ok(!accepted("Sourdough Loaf 750g", "White Bread Loaf 800g"));
   assert.ok(!accepted("Sourdough Loaf 750g", "Chocolate Cake"));
+});
+
+// This test used to assert the opposite: that an unnamed "Artisan Loaf" was
+// close enough to a sourdough to be worth showing. Run against five towns,
+// that judgment produced a market. Brooklyn told a baker the local price of
+// their 9.00 sourdough was 8.00, from a challah at 11.00 and a pizzeria's
+// garlic bread at 4.99.
+//
+// It was also inconsistent: a shop that named its loaf "White Bread" was
+// rejected, and a shop that said nothing was accepted, so vagueness scored
+// better than honesty. A named loaf now needs a named loaf to price against.
+test("a shop that will not say which loaf it is cannot price a named one", () => {
+  assert.ok(!accepted("Sourdough Loaf 750g", "Artisan Loaf 800g"));
+  assert.ok(!accepted("Sourdough Loaf", "Garlic Bread"));
+  assert.ok(!accepted("Sourdough Loaf", "Raisin Pecan Loaf"));
+  // a challah made with a sourdough starter is a challah
+  assert.ok(!accepted("Sourdough Loaf", "Sourdough Challah"));
+});
+
+// A baker who wrote only "Loaf" made that stretch themselves, so it stays a
+// doubt rather than a rejection -- otherwise they would never see anything.
+test("a baker's own vague loaf still finds named ones", () => {
+  assert.ok(accepted("Loaf", "Sourdough Loaf"));
+});
+
+// Pastry and croissant are near enough to price against each other, which
+// without a named kind put a scone in the market for a croissant.
+test("one pastry does not price another", () => {
+  assert.ok(accepted("Croissant", "Almond Croissant"));
+  assert.ok(!accepted("Croissant", "Cranberry Walnut Scone"));
+  assert.ok(!accepted("Croissant", "Cherry Danish"));
+  assert.ok(!accepted("Butter Scone", "Pain au Chocolat"));
+});
+
+// "Ham & Cheese Croissant" at 6.50 was in the market for a plain croissant.
+test("a filling makes it a different proposition", () => {
+  assert.ok(!accepted("Croissant", "Ham & Cheese Croissant"));
+  assert.ok(!accepted("Bagel", "Bacon Cheddar Bagel"));
+  // and the fillings that can be sweet are left alone
+  assert.ok(accepted("Cheese Danish", "Cream Cheese Danish"));
 });
 
 test("a rejection says why", () => {

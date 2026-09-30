@@ -26,6 +26,16 @@ const NOT_A_BAKE: Array<[RegExp, ProductCategory]> = [
     "savoury",
   ],
   [/\b(pizza|calzone|stromboli|quiche|empanada|sausage\s*roll|soup|salad)\b/, "savoury"],
+  // A filling, and something baked around it. Portland offered a "Ham &
+  // Cheese Croissant" at 6.50 as the market price of a plain croissant.
+  //
+  // Only fillings that cannot be a sweet: no bare "cheese", because a cheese
+  // danish is cream cheese and sweet, and no "egg", because an egg bagel is
+  // a kind of bagel.
+  [
+    /\b(ham|bacon|sausage|salami|prosciutto|pepperoni|turkey|chicken|tuna|cheddar|feta|gruy[e\u00e8]re|pastrami)\b[\s\S]{0,20}\b(croissant|roll|bun|pastry|scone|bagel|danish|biscuit|muffin|loaf|bread)\b|\b(croissant|roll|bun|pastry|scone|bagel|danish|biscuit|muffin|loaf|bread)\b[\s\S]{0,20}\b(ham|bacon|sausage|salami|prosciutto|pepperoni|turkey|chicken|tuna|cheddar|feta|gruy[e\u00e8]re|pastrami)\b/,
+    "savoury",
+  ],
   [
     /\b(coffee|latte|cappuccino|espresso|americano|mocha|hot\s*chocolate|cocoa|tea|chai|smoothie|milkshake|shake|lemonade|juice|soda|water|drink|beverage|cold\s*brew|root\s*beer|coke|cola|pepsi|sprite|seltzer|sparkling|kombucha|cider|yerba|mate|horchata|bottle|can)\b/,
     "drink",
@@ -74,6 +84,31 @@ const COMPOUND_CATEGORY: Array<[RegExp, ProductCategory, string]> = [
  * costs: different dough, different work, different price. Naming the kind
  * lets the matcher keep them apart while still treating every loaf as bread.
  */
+/**
+ * Which pastry it is.
+ *
+ * Without this a scone was simply "pastry", and pastry and croissant are near
+ * enough to price against each other, so a Cranberry Walnut Scone at 4.00
+ * went into the market for a croissant. Naming the kind is what lets two
+ * different pastries be told apart, exactly as BREAD_KINDS does for loaves.
+ */
+const PASTRY_KINDS: Array<[RegExp, string]> = [
+  [/\bscones?\b/, "scone"],
+  [/\bdanish(es)?\b/, "danish"],
+  [/\bturnovers?\b/, "turnover"],
+  [/\beclairs?\b/, "eclair"],
+  [/\bcruffins?\b/, "cruffin"],
+  [/\bpalmiers?\b/, "palmier"],
+  [/\bkouign\b/, "kouign_amann"],
+  [/\bstrudels?\b/, "strudel"],
+  [/\bpain\s*au\s*chocolat\b/, "pain_au_chocolat"],
+  [/\bchocolatines?\b/, "pain_au_chocolat"],
+  [/\bcroissants?\b/, "croissant"],
+  [/\bpuffs?\b/, "puff"],
+  [/\btarts?\b/, "tart"],
+  [/\bgalettes?\b/, "galette"],
+];
+
 const BREAD_KINDS: Array<[RegExp, string]> = [
   [/\bsourdoughs?\b/, "sourdough"],
   [/\bchallahs?\b/, "challah"],
@@ -337,14 +372,36 @@ export function normalizeProduct(
     }
   }
 
-  // which loaf it is, where it is a loaf at all
-  if ((category === "bread" || category === "sourdough") && !subcategory) {
-    for (const [pattern, kind] of BREAD_KINDS) {
-      if (pattern.test(nameText)) {
-        subcategory = kind;
-        break;
+  /**
+   * The kind named LAST in a name is what the thing is; what comes before it
+   * describes it.
+   *
+   * Taken in table order, "Sourdough Challah" was filed as a sourdough,
+   * because sourdough is listed first -- and a Brooklyn check then offered a
+   * challah at 11.00 as the going rate for a 9.00 sourdough loaf. It is a
+   * challah, made with a sourdough starter.
+   */
+  function kindOf(table: Array<[RegExp, string]>): string | null {
+    let at = -1;
+    let kind: string | null = null;
+    for (const [pattern, found] of table) {
+      const hit = nameText.match(pattern);
+      if (hit && hit.index !== undefined && hit.index > at) {
+        at = hit.index;
+        kind = found;
       }
     }
+    return kind;
+  }
+
+  // which loaf it is, where it is a loaf at all
+  if ((category === "bread" || category === "sourdough") && !subcategory) {
+    subcategory = kindOf(BREAD_KINDS);
+  }
+
+  // and which pastry, on the same footing
+  if ((category === "pastry" || category === "croissant") && !subcategory) {
+    subcategory = kindOf(PASTRY_KINDS);
   }
 
   let flavor: string | null = null;
