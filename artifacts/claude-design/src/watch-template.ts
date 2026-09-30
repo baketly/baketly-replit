@@ -167,10 +167,17 @@ const watchController = `      ...(() => {
             // price read straight off a shop's own page can still be a
             // middling match for the bake, and saying it "was found by
             // searching" of such a row was simply untrue.
-            looseNote: sellers.some(seller => seller.sourceType === 'ai_search_fallback')
+            //
+            // Only where the list is mixed. A product priced entirely by
+            // search already carries the banner above the list saying so, and
+            // a second line underneath repeating it is the padding this screen
+            // was meant to lose.
+            looseNote: product.provenance !== 'ai_search'
+              && sellers.some(seller => seller.sourceType === 'ai_search_fallback')
               ? 'Some of these came from a web search rather than a shop&#39;s own page, so treat them as a hint.'
               : '',
-            hasLooseNote: sellers.some(seller => seller.sourceType === 'ai_search_fallback'),
+            hasLooseNote: product.provenance !== 'ai_search'
+              && sellers.some(seller => seller.sourceType === 'ai_search_fallback'),
             hasCompetitors: sellers.length > 0,
             sellerCountStr: sellers.length === 1
               ? 'from 1 listing'
