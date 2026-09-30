@@ -156,8 +156,12 @@ const eventInsightsController = `      ...(() => {
           hasEventProducts: productRows.length > 0,
           hasNoEventProducts: productRows.length === 0,
           eventMarketCount: held.length + (held.length === 1 ? ' market' : ' markets'),
-          eventSellThroughStr: bakedTotal > 0 ? Math.round((soldTotal / bakedTotal) * 100) + '%' : '—',
-          eventLeftoverStr: String(leftTotal),
+          // Named apart from the per-market figures on the single-market
+          // screen. Both controllers are spread into one object, so a shared
+          // name is not two values — it is whichever pass ran last, shown in
+          // both places. These are the totals across every market.
+          insightsSoldOfBakedStr: bakedTotal > 0 ? Math.round((soldTotal / bakedTotal) * 100) + '%' : '—',
+          insightsCameHomeStr: String(leftTotal),
           eventWasteStr: money(wastedTotal),
           eventAdvice: advice,
           hasEventAdvice: advice.length > 0,
@@ -189,8 +193,8 @@ const insightsMarkup = `
     <sc-if value="{{ hasEventProducts }}" hint-placeholder-val="{{ true }}">
       <div class="an-section-title" style="margin-top:8px">Across every market</div>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--color-divider);border-radius:var(--radius-md);background:#fff;margin-bottom:6px">
-        <div style="padding:12px 10px"><div class="an-stat-label">Sold of baked</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ eventSellThroughStr }}</div></div>
-        <div style="padding:12px 10px;border-left:1px solid var(--color-divider)"><div class="an-stat-label">Came home</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ eventLeftoverStr }}</div></div>
+        <div style="padding:12px 10px"><div class="an-stat-label">Sold of baked</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ insightsSoldOfBakedStr }}</div></div>
+        <div style="padding:12px 10px;border-left:1px solid var(--color-divider)"><div class="an-stat-label">Came home</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ insightsCameHomeStr }}</div></div>
         <div style="padding:12px 10px;border-left:1px solid var(--color-divider)"><div class="an-stat-label">They cost</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ eventWasteStr }}</div></div>
       </div>
       <div class="text-muted" style="font-size:12px;margin-bottom:18px">Everything you have taken to a market, over {{ eventMarketCount }}. What came home is what you baked and did not sell, and what its ingredients cost you.</div>

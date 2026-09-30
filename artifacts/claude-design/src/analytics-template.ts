@@ -339,7 +339,7 @@ export function applyAnalyticsBehavior(template: string): string {
               <div class="an-row-sub">{{ row.soldOfPlanned }} · {{ row.profitStr }} profit</div>
               <div class="an-mini-bar"><span style="width:{{ row.rateWidth }}"></span></div>
             </div>
-            <div class="an-row-val">{{ row.revStr }}<div class="an-row-sub" style="margin-top:3px">{{ row.rateStr }} sold</div></div>
+            <div class="an-row-val">{{ row.revStr }}<div class="an-row-sub" style="margin-top:3px">taken · {{ row.rateStr }} sold</div></div>
           </div>
         </sc-for>
       </div>
@@ -349,7 +349,7 @@ export function applyAnalyticsBehavior(template: string): string {
       <div class="an-section-title">Sold against what you made</div>
       <div class="an-card">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-          <span style="font-family:var(--font-heading);font-weight:600;font-size:22px;font-feature-settings:'tnum'">{{ eventSoldTotalStr }} of {{ eventPlannedTotalStr }}</span>
+          <span style="font-family:var(--font-heading);font-weight:600;font-size:22px;font-feature-settings:'tnum'">{{ eventSoldTotalStr }} sold of {{ eventPlannedTotalStr }} made</span>
           <span style="font-family:var(--font-heading);font-weight:600;font-size:20px;font-feature-settings:'tnum'">{{ eventSellThroughStr }}</span>
         </div>
         <div class="an-mini-bar" style="height:8px"><span style="width:{{ eventSellThroughWidth }}"></span></div>
