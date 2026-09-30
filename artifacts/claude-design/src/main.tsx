@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { apiFetch, rememberSession } from "./api";
 import { listenForSignInReturn } from "./native-auth";
-import { ensureViewport, showLoadingScreen } from "./loading-screen";
+import { ensureViewport, showLoadingScreen, whenSettled } from "./loading-screen";
 import { listenForSwipeBack } from "./swipe-back";
 import { keepSelectsFilled } from "./select-options";
 import { keepRemindersFresh } from "./native-reminders";
@@ -448,6 +448,15 @@ if (root) createRoot(root).render(<PersistenceBridge />);
 function AuthBoundary() {
   const [user, setUser] = useState<SignedInUser | null>(null);
   const [checked, setChecked] = useState(false);
+  // The page is styled twice over: a bootstrap document, then the app's own,
+  // which replaces it. Rendering before the second arrives put the sign-in
+  // screen up in the wrong font at the wrong size and changed it under the
+  // reader a second and a half later.
+  const [settled, setSettled] = useState(false);
+
+  useEffect(() => {
+    whenSettled().then(() => setSettled(true));
+  }, []);
 
   useEffect(() => {
     // iOS hands the app back its session after a Google sign-in; when it does,
@@ -462,8 +471,9 @@ function AuthBoundary() {
   }, []);
 
   // Nothing is shown until the answer is known, so the app never flashes into
-  // view for someone who turns out not to be signed in.
-  if (!checked) return null;
+  // view for someone who turns out not to be signed in — nor until the page
+  // has stopped moving, so what does appear is what stays.
+  if (!checked || !settled) return null;
   if (user) return null;
   return (
     <AuthGate

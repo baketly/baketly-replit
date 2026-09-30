@@ -93,11 +93,63 @@ function markup(): string {
 }
 
 /**
+ * Whether the app's own stylesheet is in force yet.
+ *
+ * The page is built twice over: a bootstrap document, and then the app's,
+ * which replaces it wholesale. Only the second defines these custom
+ * properties, so asking for one is a precise answer to "are we on the real
+ * page now".
+ */
+export function appStylesApplied(): boolean {
+  return getComputedStyle(document.documentElement).getPropertyValue("--font-heading").trim() !== "";
+}
+
+/**
+ * Resolves when what is on screen will not move again.
+ *
+ * Two things shift the layout after first paint and both have to be waited
+ * out: the app's stylesheet arriving with the document swap, and then Poppins
+ * loading, which re-measures every line set in it.
+ *
+ * It always resolves. A stylesheet that never arrives is a worse thing to show
+ * than an unstyled screen, so this gives up on the same deadline the cover
+ * uses rather than leaving anyone watching a loading screen forever.
+ */
+export function whenSettled(): Promise<void> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const done = () => {
+      // already resolved where there are no web fonts, and absent altogether
+      // in an old browser; neither should hold anything up
+      const fonts = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
+      if (fonts?.ready) fonts.ready.then(() => resolve(), () => resolve());
+      else resolve();
+    };
+    if (appStylesApplied()) {
+      done();
+      return;
+    }
+    const timer = window.setInterval(() => {
+      if (appStylesApplied() || Date.now() - startedAt > GIVE_UP_AFTER_MS) {
+        window.clearInterval(timer);
+        done();
+      }
+    }, 50);
+  });
+}
+
+/**
  * Whether there is anything worth showing underneath.
  *
  * Either the sign-in screen has rendered — it mounts outside the body, so it
  * survives the swap — or the app's own markup has been bound, which is exactly
  * when its placeholders stop being literal text.
+ *
+ * The sign-in screen now waits for the stylesheet before rendering at all, so
+ * its presence is proof the page is styled. It did not always: the cover came
+ * off the moment the gate mounted, the stylesheet landed a second and a half
+ * later, and the login changed font and size in front of whoever was already
+ * reading it.
  */
 function appearsReady(): boolean {
   const gate = document.getElementById("baketly-auth-gate");
