@@ -21,12 +21,15 @@ interface Occurrence {
   at: string;
   title: string;
   body: string;
+  /** the market a market reminder is about, if it is about one */
+  eventId?: string;
 }
 
 type PluginCall = (...args: never[]) => Promise<unknown>;
 interface NotificationsPlugin {
   checkPermissions?: PluginCall;
   requestPermissions?: PluginCall;
+  addListener?: (event: string, handler: (data: unknown) => void) => unknown;
   getPending?: () => Promise<{ notifications?: Array<{ id: number }> }>;
   cancel?: (options: { notifications: Array<{ id: number }> }) => Promise<unknown>;
   schedule?: (options: { notifications: unknown[] }) => Promise<unknown>;
@@ -116,8 +119,10 @@ export async function syncReminders(): Promise<number> {
         title: entry.title,
         body: entry.body,
         schedule: { at: new Date(entry.at), allowWhileIdle: true },
-        // tapping it opens Baketly, which is the whole point of the reminder
-        extra: { kind: entry.kind },
+        // Tapping it opens Baketly, which is the whole point of a reminder —
+        // and this says which screen it should open on. iOS hands the whole
+        // object back on the tap, so whatever is not carried here is lost.
+        extra: { kind: entry.kind, eventId: entry.eventId || "" },
       }));
 
     if (scheduled.length) await plugin.schedule({ notifications: scheduled });
@@ -127,11 +132,52 @@ export async function syncReminders(): Promise<number> {
   }
 }
 
+/**
+ * Takes a tapped reminder to the screen it is about.
+ *
+ * A notification that merely opens the app has left the finding to the baker:
+ * "Shopping for Harbour Market" ought to land on that market's shopping list,
+ * not on whatever screen happened to be open last week.
+ *
+ * The app's own screens cannot be imported — they are source text injected
+ * into the generated page — so they publish a way in on the window and this
+ * calls it. A tap on a cold start arrives before those screens exist, so an
+ * unanswered call is retried for a few seconds rather than dropped.
+ */
+function openWhatItIsAbout(extra: unknown): void {
+  const detail = (extra || {}) as { kind?: unknown; eventId?: unknown };
+  const target = {
+    kind: typeof detail.kind === "string" ? detail.kind : "",
+    eventId: typeof detail.eventId === "string" ? detail.eventId : "",
+  };
+  if (!target.kind) return;
+
+  const deadline = Date.now() + 8000;
+  const tryOpen = () => {
+    const open = (window as { __baketlyOpenReminder?: (to: typeof target) => void })
+      .__baketlyOpenReminder;
+    if (open) {
+      try {
+        open(target);
+      } catch {
+        // a screen that will not open is not worth crashing the app for
+      }
+      return;
+    }
+    if (Date.now() < deadline) window.setTimeout(tryOpen, 150);
+  };
+  tryOpen();
+}
+
 /** Tops the schedule up on launch, and whenever the app is reopened. */
 export function keepRemindersFresh(): void {
   if (!isNativeApp()) return;
   void syncReminders();
   appPlugin()?.addListener?.("appStateChange", (event: unknown) => {
     if ((event as { isActive?: boolean })?.isActive) void syncReminders();
+  });
+  notifications()?.addListener?.("localNotificationActionPerformed", (event: unknown) => {
+    const tapped = event as { notification?: { extra?: unknown } };
+    openWhatItIsAbout(tapped?.notification?.extra);
   });
 }

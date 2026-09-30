@@ -12,7 +12,16 @@
 
 import type { EventRecord, TodoItem, Workspace } from "../ask/workspace";
 
-export type ReminderKind = "todos_today" | "market_tomorrow";
+export type ReminderKind = "todos_today" | "market_tomorrow" | "shopping_list";
+
+/**
+ * How many days before a market the shopping reminder lands.
+ *
+ * Two, because the list is only useful while there is still a shop open and
+ * time to bake after it. The evening before is when the market reminder does
+ * its work, and by then buying flour is no longer the point.
+ */
+export const SHOPPING_LEAD_DAYS = 2;
 
 export interface ReminderSettings {
   /** a morning list of what is due today */
@@ -22,6 +31,9 @@ export interface ReminderSettings {
   /** the evening before a market */
   marketEve: boolean;
   marketAt: string;
+  /** the shopping for a market, a couple of days before it */
+  shoppingList: boolean;
+  shoppingAt: string;
   /** IANA zone, as the phone reports it */
   timezone: string;
 }
@@ -31,6 +43,8 @@ export const DEFAULT_REMINDERS: ReminderSettings = {
   todosAt: "08:00",
   marketEve: true,
   marketAt: "18:00",
+  shoppingList: true,
+  shoppingAt: "09:00",
   timezone: "UTC",
 };
 
@@ -45,6 +59,8 @@ export interface Occurrence {
   localTime: string;
   title: string;
   body: string;
+  /** the market it is about, so tapping it can open that market */
+  eventId?: string;
 }
 
 const TIME = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -149,6 +165,7 @@ export function upcomingReminders(
   const timezone = settings.timezone || "UTC";
   const todosAt = validTime(settings.todosAt, DEFAULT_REMINDERS.todosAt);
   const marketAt = validTime(settings.marketAt, DEFAULT_REMINDERS.marketAt);
+  const shoppingAt = validTime(settings.shoppingAt, DEFAULT_REMINDERS.shoppingAt);
   const today = localDay(now, timezone);
   const found: Occurrence[] = [];
 
@@ -199,6 +216,42 @@ export function upcomingReminders(
           body: planned > 0
             ? plural(planned, "item", "items") + " to bake before it"
             : "Nothing planned to bake yet",
+          eventId: event.id,
+        });
+      }
+    }
+
+    // ---- the shopping for a market a couple of days out --------------------
+    //
+    // Separate from the eve-of-market reminder because it is a different job
+    // with a different deadline: ingredients have to be bought while a shop is
+    // open and while there is still time to bake afterwards. Told the evening
+    // before, a baker can only discover what they are short of.
+    if (settings.shoppingList) {
+      const marketDay = addDays(day, SHOPPING_LEAD_DAYS);
+      for (const event of plannedEventsOn(workspace, marketDay)) {
+        const at = localToInstant(day, shoppingAt, timezone);
+        if (at.getTime() <= now.getTime()) continue;
+        const planned = (event.plannedItems || []).reduce(
+          (sum, item) => sum + (Number(item?.quantity) || 0),
+          0,
+        );
+        // Nothing planned is nothing to shop for, and being told to buy
+        // ingredients for an empty lineup is noise.
+        if (planned <= 0) continue;
+        found.push({
+          id: "shopping-" + (event.id || marketDay),
+          kind: "shopping_list",
+          at: at.toISOString(),
+          localDate: day,
+          localTime: shoppingAt,
+          title: "Shopping for " + (event.name || "the market"),
+          body:
+            plural(planned, "item", "items") +
+            " to bake in " +
+            plural(SHOPPING_LEAD_DAYS, "day", "days") +
+            ". The list is ready.",
+          eventId: event.id,
         });
       }
     }
@@ -215,6 +268,8 @@ export function readSettings(value: unknown): ReminderSettings {
     todosAt: validTime(String(stored.todosAt || ""), DEFAULT_REMINDERS.todosAt),
     marketEve: stored.marketEve !== false,
     marketAt: validTime(String(stored.marketAt || ""), DEFAULT_REMINDERS.marketAt),
+    shoppingList: stored.shoppingList !== false,
+    shoppingAt: validTime(String(stored.shoppingAt || ""), DEFAULT_REMINDERS.shoppingAt),
     timezone: typeof stored.timezone === "string" && stored.timezone ? stored.timezone : "UTC",
   };
 }

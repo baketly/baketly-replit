@@ -17,7 +17,7 @@ const settingsController = `      ...(() => {
         // morning is, and the phone is the one standing in the kitchen. It is
         // captured quietly whenever settings are opened, so a baker who
         // travels keeps getting reminders at a sensible hour.
-        const defaultReminders = { todosDaily: true, todosAt: '08:00', marketEve: true, marketAt: '18:00', timezone: 'UTC' };
+        const defaultReminders = { todosDaily: true, todosAt: '08:00', marketEve: true, marketAt: '18:00', shoppingList: true, shoppingAt: '09:00', timezone: 'UTC' };
         const savedReminders = (this.state.reminders && typeof this.state.reminders === 'object')
           ? this.state.reminders
           : defaultReminders;
@@ -75,6 +75,13 @@ const settingsController = `      ...(() => {
           remindMarketKnob: reminders.marketEve ? '22px' : '2px',
           marketAt: reminders.marketAt,
           setMarketAt: e => setReminders({ marketAt: e.target.value }),
+
+          remindShopping: reminders.shoppingList === true,
+          toggleRemindShopping: () => setReminders({ shoppingList: !reminders.shoppingList }),
+          remindShoppingBg: reminders.shoppingList ? 'var(--color-accent)' : 'var(--color-neutral-300)',
+          remindShoppingKnob: reminders.shoppingList ? '22px' : '2px',
+          shoppingAt: reminders.shoppingAt,
+          setShoppingAt: e => setReminders({ shoppingAt: e.target.value }),
 
           reminderTimes: timeChoices,
           reminderTimesJson: JSON.stringify(timeChoices),
@@ -204,7 +211,25 @@ const settingsScreen = `
           </div>
         </sc-if>
 
-        <div class="text-muted" style="font-size:11px;line-height:1.45;border-top:1px solid var(--color-divider);padding-top:8px">{{ reminderZoneLabel }} Reminders reach your phone once Baketly is installed as an app; in a browser tab they stay inside Baketly.</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--color-divider)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px">The shopping for a market</div>
+            <div class="text-muted" style="font-size:11px">Two days before, while there is still time to buy and bake</div>
+          </div>
+          <button sc-camel-on-click="{{ toggleRemindShopping }}" aria-label="Remind me about the shopping" style="flex:none;position:relative;width:44px;height:26px;border-radius:999px;border:0;cursor:pointer;padding:0;background:{{ remindShoppingBg }}">
+            <span style="position:absolute;top:2px;left:{{ remindShoppingKnob }};width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm)"></span>
+          </button>
+        </div>
+        <sc-if value="{{ remindShopping }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:10px;padding:2px 0 10px">
+            <span class="text-muted" style="font-size:12px;flex:1">Remind me at</span>
+            <div class="an-select-wrap" style="display:block;margin:0;flex:none">
+              <select class="an-select" value="{{ shoppingAt }}" data-bk-options="{{ reminderTimesJson }}" sc-camel-on-change="{{ setShoppingAt }}" aria-label="Time for the shopping reminder"></select>
+            </div>
+          </div>
+        </sc-if>
+
+        <div class="text-muted" style="font-size:11px;line-height:1.45;border-top:1px solid var(--color-divider);padding-top:8px">{{ reminderZoneLabel }}</div>
       </div>
 
       <!-- the sample bakery lived in Settings before the sections did; it

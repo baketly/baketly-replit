@@ -30,6 +30,7 @@ import { applyWordingBehavior } from "./wording-template";
 import { applySwipeBackBehavior } from "./swipe-back-template";
 import { applyCardPaymentBehavior } from "./card-payment-template";
 import { applyContactBehavior } from "./contact-template";
+import { applyReminderRoutingBehavior } from "./reminder-routing-template";
 import { applyRecipeGroupsBehavior } from "./recipe-groups-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
 import { askBaketly, buildAskContext } from "./ask-baketly";
@@ -316,6 +317,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
   // Outermost, so it rewrites the text that actually reaches the screen.
   return applyWordingBehavior(
     applyLayoutBehavior(
+    applyReminderRoutingBehavior(
     applyContactBehavior(
     applyCardPaymentBehavior(
     applySwipeBackBehavior(
@@ -347,6 +349,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
           ),
         ),
       ),
+    ),
     ),
     ),
     ),
