@@ -109,6 +109,16 @@ export function getBakerySummary(workspace: Workspace, args: { period?: string }
       })),
       productCount: workspace.recipes.length,
       hourlyRateSet: workspace.hourlyRate > 0,
+      // An hourly rate on its own counts nothing: every recipe also needs the
+      // minutes a batch takes. Reporting only the rate had the answer telling
+      // a baker their margin included their time when not one recipe did.
+      productsMissingBatchTime: workspace.recipes.filter(
+        (recipe) => !(Number(recipe.activeMinutes) > 0),
+      ).length,
+      labourCountedEverywhere:
+        workspace.hourlyRate > 0 &&
+        workspace.recipes.length > 0 &&
+        workspace.recipes.every((recipe) => Number(recipe.activeMinutes) > 0),
     },
     sources: [
       { kind: "sales", detail: countOf(totals.orders, "sale", "sales") + ", " + period.label },
