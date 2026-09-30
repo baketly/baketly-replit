@@ -1,20 +1,52 @@
-// The privacy policy, served by the API.
+// The privacy policy as a public page.
 //
-// Apple asks for a public URL before an app goes on sale, and this is the
-// honest version: the app sends photographs of labels to Google, sends speech
-// to whichever service the phone uses to transcribe it, and keeps a baker's
-// recipes and sales on a server. Saying so plainly is both the requirement and
-// the decent thing.
+// Apple asks for a URL anyone can open without the app, and this is it. What
+// it says is not written here: the text lives in @workspace/policy and the app
+// shows the same words on a screen of its own, because two copies of a policy
+// is two policies, and the one nobody edits becomes a promise the app no
+// longer keeps.
 //
-// Hosted here rather than on a separate site so the URL exists as soon as the
-// server is deployed, and can never drift out of step with what the app does.
+// Hosted by the API rather than on a separate site so the URL exists as soon
+// as the server is deployed, and can never drift out of step with what the app
+// does.
 
 import { Router, type IRouter, type Request, type Response } from "express";
+import { PRIVACY_SECTIONS, PRIVACY_UPDATED, policyContact } from "@workspace/policy";
 
 const router: IRouter = Router();
 
-const CONTACT = process.env.PRIVACY_CONTACT_EMAIL || "contact@baketly.com";
-const UPDATED = "24 September 2026";
+const CONTACT = process.env.PRIVACY_CONTACT_EMAIL || policyContact();
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function sectionHtml(): string {
+  return PRIVACY_SECTIONS.map((section) => {
+    const parts: string[] = [];
+    if (section.heading) parts.push(`<h2>${escapeHtml(section.heading)}</h2>`);
+    if (section.bullets?.length) {
+      parts.push(
+        "<ul>" +
+          section.bullets
+            .map(
+              (bullet) =>
+                `<li><strong>${escapeHtml(bullet.lead)}</strong> ${escapeHtml(bullet.text)}</li>`,
+            )
+            .join("") +
+          "</ul>",
+      );
+    }
+    for (const paragraph of section.paragraphs ?? []) {
+      parts.push(`<p>${escapeHtml(paragraph)}</p>`);
+    }
+    return parts.join("\n");
+  }).join("\n\n");
+}
 
 const page = `<!doctype html>
 <html lang="en">
@@ -35,69 +67,13 @@ const page = `<!doctype html>
   li { margin-bottom: 6px; }
   .updated { color: #8a8578; font-size: 13px; margin: 0 0 26px; }
   a { color: #5e6d31; }
-  /* Comfortably past the 44px Apple asks of a tap target, this being the only
-     way out of the page on a phone. */
-  .back {
-    display: inline-flex; align-items: center;
-    min-height: 44px; margin-bottom: 6px;
-    font-weight: 600; text-decoration: none;
-  }
 </style>
 </head>
 <body>
-<!-- Reached from inside the app, which has no chrome of its own: without this
-     there is no way back to Baketly but killing it. -->
-<a class="back" href="/">&lsaquo; Back to Baketly</a>
-<script>
-  // Going back is the right answer when there is somewhere to go back to, and
-  // the href is the right answer when there is not — but nothing on the page
-  // can tell the two apart. history.length counts a blank tab as an entry, and
-  // a referrer is withheld on exactly the cross-origin trip the app makes.
-  //
-  // So it tries going back and watches whether anything happened. The timer is
-  // cancelled as the page leaves, which is both the proof that back worked and
-  // the guard against it firing later if this page comes out of the cache.
-  document.querySelector('a.back').addEventListener('click', function (event) {
-    if (history.length <= 1) return;
-    event.preventDefault();
-    var giveUp = setTimeout(function () { location.href = '/'; }, 400);
-    addEventListener('pagehide', function () { clearTimeout(giveUp); });
-    history.back();
-  });
-</script>
-
 <h1>Baketly privacy policy</h1>
-<p class="updated">Last updated ${UPDATED}</p>
+<p class="updated">Last updated ${PRIVACY_UPDATED}</p>
 
-<p>Baketly is a tool for home bakers: it works out what a bake costs, what to charge for it, and what a market earned. This policy explains what it keeps, what leaves your phone, and how to get rid of all of it.</p>
-
-<h2>What Baketly stores</h2>
-<ul>
-  <li><strong>Your account:</strong> your email address, and a password stored only as a cryptographic hash — nobody at Baketly can read it. If you sign in with Google, we store the identifier Google gives us, not your Google password.</li>
-  <li><strong>Your bakery:</strong> ingredients and their prices, recipes, packaging, products, photos you add to recipes, sales, markets and their results, your to-do list, and your settings. This is yours, kept so it is there on your next visit.</li>
-  <li><strong>Where you sell:</strong> the town or address you enter, used to find bakeries near you. Baketly does not track your location, and does not ask the phone for it.</li>
-</ul>
-
-<h2>What leaves your phone, and where it goes</h2>
-<ul>
-  <li><strong>Photographs of nutrition labels</strong> are sent to Google's Gemini API to be read. Google processes the image to return the text on it.</li>
-  <li><strong>Questions you ask Baketly</strong> are sent to Google's Gemini API, together with the figures needed to answer them — for example a market's revenue and costs. Your full bakery is never sent.</li>
-  <li><strong>Speech,</strong> when you use the microphone, is transcribed by the service your phone provides (Apple on iOS). Baketly receives only the resulting text.</li>
-  <li><strong>Prices at nearby bakeries</strong> are read from those bakeries' own public websites. Nothing about you is sent to them.</li>
-</ul>
-<p>Baketly does not sell your data, does not share it with advertisers, and shows no advertising.</p>
-
-<h2>Other bakeries' prices</h2>
-<p>Baketly reads prices published on nearby bakeries' public websites to show how yours compare. Those prices are facts about shops, not about you, and are kept separately from your account.</p>
-
-<h2>Deleting everything</h2>
-<p>Open Settings, then Account, then <strong>Delete my account</strong>. That removes your account and everything in it — recipes, ingredients, sales, markets and prices — and it cannot be undone. You can also write to us and ask.</p>
-
-<h2>Children</h2>
-<p>Baketly is for people running a small baking business and is not directed at children under 13.</p>
-
-<h2>Changes</h2>
-<p>If this policy changes in a way that matters, the date above changes and the app will say so.</p>
+${sectionHtml()}
 
 <h2>Getting in touch</h2>
 <p>Questions, or a request about your data: <a href="mailto:${CONTACT}">${CONTACT}</a>.</p>

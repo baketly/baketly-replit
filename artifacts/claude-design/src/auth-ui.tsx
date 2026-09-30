@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiBase, apiFetch, rememberSession } from "./api";
 import { canUseNativeSignIn, startNativeSignIn } from "./native-auth";
+import { PRIVACY_SECTIONS, PRIVACY_UPDATED, policyContact } from "@workspace/policy";
 
 // The sign-in screen is a real React component rendered over the app, not part
 // of the generated template. The template is one large string patched by exact
@@ -164,7 +165,10 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
   // "asking" is the forgotten-password panel; "asked" is what it becomes once
   // the request is in, whether or not that address turned out to have an
   // account — see the note on forgot() below.
-  const [stage, setStage] = useState<"form" | "asking" | "asked">("form");
+  // "policy" is the privacy policy, shown here rather than opened as a web
+  // page: tapping a link took a baker out of the app to a page with no way
+  // back into it, and the words are the same words either way.
+  const [stage, setStage] = useState<"form" | "asking" | "asked" | "policy">("form");
 
   useEffect(() => {
     // Only offer Google when the server actually has it configured, rather than
@@ -236,12 +240,66 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
     }
   };
 
+  if (stage === "policy") {
+    return (
+      <div style={shell}>
+        <div style={{ ...card, width: "min(100%, 560px)" }}>
+          <button type="button" onClick={() => setStage("form")} style={{ ...quietLink, marginBottom: 16 }}>
+            ‹ Back to login
+          </button>
+          <h1 style={{ fontSize: 24, margin: "0 0 4px", fontFamily: "var(--font-heading, inherit)" }}>
+            Baketly privacy policy
+          </h1>
+          <p style={{ fontSize: 12.5, color: "#8a8578", margin: "0 0 22px" }}>
+            Last updated {PRIVACY_UPDATED}
+          </p>
+
+          {PRIVACY_SECTIONS.map((section, index) => (
+            <div key={section.heading ?? `opening-${index}`} style={{ marginBottom: 20 }}>
+              {section.heading ? (
+                <h2 style={{ fontSize: 16, margin: "0 0 8px", fontFamily: "var(--font-heading, inherit)" }}>
+                  {section.heading}
+                </h2>
+              ) : null}
+              {section.bullets?.length ? (
+                <ul style={{ margin: "0 0 10px", paddingLeft: 20 }}>
+                  {section.bullets.map((bullet) => (
+                    <li key={bullet.lead} style={{ fontSize: 14, lineHeight: 1.6, color: "#3a352c", marginBottom: 7 }}>
+                      <strong>{bullet.lead}</strong> {bullet.text}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {(section.paragraphs ?? []).map((paragraph) => (
+                <p key={paragraph.slice(0, 40)} style={{ fontSize: 14, lineHeight: 1.6, color: "#3a352c", margin: "0 0 10px" }}>
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          ))}
+
+          <h2 style={{ fontSize: 16, margin: "0 0 8px", fontFamily: "var(--font-heading, inherit)" }}>
+            Getting in touch
+          </h2>
+          <p style={{ fontSize: 14, lineHeight: 1.6, color: "#3a352c", margin: "0 0 22px" }}>
+            Questions, or a request about your data:{" "}
+            <a href={`mailto:${policyContact()}`}>{policyContact()}</a>.
+          </p>
+
+          <button type="button" onClick={() => setStage("form")} style={{ ...primary }}>
+            Back to login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (stage !== "form") {
     return (
       <div style={shell}>
         <div style={card}>
           <button type="button" onClick={() => setStage("form")} style={{ ...quietLink, marginBottom: 14 }}>
-            ‹ Back to sign in
+            ‹ Back to login
           </button>
           <h1 style={{ fontSize: 24, margin: "0 0 8px", fontFamily: "var(--font-heading, inherit)" }}>
             {stage === "asked" ? "Check your email" : "Forgotten password"}
@@ -507,9 +565,13 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
             color: "#8a8578",
           }}
         >
-          <a href={apiBase() + "/api/privacy"} style={{ color: "inherit", textDecoration: "none" }}>
+          <button
+            type="button"
+            onClick={() => setStage("policy")}
+            style={{ ...quietLink, fontSize: 12, fontWeight: 400, color: "inherit" }}
+          >
             Privacy Policy
-          </a>
+          </button>
           <span>@Baketly {new Date().getFullYear()}</span>
         </div>
       </div>

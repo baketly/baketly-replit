@@ -162,6 +162,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/policy':
+        specifier: workspace:*
+        version: link:../../lib/policy
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -229,6 +232,9 @@ importers:
       '@capacitor/local-notifications':
         specifier: ^7.0.7
         version: 7.0.7(@capacitor/core@7.6.9)
+      '@workspace/policy':
+        specifier: workspace:*
+        version: link:../../lib/policy
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -474,6 +480,8 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+
+  lib/policy: {}
 
   scripts:
     devDependencies:
