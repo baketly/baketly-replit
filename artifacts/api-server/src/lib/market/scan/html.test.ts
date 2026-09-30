@@ -116,6 +116,17 @@ test("a one-sentence blurb is not read as the product's name", () => {
   );
 });
 
+test("a theme's price label is not a product", () => {
+  const page = `
+    <div>
+      <span class="product-title">Regular price</span><span class="price">$69.00</span>
+      <span class="product-title">Sale price</span><span class="price">$59.00</span>
+    </div>
+  `;
+  const found = extractHtml(page, "https://example.com/shop");
+  assert.equal(found.length, 0);
+});
+
 test("a short name may still end in an abbreviation", () => {
   const page = `
     <div><span class="product-title">Bread Co.</span><span class="price">$6.00</span></div>

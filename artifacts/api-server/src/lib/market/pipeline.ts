@@ -126,7 +126,18 @@ export async function runPriceCheck(options: PipelineOptions): Promise<PipelineR
   // counted: those are the shop's own baking, whatever else they are.
   const bakesRead = competitors.filter((product) => {
     const reading = normalizeProduct(product.name, product.description, product.category);
-    return reading.category !== "drink" && reading.category !== "not_food";
+    // Excluding what could not be read at all, as well as the drinks and the
+    // merchandise. A coffee roaster attached to a bakery sells beans named
+    // Stella and Bareknuckle, a Chemex, an AeroPress and two t-shirts, and
+    // none of those reads as anything -- so "unknown" was carrying them into
+    // a count of bakes. What the baker is being told is how much of the
+    // neighbours' baking Baketly actually understood, and an item it could
+    // not read is not part of that.
+    return (
+      reading.category !== "unknown" &&
+      reading.category !== "drink" &&
+      reading.category !== "not_food"
+    );
   }).length;
 
   // A shop whose site we could not price is not a dead end: the baker can

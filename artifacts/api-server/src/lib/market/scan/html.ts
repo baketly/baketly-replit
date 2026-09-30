@@ -87,6 +87,12 @@ function plausibleName(value: string): boolean {
   if (/^(add to (cart|bag|basket)|buy now|shop now|view|more|read more|select options|sold out|home|menu|order|contact|about)$/i.test(text)) {
     return false;
   }
+  // Shopify themes label the two prices on a sale item, and both labels sit
+  // just above a price. The store holds "Regular price" and "Sale price" as
+  // things a bakery sells, at 69.00 each.
+  if (/^(regular|sale|unit|list|compare at|from|starting at)\s*price$/i.test(text)) {
+    return false;
+  }
   // a whole sentence is a description, not a product name
   if (text.split(/\s+/).length > 9) return false;
   // Prose gives itself away by its punctuation: "Contains nuts. Delicious
