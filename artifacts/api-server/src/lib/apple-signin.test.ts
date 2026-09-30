@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  createPrivateKey,
   createSign,
   createVerify,
   generateKeyPairSync,
@@ -9,6 +10,7 @@ import {
   appleClientSecret,
   appleDisplayName,
   appleFallbackEmail,
+  normalizePrivateKey,
   readState,
   signState,
   verifyAppleIdentityToken,
@@ -44,6 +46,57 @@ test("the client secret is a JWT Apple will accept, signed with the key", () => 
   // ES256 means the raw r||s pair, 64 bytes — a DER-wrapped signature is the
   // classic way this fails, and Apple calls it malformed rather than unsigned.
   assert.equal(Buffer.from(signature, "base64url").length, 64);
+  const verifier = createVerify("SHA256");
+  verifier.update(`${header}.${claims}`);
+  assert.ok(
+    verifier.verify(
+      { key: ec.publicKey, dsaEncoding: "ieee-p1363" },
+      Buffer.from(signature, "base64url"),
+    ),
+  );
+});
+
+// The published app failed here, not at Apple: the .p8 had been flattened onto
+// one line by the box it was pasted into, and OpenSSL answered
+// "DECODER routines::unsupported" — an error that names nothing useful.
+test("a key survives every way a secret box mangles it", () => {
+  const pem = ec.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  const canonical = normalizePrivateKey(pem);
+
+  const mangled: Record<string, string> = {
+    "as it comes out of the file": pem,
+    "with the newlines written out": pem.replace(/\n/g, "\\n"),
+    "flattened onto one line": pem.replace(/\n/g, ""),
+    "with spaces where the breaks were": pem.replace(/\n/g, " "),
+    "with Windows line endings": pem.replace(/\n/g, "\r\n"),
+    "with the markers but no body breaks": `-----BEGIN PRIVATE KEY-----${pem
+      .replace(/-----[A-Z ]+-----/g, "")
+      .replace(/\s+/g, "")}-----END PRIVATE KEY-----`,
+    "body alone, markers lost": pem.replace(/-----[A-Z ]+-----/g, "").replace(/\s+/g, ""),
+    "with a trailing blank line": `${pem}\n\n`,
+  };
+
+  for (const [how, value] of Object.entries(mangled)) {
+    assert.equal(normalizePrivateKey(value), canonical, how);
+    // and the real test: OpenSSL takes it, which is what failed in production
+    assert.doesNotThrow(() => createPrivateKey(normalizePrivateKey(value)), how);
+  }
+});
+
+test("a key that is not PKCS#8 keeps the name it came with", () => {
+  const sec1 = generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({
+    type: "sec1",
+    format: "pem",
+  }) as string;
+  const normalized = normalizePrivateKey(sec1.replace(/\n/g, ""));
+  assert.match(normalized, /-----BEGIN EC PRIVATE KEY-----/);
+  assert.doesNotThrow(() => createPrivateKey(normalized));
+});
+
+test("the client secret is signed with a key that arrived flattened", () => {
+  const flat = ec.privateKey.export({ type: "pkcs8", format: "pem" }).toString().replace(/\n/g, "");
+  const jwt = appleClientSecret({ ...config, privateKey: normalizePrivateKey(flat) });
+  const [header, claims, signature] = jwt.split(".");
   const verifier = createVerify("SHA256");
   verifier.update(`${header}.${claims}`);
   assert.ok(

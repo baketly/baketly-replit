@@ -30,13 +30,33 @@ export interface AppleConfig {
 }
 
 /**
- * The five things Apple's portal hands over, or nothing.
+ * A .p8 put back into the shape OpenSSL will read.
  *
- * A PEM pasted into an environment variable loses its line breaks in some
- * hands and keeps them in others, so both spellings are accepted; the key is
- * unusable either way if it arrives half-formed, and that surfaces as a failed
- * sign-in rather than a server that will not start.
+ * A PEM is base64 in 64-character lines between two markers, and the line
+ * breaks are not decoration — without them OpenSSL refuses the key outright
+ * with "DECODER routines::unsupported", which says nothing about newlines and
+ * sends you looking at Apple instead.
+ *
+ * Secret boxes, form fields and shell variables each mangle those breaks
+ * differently: some keep them, some turn them into the two characters \ and n,
+ * some flatten the whole key onto one line. Rather than accept the two
+ * spellings that happen to have been seen and fail on the next one, the body
+ * is stripped of every kind of whitespace and re-wrapped. What arrives no
+ * longer matters, only that it is the right key.
+ *
+ * The marker is kept as it was found: Apple issues PKCS#8, but a key that
+ * announces itself as something else must not be relabelled into a lie.
  */
+export function normalizePrivateKey(raw: string): string {
+  const unescaped = raw.includes("\\n") ? raw.replace(/\\n/g, "\n") : raw;
+  const label = /-----BEGIN ([A-Z0-9 ]+)-----/.exec(unescaped)?.[1] ?? "PRIVATE KEY";
+  const body = unescaped.replace(/-----[A-Z0-9 ]+-----/g, "").replace(/\s+/g, "");
+  if (!body) return unescaped;
+  const lines = body.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----\n`;
+}
+
+/** The five things Apple's portal hands over, or nothing. */
 export function appleConfig(): AppleConfig | null {
   const servicesId = process.env.APPLE_SERVICES_ID;
   const teamId = process.env.APPLE_TEAM_ID;
@@ -48,7 +68,7 @@ export function appleConfig(): AppleConfig | null {
     servicesId,
     teamId,
     keyId,
-    privateKey: rawKey.includes("\\n") ? rawKey.replace(/\\n/g, "\n") : rawKey,
+    privateKey: normalizePrivateKey(rawKey),
     redirectUri,
   };
 }
