@@ -161,10 +161,16 @@ const watchController = `      ...(() => {
             // Said once under the list instead of on every row. A column of
             // "loose match" told a baker nothing except that Baketly was
             // unsure, over and over.
-            looseNote: sellers.some(seller => seller.matchQuality && seller.matchQuality !== 'high')
-              ? 'Some of these were found by searching rather than read from the shop&#39;s own page.'
+            //
+            // Keyed on where a row came from, not on how well it matched.
+            // Those are different facts and this line is about the first: a
+            // price read straight off a shop's own page can still be a
+            // middling match for the bake, and saying it "was found by
+            // searching" of such a row was simply untrue.
+            looseNote: sellers.some(seller => seller.sourceType === 'ai_search_fallback')
+              ? 'Some of these came from a web search rather than a shop&#39;s own page, so treat them as a hint.'
               : '',
-            hasLooseNote: sellers.some(seller => seller.matchQuality && seller.matchQuality !== 'high'),
+            hasLooseNote: sellers.some(seller => seller.sourceType === 'ai_search_fallback'),
             hasCompetitors: sellers.length > 0,
             sellerCountStr: sellers.length === 1
               ? 'from 1 listing'

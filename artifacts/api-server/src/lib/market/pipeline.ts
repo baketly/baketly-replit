@@ -9,6 +9,7 @@ import { discoverNearbyBakeries } from "./discovery";
 import { explainMarket, plainNote, type Explanation } from "./explain";
 import { compareProducts, type ProductComparison, type UserProduct } from "./compare";
 import type { MarketLogger } from "./log";
+import { normalizeProduct } from "./normalize";
 import { scanBakeries } from "./scan";
 import { competitorStore } from "./store";
 import type { Bakery, CompetitorProduct } from "./types";
@@ -116,6 +117,18 @@ export async function runPriceCheck(options: PipelineOptions): Promise<PipelineR
 
   const bakeriesWithProducts = new Set(competitors.map((product) => product.bakeryId)).size;
 
+  // "Products read" means bakes to the baker reading it.
+  //
+  // A cafe two doors down sells croissants, and it puts its bags of coffee
+  // beans and its pumpkin spice lattes in the same catalogue. Counting those
+  // told a baker in Boulder that the search had read 47 products when most of
+  // them could never be priced against a bake. Sandwiches and quiche stay
+  // counted: those are the shop's own baking, whatever else they are.
+  const bakesRead = competitors.filter((product) => {
+    const reading = normalizeProduct(product.name, product.description, product.category);
+    return reading.category !== "drink" && reading.category !== "not_food";
+  }).length;
+
   // A shop whose site we could not price is not a dead end: the baker can
   // open it and look. Worth handing them the address rather than dropping the
   // shop from the report entirely.
@@ -141,7 +154,7 @@ export async function runPriceCheck(options: PipelineOptions): Promise<PipelineR
     discoveredBy: discovery.sources,
     scannedBakeries: scans.filter((scan) => scan.status === "ok").length,
     bakeriesWithProducts,
-    competitorProducts: competitors.length,
+    competitorProducts: bakesRead,
     comparisons,
     explanation,
     unread,
