@@ -14,7 +14,7 @@ const chatControllerLogic = `      ...(() => {
         const justStarting = savedSales === 0 && (savedRecipes === 0 || savedIngredients === 0);
         const greeting = justStarting
           ? { who: 'b', text: 'Hi! I turn what you pay for ingredients into what each bake really costs, and what to charge for it. Tell me what you bake, or ask me what I can do.' }
-          : { who: 'b', text: 'Hi! I watch your costs, prices and markets. Ask me anything — type it or hold the microphone.' };
+          : { who: 'b', text: 'Hi! I watch your costs, prices and markets. Ask me anything about them.' };
         const shown = stored.length ? stored : [greeting];
         const pending = this.state.chatPending === true;
 
@@ -303,10 +303,15 @@ function bindChatComposer(template: string): string {
     '<svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
     '<rect x="9" y="2" width="6" height="12" rx="3"></rect>' +
     '<path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v4"></path></svg></button>';
+  // The microphone is built and wired but does not work on the phone, and a
+  // control that does nothing is worse than one that is not there: a baker
+  // presses it, nothing happens, and they stop trusting the rest of the
+  // screen. It is held here rather than deleted — everything behind it
+  // stays — so putting it back is uncommenting one line once dictation works.
+  void microphone;
   return out.replace(
     sendButton,
     () =>
-      microphone +
       '<button class="btn btn-primary btn-icon" sc-camel-on-click="{{ sendChat }}" aria-label="Send" style="width:44px;height:44px">',
   );
 }
