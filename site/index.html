@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baketly — know what your baking is really worth</title>
+<meta name="description" content="Baketly works out what each bake costs to make — ingredients, packaging and your time — and what you should charge for it. Built for home bakers and small bakeries.">
+<link rel="icon" href="loaf-mark.png">
+
+<!-- Open Graph, so a link shared in a bakers' group looks like something. -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://baketly.com/">
+<meta property="og:title" content="Baketly — know what your baking is really worth">
+<meta property="og:description" content="What each bake costs to make, and what to charge for it. For bakers who price by guessing.">
+<meta property="og:image" content="https://baketly.com/loaf-mark.png">
+<meta name="twitter:card" content="summary">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Poppins:wght@400;500;600&display=swap">
+
+<style>
+/* Baketly's own tokens, taken from the app so the two look like one thing.
+   The olive the app uses for buttons fails contrast against white at body
+   sizes, so type and fills that carry white text use --olive-deep or --green. */
+:root {
+  --cream: #faf6f0;
+  --white: #ffffff;
+  --green: #063930;
+  --olive: #7d8a3c;
+  --olive-deep: #5f6a2c;
+  --tint: #eef0dd;
+  --ink: #33301f;
+  --body: #4a4636;
+  --muted: #6b6555;
+  --hairline: #eee7d9;
+  --edge: #d8d1c0;
+  --display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --text: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --gutter: 24px;
+  --measure: 1120px;
+}
+
+/* A single, committed look: warm cream and deep green, in both themes. The
+   page paints its own ground rather than borrowing the browser's. */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation: none !important; transition: none !important; }
+}
+img { max-width: 100%; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.12; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: var(--olive-deep); }
+a:hover { color: var(--green); }
+:focus-visible { outline: 3px solid var(--olive-deep); outline-offset: 3px; border-radius: 4px; }
+
+.wrap { width: 100%; max-width: var(--measure); margin: 0 auto; padding-inline: var(--gutter); }
+.eyebrow {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.17em;
+  text-transform: uppercase; color: var(--olive-deep);
+}
+.lede { font-size: 17px; color: var(--body); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Buttons are pills; the three of them read as one stack of choices. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 52px; padding: 0 26px; border: 0; border-radius: 999px;
+  font-family: var(--text); font-size: 15px; font-weight: 600;
+  text-decoration: none; cursor: pointer;
+}
+.btn-primary { background: var(--green); color: var(--cream); }
+.btn-primary:hover { background: #0a4a3f; color: var(--cream); }
+.btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--edge); font-weight: 500; }
+.btn-ghost:hover { border-color: var(--olive-deep); color: var(--ink); }
+.btn-cream { background: var(--cream); color: var(--green); }
+.btn-cream:hover { background: #ffffff; color: var(--green); }
+
+/* ---- header ---- */
+.site-head {
+  border-bottom: 1px solid var(--hairline);
+  background: var(--cream);
+  position: sticky; top: 0; z-index: 10;
+}
+.site-head .wrap { display: flex; align-items: center; justify-content: space-between; min-height: 72px; gap: 16px; }
+.wordmark { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.wordmark img { width: 17px; height: 27px; object-fit: contain; }
+.wordmark span { font-family: var(--display); font-size: 23px; font-weight: 600; letter-spacing: -0.01em; color: var(--green); }
+.site-nav { display: flex; align-items: center; gap: 28px; }
+.site-nav a:not(.btn) { font-size: 14px; color: var(--body); text-decoration: none; }
+.site-nav a:not(.btn):hover { color: var(--green); }
+.site-nav .btn { min-height: 44px; font-size: 14px; padding: 0 20px; }
+@media (max-width: 860px) { .site-nav a:not(.btn) { display: none; } }
+
+/* ---- hero ---- */
+.hero { padding-block: 72px 76px; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 64px; align-items: start; }
+.hero h1 { font-size: clamp(38px, 5.6vw, 62px); font-weight: 700; letter-spacing: -0.02em; margin-block: 20px 20px; }
+.hero .lede { font-size: 18px; max-width: 34em; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 32px 18px; }
+.hero-note { font-size: 13px; color: var(--muted); }
+@media (max-width: 900px) {
+  .hero { padding-block: 48px 56px; }
+  .hero .wrap { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .hero-actions .btn { flex: 1 1 220px; }
+}
+
+/* The worked example. Numbers are the product, so they get the tabular
+   treatment and the most contrast on the page. */
+.costing { background: var(--white); border: 1px solid var(--hairline); border-radius: 22px; padding: 28px; }
+.costing-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.costing-head strong { font-family: var(--display); font-size: 21px; font-weight: 600; }
+.costing-head span { font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.costing ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.costing li { display: flex; justify-content: space-between; gap: 16px; font-size: 14.5px; }
+.costing li span:first-child { color: var(--body); }
+.costing hr { border: 0; border-top: 1px solid var(--hairline); margin: 20px 0; }
+.costing-total { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
+.costing-total span { font-size: 14.5px; color: var(--body); }
+.costing-total strong { font-size: 19px; font-weight: 600; }
+.costing-sell {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  background: var(--tint); border-radius: 14px; padding: 15px 18px;
+}
+.costing-sell > span:first-child { font-size: 14.5px; font-weight: 500; }
+.costing-sell b { font-size: 23px; font-weight: 600; color: var(--green); }
+.costing-sell em { font-style: normal; font-size: 12.5px; font-weight: 600; color: var(--olive-deep); margin-left: 9px; }
+
+/* ---- generic sections ---- */
+section { padding-block: 76px; }
+.section-head { max-width: 640px; margin-bottom: 44px; }
+.section-head.center { margin-inline: auto; text-align: center; }
+.section-head h2 { font-size: clamp(28px, 3.6vw, 40px); margin-bottom: 12px; }
+.section-head p { color: var(--body); font-size: 16.5px; }
+
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+@media (max-width: 900px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--white); border: 1px solid var(--hairline); border-radius: 18px; padding: 26px; }
+.card svg { margin-bottom: 16px; display: block; }
+.card h3 { font-family: var(--text); font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.card p { font-size: 14.5px; color: var(--body); }
+
+/* ---- steps ---- */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px; }
+@media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); gap: 34px; } }
+.step-n {
+  display: flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; border-radius: 999px; background: var(--tint);
+  font-family: var(--display); font-size: 20px; font-weight: 600; color: var(--green);
+  margin-bottom: 20px;
+}
+.step h3 { font-family: var(--text); font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+.step p { font-size: 15px; color: var(--body); margin-bottom: 20px; }
+.chip { background: var(--white); border: 1px solid var(--hairline); border-radius: 16px; padding: 16px 18px; }
+.chip strong { display: block; font-size: 13.5px; font-weight: 500; margin-bottom: 4px; }
+.chip span { font-size: 12.5px; color: var(--muted); }
+
+/* ---- the deep green band ---- */
+.band { background: var(--green); color: var(--cream); }
+.band .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: start; }
+.band h2 { font-size: clamp(30px, 4vw, 46px); color: var(--cream); margin-block: 18px 20px; }
+.band .eyebrow { color: #c6cd93; }
+.band p.lede { color: #d9e0c4; margin-bottom: 28px; }
+.band ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.band li {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: rgba(250, 246, 240, 0.07); border: 1px solid rgba(198, 205, 147, 0.26);
+  border-radius: 16px; padding: 18px 20px;
+}
+.band li svg { flex: none; margin-top: 3px; }
+.band li strong { display: block; font-family: var(--text); font-size: 15.5px; font-weight: 500; margin-bottom: 3px; }
+.band li span { font-size: 14px; color: #b9c39a; }
+@media (max-width: 900px) { .band .wrap { grid-template-columns: minmax(0, 1fr); gap: 36px; } }
+
+/* ---- ask ---- */
+.ask .wrap { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 56px; align-items: center; }
+@media (max-width: 900px) { .ask .wrap { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+.thread { display: flex; flex-direction: column; gap: 14px; }
+.bubble-you {
+  align-self: flex-end; max-width: 420px; background: var(--tint);
+  border-radius: 18px 18px 5px 18px; padding: 15px 19px; font-size: 15px;
+}
+.bubble-it {
+  align-self: flex-start; max-width: 490px; background: var(--white);
+  border: 1px solid var(--hairline); border-radius: 18px 18px 18px 5px;
+  padding: 16px 20px; font-size: 15px;
+}
+
+/* ---- sign-up ---- */
+.join { background: var(--tint); text-align: center; }
+.join h2 { font-size: clamp(30px, 4vw, 44px); margin-bottom: 14px; }
+.join p { color: var(--body); font-size: 16.5px; max-width: 34em; margin: 0 auto 30px; }
+.join form { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.join label { font-size: 12.5px; font-weight: 500; color: var(--body); }
+.join-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
+.join input {
+  flex: 1 1 280px; max-width: 340px; min-width: 0; min-height: 52px;
+  padding: 0 18px; border: 1px solid var(--edge); border-radius: 999px;
+  background: var(--cream); font-family: var(--text);
+  /* 16px exactly: below it iOS zooms the page when the field takes focus */
+  font-size: 16px; color: var(--ink);
+}
+.join input::placeholder { color: #9a947f; }
+
+/* ---- footer ---- */
+.site-foot { border-top: 1px solid var(--hairline); padding-block: 40px; }
+.site-foot .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; }
+.foot-links { display: flex; flex-wrap: wrap; gap: 10px 26px; font-size: 13.5px; }
+.foot-links a { color: var(--body); text-decoration: none; }
+.foot-links a:hover { color: var(--green); }
+.site-foot small { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="wordmark" href="#top">
+      <img src="loaf-mark.png" alt="">
+      <span>Baketly</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#markets">Markets</a>
+      <a href="#features">What it does</a>
+      <a class="btn btn-primary" href="#join">Join the waiting list</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">For home bakers and small bakeries</p>
+        <h1>Know what your baking is really worth.</h1>
+        <p class="lede">You already know how to bake. Baketly works out what each loaf costs to make — the flour, the box, the hour you spent on it — and what you should charge for it.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#join">Join the waiting list</a>
+          <a class="btn btn-ghost" href="#how">See how it works</a>
+        </div>
+        <p class="hero-note">Coming to iPhone. No spreadsheet required.</p>
+      </div>
+
+      <div class="costing">
+        <div class="costing-head">
+          <strong>Sourdough loaf</strong>
+          <span>Example</span>
+        </div>
+        <ul class="num">
+          <li><span>Strong white flour, 500g</span><span>$0.61</span></li>
+          <li><span>Starter, salt, water</span><span>$0.09</span></li>
+          <li><span>Paper bag and label</span><span>$0.35</span></li>
+          <li><span>Your time, 24 min at $12/hr</span><span>$4.80</span></li>
+        </ul>
+        <hr>
+        <div class="costing-total">
+          <span>Costs you to make</span>
+          <strong class="num">$5.85</strong>
+        </div>
+        <div class="costing-sell">
+          <span>Sell it at</span>
+          <span><b class="num">$9.50</b><em>38% margin</em></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head center">
+        <h2>Most bakers price by looking at the shop down the road.</h2>
+        <p>Which is fine, until the flour goes up, or the day turns out to have cost more than it made. Three things a guess almost always misses.</p>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5f6a2c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"></path><path d="M14 7h7v7"></path></svg>
+          <h3>Flour went up in March</h3>
+          <p>You bought the sack at one price and are still pricing the loaf at another. Change the sack, and every recipe that uses it moves with it.</p>
+        </article>
+        <article class="card">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5f6a2c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg>
+          <h3>Your time is not free</h3>
+          <p>Say what an hour of yours is worth, once. It lands in the price of everything you bake, including the proving you spent the morning on.</p>
+        </article>
+        <article class="card">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5f6a2c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1.4 10.2a2 2 0 0 1-2 1.8H7.4a2 2 0 0 1-2-1.8z"></path><path d="M8 9V6.5A4 4 0 0 1 16 6.5V9"></path></svg>
+          <h3>The stall fee disappears</h3>
+          <p>A $40 table has to come out of the day's takings before a single coin of it is profit. Baketly counts it against the day.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Three steps, once.</h2>
+        <p>After that it is just baking. Change a price and every recipe that uses it keeps up on its own.</p>
+      </div>
+      <ol class="steps" style="list-style: none; margin: 0; padding: 0">
+        <li class="step">
+          <div class="step-n" aria-hidden="true">1</div>
+          <h3>Fill the pantry</h3>
+          <p>Point the camera at the label on a sack of flour. Baketly reads the weight and the price and works out what a gram of it costs.</p>
+          <div class="chip">
+            <strong>Strong white flour</strong>
+            <span class="num">16 kg · $19.60 · $0.00123 a gram</span>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-n" aria-hidden="true">2</div>
+          <h3>Write the recipe</h3>
+          <p>What goes in, how long it takes you, and how many it makes. The cost of one loaf appears while you are still typing.</p>
+          <div class="chip">
+            <strong>Makes 4 loaves</strong>
+            <span class="num">$5.85 each, packaging and time in</span>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-n" aria-hidden="true">3</div>
+          <h3>Set the price</h3>
+          <p>See the margin as you move the price, and check it against what bakeries near you are charging for the same thing.</p>
+          <div class="chip">
+            <strong>$9.50 a loaf</strong>
+            <span class="num">38% margin · nearby: $8.00–$11.00</span>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="markets" class="band">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Market days</p>
+        <h2>Did the table pay for itself?</h2>
+        <p class="lede">Book the market, plan what to bake for it, take cash at the stall, and see afterwards whether the day was worth getting up at four for.</p>
+        <a class="btn btn-cream" href="#join">Join the waiting list</a>
+      </div>
+      <ul>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c6cd93" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>
+          <div><strong>The booth fee comes off the top</strong><span>Before anything counts as profit, the table has to earn its place.</span></div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c6cd93" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>
+          <div><strong>What sold, and what came home</strong><span>So next month you bake more of one thing and less of another.</span></div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c6cd93" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>
+          <div><strong>Cash taken at the stall</strong><span>Tap what someone bought as you hand it over. The day adds itself up.</span></div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c6cd93" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>
+          <div><strong>What the bakeries near you charge</strong><span>A price check on real shops in your town, not a national average.</span></div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>In one place, in plain words.</h2>
+        <p>No accounting vocabulary, no setup weekend. It is built for the person who bakes, not the person who does the books.</p>
+      </div>
+      <div class="cards">
+        <article class="card"><h3>Your pantry</h3><p>Every ingredient and box you buy, with what it really costs by the gram.</p></article>
+        <article class="card"><h3>Recipes that cost themselves</h3><p>Cost per loaf, per bun, per box, kept up to date as prices move.</p></article>
+        <article class="card"><h3>Your hourly rate</h3><p>Set it once, and your own labour stops being the thing nobody charges for.</p></article>
+        <article class="card"><h3>Markets and orders</h3><p>Plan a stall, take the cash, and find out whether the day paid.</p></article>
+        <article class="card"><h3>What is actually earning</h3><p>Margins by product and by month, so effort goes where it pays.</p></article>
+        <article class="card"><h3>Ask Baketly</h3><p>Questions about your own numbers, answered in a sentence.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="ask">
+    <div class="wrap">
+      <div>
+        <h2 style="font-size: clamp(26px, 3.2vw, 36px); margin-bottom: 16px">Ask it the awkward questions.</h2>
+        <p class="lede">The ones you would ask an accountant, if you had one. It answers from your bakes and your sales — not from the internet.</p>
+      </div>
+      <div class="thread">
+        <p class="bubble-you">Which of my products makes the most per hour of my time?</p>
+        <p class="bubble-it">Cinnamon buns, by a distance — $18.40 an hour against $7.10 for the sourdough. The loaves take four hours of proving for four units; the buns make twelve in the same oven slot.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="join" class="join">
+    <div class="wrap">
+      <h2>Bake what you love. Charge what it is worth.</h2>
+      <p>Baketly is coming to iPhone. Leave your email and you will hear from us the day it is ready.</p>
+      <!-- Wire the action to whichever list you use; until then it does nothing. -->
+      <form method="post" action="#">
+        <label for="join-email">Your email</label>
+        <div class="join-row">
+          <input id="join-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          <button class="btn btn-primary" type="submit">Keep me posted</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <a class="wordmark" href="#top">
+      <img src="loaf-mark.png" alt="">
+      <span>Baketly</span>
+    </a>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="#how">How it works</a>
+      <a href="#features">What it does</a>
+      <a href="https://baketly-app.replit.app/api/privacy">Privacy</a>
+      <a href="mailto:contact@baketly.com">contact@baketly.com</a>
+    </nav>
+    <small>© 2026 Baketly</small>
+  </div>
+</footer>
+
+</body>
+</html>
