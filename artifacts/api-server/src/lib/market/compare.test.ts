@@ -169,7 +169,11 @@ test("too few bakeries is not a market, and says why", () => {
   assert.match(result.shortfall || "", /too few/);
 });
 
-test("nothing comparable is said plainly", () => {
+// Three reasons a market can come back empty, and the baker is told a
+// different thing by each: open those shops and look, your bake is unusual,
+// or nobody nearby sells it. A count of everything rejected told them none of
+// those -- a cafe's coffee beans were in the total.
+test("a pool of other bakes says nobody nearby lists this", () => {
   const result = compareProduct(
     { name: "Box of 6 Chocolate Chip Cookies", price: 18 },
     [product("a", "Sourdough Loaf", 8, 1), product("b", "Butter Croissant", 4, 1)],
@@ -178,7 +182,31 @@ test("nothing comparable is said plainly", () => {
     silent,
   );
   assert.equal(result.stats, null);
-  assert.match(result.shortfall || "", /too different/);
+  assert.match(result.shortfall || "", /No nearby bakery lists a price for cookie/);
+});
+
+test("a near miss says the search worked and the bake is unusual", () => {
+  const result = compareProduct(
+    { name: "Box of 6 Chocolate Chip Cookies", price: 18 },
+    [product("a", "Assorted Mini Cookies", 12, 6)],
+    bakeries,
+    "USD",
+    silent,
+  );
+  assert.equal(result.stats, null);
+  assert.match(result.shortfall || "", /nothing close enough to compare/);
+});
+
+test("a matching bake with no price says to go and look", () => {
+  const result = compareProduct(
+    { name: "Box of 6 Chocolate Chip Cookies", price: 18 },
+    [product("a", "6 Chocolate Chip Cookies", null, 6)],
+    bakeries,
+    "USD",
+    silent,
+  );
+  assert.equal(result.stats, null);
+  assert.match(result.shortfall || "", /none of them show a price/);
 });
 
 test("a product Baketly cannot categorise is reported, not guessed at", () => {

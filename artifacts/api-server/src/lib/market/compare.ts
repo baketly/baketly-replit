@@ -98,7 +98,17 @@ export function compareProduct(
   }
 
   const accepted: ComparableProduct[] = [];
-  let rejectedCount = 0;
+  // Why something was rejected decides what the screen can honestly say, so
+  // the reasons are counted apart rather than totalled.
+  //
+  // A cafe's bag of coffee beans and its pumpkin spice latte are in the pool
+  // because the shop is next door and sells croissants too. They were never
+  // candidates for a sourdough, and counting them told the baker "47 products
+  // were too different" -- a number that sounds like a thorough search and
+  // means nothing. A scone rejected against a croissant is the near miss
+  // actually worth mentioning.
+  let sameKindRejected = 0;
+  let otherKindRejected = 0;
   let noPriceCount = 0;
 
   for (const candidate of competitors) {
@@ -112,9 +122,10 @@ export function compareProduct(
     );
     const match = matchProducts(reading, candidateReading);
     if (match.matchScore < ACCEPT_THRESHOLD) {
-      rejectedCount += 1;
+      if (candidateReading.category === reading.category) sameKindRejected += 1;
+      else otherKindRejected += 1;
       // one example is worth having in the log; all of them is noise
-      if (rejectedCount <= 3) {
+      if (sameKindRejected + otherKindRejected <= 3) {
         log.event("MATCH_REJECTED", {
           productName: product.name,
           bakeryName: bakery.name,
@@ -170,16 +181,27 @@ export function compareProduct(
 
   if (!stats) {
     const bakeriesWithMatch = new Set(unique.map((entry) => entry.bakery.id)).size;
+    const kind = reading.category.replace(/_/g, " ");
+    // In order of what it tells the baker to do next: a shop that sells this
+    // and hides the price is worth opening, a near miss means the search
+    // worked and the bake is unusual, and silence means nobody nearby lists
+    // one at all.
     const shortfall =
       unique.length === 0
-        ? rejectedCount > 0
-          ? "Nothing comparable found nearby: " + rejectedCount + " products were too different."
-          : "No nearby bakery published prices for this kind of bake."
-        : "Only " + bakeriesWithMatch + " nearby bakery sells something comparable, which is too few to call a local price.";
+        ? noPriceCount > 0
+          ? "Nearby bakeries sell " + kind + ", but none of them show a price."
+          : sameKindRejected > 0
+            ? "Nearby bakeries sell " + kind + ", but nothing close enough to compare."
+            : "No nearby bakery lists a price for " + kind + "."
+        : "Only " +
+          bakeriesWithMatch +
+          (bakeriesWithMatch === 1 ? " nearby bakery sells" : " nearby bakeries sell") +
+          " something comparable — too few to set a local price.";
     log.event("MARKET_CALCULATION_EMPTY", {
       productName: product.name,
       reason: shortfall,
-      rejected: rejectedCount,
+      sameKindRejected,
+      otherKindRejected,
       unpriced: noPriceCount,
     });
     return { name: product.name, price: product.price, unitPrice, reading, stats: null, comparables: ranked, shortfall };
