@@ -7,6 +7,7 @@ import marketCheckRouter from "./market-check";
 import placesRouter from "./places";
 import messagesRouter from "./messages";
 import privacyRouter from "./privacy";
+import receiptsRouter from "./receipts";
 import remindersRouter from "./reminders";
 import workspaceStateRouter from "./workspace-state";
 
@@ -20,6 +21,7 @@ router.use(marketCheckRouter);
 router.use(placesRouter);
 router.use(messagesRouter);
 router.use(privacyRouter);
+router.use(receiptsRouter);
 router.use(remindersRouter);
 router.use(workspaceStateRouter);
 
