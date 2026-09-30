@@ -70,8 +70,17 @@ const watchController = `      ...(() => {
         // is not necessarily the baker's own
         const localCurrency = (check && check.currency) ? String(check.currency) : '';
         const localMoney = value => value.toFixed(2) + (localCurrency ? ' ' + localCurrency : '');
-        const verdictLabels = { under: 'You charge less', over: 'You charge more', in_range: 'In line locally' };
-        const verdictClasses = { under: 'tag-accent', over: 'tag-accent', in_range: 'tag-neutral' };
+        // How a price compares, in the fewest words that still carry the
+        // number. One product used to say it four times over: a tag reading
+        // "You charge more", then "38.5% above local median", then "Market
+        // range $6.50 – $8.00 · 2 comparable bakeries", then a sentence
+        // repeating all of it -- above a list of the very shops it was
+        // counting. Every figure here appears exactly once now.
+        const gapTag = (gap) => gap === null
+          ? 'No local price'
+          : (Math.abs(gap) < 1
+            ? 'In line'
+            : Math.abs(gap).toFixed(0) + '% ' + (gap < 0 ? 'below' : 'above'));
         // A product nothing was found for used to get a row saying so and a
         // "Not found" pill beside it. That is not a finding about the bakery,
         // it is the absence of one, and repeated down the list it buried the
@@ -100,25 +109,26 @@ const watchController = `      ...(() => {
             medianStr: isFinite(median) ? localMoney(median) : '—',
             medianEach: isFinite(median) && quantity > 1 ? localMoney(median / quantity) + ' each' : '',
             hasMedianEach: isFinite(median) && quantity > 1,
-            gapStr: gap === null
-              ? ''
-              : (Math.abs(gap) < 1
-                ? 'level with the local median'
-                : Math.abs(gap).toFixed(1) + '% ' + (gap < 0 ? 'below' : 'above') + ' local median'),
             gapColor: gap === null || Math.abs(gap) < 1
               ? 'var(--color-text)'
               : (gap < 0 ? 'var(--color-accent-700)' : '#b0563e'),
-            rangeStr: (Number(product.localLow) === Number(product.localHigh)
-              ? 'one nearby charges ' + localMoney(Number(product.localLow) || 0)
-              : localMoney(Number(product.localLow) || 0) + ' – ' + localMoney(Number(product.localHigh) || 0)),
-            bakeryCountStr: (Number(product.comparableBakeries) || 0) === 1
-              ? '1 comparable bakery'
-              : (Number(product.comparableBakeries) || 0) + ' comparable bakeries',
+            // one line: who, and what they charge
+            rangeStr: (() => {
+              const shops = Number(product.comparableBakeries) || 0;
+              const low = Number(product.localLow) || 0;
+              const high = Number(product.localHigh) || 0;
+              const who = shops === 1 ? '1 nearby bakery charges ' : shops + ' nearby bakeries charge ';
+              return who + (low === high ? localMoney(low) : localMoney(low) + ' – ' + localMoney(high));
+            })(),
+            hasRange: isFinite(median),
             hasSuggested: !!suggested,
             competitiveStr: suggested ? localMoney(Number(suggested.competitive)) : '',
             marketStr: suggested ? localMoney(Number(suggested.market)) : '',
             premiumStr: suggested ? localMoney(Number(suggested.premium)) : '',
             note: product.note || '',
+            // Where there is a market, the numbers above say it. Where there
+            // is none, this sentence is the only thing that does.
+            hasNote: !isFinite(median) && !!(product.note || ''),
             // Prices read from a shop's own page, and prices a search turned
             // up, are not the same kind of fact and do not sit in one list.
             verified: product.provenance !== 'ai_search',
@@ -179,11 +189,8 @@ const watchController = `      ...(() => {
             hasLooseNote: product.provenance !== 'ai_search'
               && sellers.some(seller => seller.sourceType === 'ai_search_fallback'),
             hasCompetitors: sellers.length > 0,
-            sellerCountStr: sellers.length === 1
-              ? 'from 1 listing'
-              : 'from ' + sellers.length + ' listings',
-            verdictLabel: verdictLabels[product.verdict] || 'In line locally',
-            verdictClass: verdictClasses[product.verdict] || 'tag-neutral'
+            verdictLabel: gapTag(gap),
+            verdictClass: gap === null || Math.abs(gap) < 1 ? 'tag-neutral' : 'tag-accent'
           };
         });
 
@@ -318,7 +325,7 @@ function replaceWatchScreen(template: string): string {
       <div class="an-card" style="padding:14px;margin-bottom:10px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
           <div style="font-family:var(--font-heading);font-weight:600;font-size:16px;min-width:0;overflow-wrap:anywhere">{{ loc.name }}</div>
-          <span class="tag {{ loc.verdictClass }}" style="flex:none">{{ loc.verdictLabel }}</span>
+          <span class="tag {{ loc.verdictClass }}" style="flex:none;color:{{ loc.gapColor }}">{{ loc.verdictLabel }}</span>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -334,8 +341,9 @@ function replaceWatchScreen(template: string): string {
           </div>
         </div>
 
-        <div style="font-size:13px;font-weight:600;color:{{ loc.gapColor }};margin-bottom:2px">{{ loc.gapStr }}</div>
-        <div class="text-muted" style="font-size:12px;margin-bottom:10px">Market range {{ loc.rangeStr }} · {{ loc.bakeryCountStr }}</div>
+        <sc-if value="{{ loc.hasRange }}" hint-placeholder-val="{{ false }}">
+          <div class="text-muted" style="font-size:12px;margin-bottom:10px">{{ loc.rangeStr }}</div>
+        </sc-if>
 
         <sc-if value="{{ loc.hasSuggested }}" hint-placeholder-val="{{ false }}">
           <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--color-divider);border-radius:var(--radius-md);background:#fff;margin-bottom:10px">
@@ -354,14 +362,16 @@ function replaceWatchScreen(template: string): string {
           </div>
         </sc-if>
 
-        <div style="font-size:13px;line-height:1.5;margin-bottom:8px">{{ loc.note }}</div>
+        <sc-if value="{{ loc.hasNote }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:13px;line-height:1.5;margin-bottom:8px">{{ loc.note }}</div>
+        </sc-if>
 
         <sc-if value="{{ loc.unverified }}" hint-placeholder-val="{{ false }}">
           <div class="text-muted" style="font-size:11px;line-height:1.45;margin-bottom:8px;padding:8px 10px;border-radius:10px;background:var(--color-accent-100)">Found by web search rather than read from a shop's own page, so it is not counted in the numbers above.</div>
         </sc-if>
 
         <sc-if value="{{ loc.hasCompetitors }}" hint-placeholder-val="{{ false }}">
-          <div class="text-muted" style="font-size:11px;margin-bottom:4px">{{ loc.sellerCountStr }} · tap one to open the shop</div>
+          <div class="text-muted" style="font-size:11px;margin-bottom:4px">Tap a shop to open its page</div>
           <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider)">
             <sc-for list="{{ loc.competitors }}" as="seller" hint-placeholder-count="3">
               <a href="{{ seller.uri }}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider);text-decoration:none;color:inherit">
