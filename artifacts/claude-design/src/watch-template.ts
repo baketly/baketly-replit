@@ -123,25 +123,48 @@ const watchController = `      ...(() => {
             // up, are not the same kind of fact and do not sit in one list.
             verified: product.provenance !== 'ai_search',
             unverified: product.provenance === 'ai_search',
-            competitors: sellers.map(seller => ({
-              name: seller.name,
-              product: seller.product || '',
-              hasProduct: !!seller.product,
-              priceStr: (seller.price !== null && seller.price !== undefined)
-                ? localMoney(Number(seller.price)) + (Number(seller.quantity) > 1 ? ' / ' + seller.quantity : '')
-                : '',
-              equivalentStr: (seller.equivalentPrice !== null && seller.equivalentPrice !== undefined)
+            // A row is a shop, a price, and nothing a baker did not ask for.
+            //
+            // It used to carry five things: the shop, the item, the distance,
+            // a match quality on every single row, the price, and then the
+            // price again — the same number twice, because the per-unit figure
+            // and the listed figure are only different when something is sold
+            // in a pack. Everything that was usually blank left its separator
+            // behind, so rows began with a stray dot.
+            competitors: sellers.map(seller => {
+              const quantity = Number(seller.quantity) || 0;
+              const soldInPacks = quantity > 1;
+              // what one costs, which is the number that compares
+              const each = (seller.equivalentPrice !== null && seller.equivalentPrice !== undefined)
                 ? localMoney(Number(seller.equivalentPrice))
-                : '',
-              distanceStr: (seller.distanceKm !== null && seller.distanceKm !== undefined)
-                ? Number(seller.distanceKm).toFixed(1) + ' km'
-                : '',
-              matchLabel: seller.matchQuality === 'high'
-                ? 'close match'
-                : (seller.matchQuality === 'medium' ? 'similar' : (seller.matchQuality ? 'loose match' : '')),
-              matchColor: seller.matchQuality === 'high' ? 'var(--color-accent-700)' : '#8a8578',
-              uri: seller.uri || ''
-            })),
+                : ((seller.price !== null && seller.price !== undefined) ? localMoney(Number(seller.price)) : '');
+              // only worth saying where it is not simply the price on the page
+              const packNote = soldInPacks && seller.price !== null && seller.price !== undefined
+                ? localMoney(Number(seller.price)) + ' for ' + quantity
+                : '';
+              const details = [];
+              if (seller.product) details.push(String(seller.product));
+              if (seller.distanceKm !== null && seller.distanceKm !== undefined) {
+                details.push(Number(seller.distanceKm).toFixed(1) + ' km');
+              }
+              return {
+                name: seller.name,
+                // joined here so an empty one cannot leave its dot behind
+                detail: details.join(' · '),
+                hasDetail: details.length > 0,
+                each,
+                packNote,
+                hasPackNote: !!packNote,
+                uri: seller.uri || ''
+              };
+            }),
+            // Said once under the list instead of on every row. A column of
+            // "loose match" told a baker nothing except that Baketly was
+            // unsure, over and over.
+            looseNote: sellers.some(seller => seller.matchQuality && seller.matchQuality !== 'high')
+              ? 'Some of these were found by searching rather than read from the shop&#39;s own page.'
+              : '',
+            hasLooseNote: sellers.some(seller => seller.matchQuality && seller.matchQuality !== 'high'),
             hasCompetitors: sellers.length > 0,
             sellerCountStr: sellers.length === 1
               ? 'from 1 listing'
@@ -325,22 +348,24 @@ function replaceWatchScreen(template: string): string {
         </sc-if>
 
         <sc-if value="{{ loc.hasCompetitors }}" hint-placeholder-val="{{ false }}">
-          <div class="text-muted" style="font-size:11px;margin-bottom:4px">{{ loc.sellerCountStr }} · tap to see the page it came from</div>
+          <div class="text-muted" style="font-size:11px;margin-bottom:4px">{{ loc.sellerCountStr }} · tap one to open the shop</div>
           <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider)">
             <sc-for list="{{ loc.competitors }}" as="seller" hint-placeholder-count="3">
-              <a href="{{ seller.uri }}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-divider);text-decoration:none;color:inherit">
+              <a href="{{ seller.uri }}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider);text-decoration:none;color:inherit">
                 <span style="flex:1;min-width:0">
-                  <span style="font-size:13px;display:block;overflow-wrap:anywhere">{{ seller.name }}</span>
-                  <sc-if value="{{ seller.hasProduct }}" hint-placeholder-val="{{ false }}"><span class="text-muted" style="font-size:11px;display:block;overflow-wrap:anywhere">{{ seller.product }}</span></sc-if>
-                  <span class="text-muted" style="font-size:11px">{{ seller.distanceStr }} · <span style="color:{{ seller.matchColor }}">{{ seller.matchLabel }}</span></span>
+                  <span style="font-size:13.5px;display:block;overflow-wrap:anywhere">{{ seller.name }}</span>
+                  <sc-if value="{{ seller.hasDetail }}" hint-placeholder-val="{{ false }}"><span class="text-muted" style="font-size:11px;display:block;overflow-wrap:anywhere">{{ seller.detail }}</span></sc-if>
                 </span>
                 <span style="flex:none;text-align:right">
-                  <span style="font-size:13px;font-weight:600;font-feature-settings:'tnum';display:block">{{ seller.equivalentStr }}</span>
-                  <span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">{{ seller.priceStr }} ↗</span>
+                  <span style="font-size:14px;font-weight:600;font-feature-settings:'tnum';display:block">{{ seller.each }}</span>
+                  <sc-if value="{{ seller.hasPackNote }}" hint-placeholder-val="{{ false }}"><span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">{{ seller.packNote }}</span></sc-if>
                 </span>
               </a>
             </sc-for>
           </div>
+          <sc-if value="{{ loc.hasLooseNote }}" hint-placeholder-val="{{ false }}">
+            <div class="text-muted" style="font-size:11px;margin-top:6px">{{ loc.looseNote }}</div>
+          </sc-if>
         </sc-if>
       </div>
     </sc-for>
