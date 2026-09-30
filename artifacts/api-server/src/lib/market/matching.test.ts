@@ -87,6 +87,21 @@ test("a shop that will not say which loaf it is cannot price a named one", () =>
   assert.ok(!accepted("Sourdough Loaf", "Sourdough Challah"));
 });
 
+// A serious bread counter does not use the word bread. These five were the
+// whole bread list of the one shop in Portland whose prices could be read,
+// and every one of them was thrown away as unreadable.
+test("a loaf under its own name is still a loaf", () => {
+  // levain is what sourdough is called when it is called anything else
+  assert.ok(accepted("Sourdough Loaf", "Pain au Levain"));
+  // and the rest are their own loaves, so they stay out of its market
+  for (const other of ["DemiMiche", "Buckwheat Pave", "Rugbrod", "Rustica", "Integrale"]) {
+    assert.ok(!accepted("Sourdough Loaf", other), other);
+  }
+  // but a shape is not a kind: a sourdough formed into a boule is a sourdough
+  assert.ok(accepted("Sourdough Loaf", "Country Sourdough Boule"));
+  assert.ok(accepted("Sourdough Batard", "Sourdough Miche"));
+});
+
 // A baker who wrote only "Loaf" made that stretch themselves, so it stays a
 // doubt rather than a rejection -- otherwise they would never see anything.
 test("a baker's own vague loaf still finds named ones", () => {

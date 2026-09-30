@@ -64,7 +64,20 @@ const CATEGORY_WORDS: Array<[RegExp, ProductCategory]> = [
   [/\bbiscuits?\b/, "cookie"],
   [/\bpies?\b/, "pie"],
   [/\btarts?\b/, "pie"],
-  [/\b(loaf|loaves|breads?|baguettes?|challahs?|focaccias?)\b/, "bread"],
+  // A bakery that takes bread seriously does not write the word bread. Over
+  // five towns this list missed "Integrale", "Rustica", "DemiMiche",
+  // "Rugbrod (Danish Rye)" and "Buckwheat Pave" -- the whole bread counter of
+  // the one shop in Portland whose prices could be read -- and a bagel, which
+  // was only ever a kind of bread and never a bread.
+  //
+  // Finding them is safe alongside the kind rule in matching.ts: each gets
+  // its own named kind below, so a rye does not end up pricing a sourdough.
+  // The one synonym here is levain, which is what sourdough is called when
+  // it is called anything else.
+  [
+    /\b(loaf|loaves|breads?|baguettes?|challahs?|focaccias?|ciabattas?|bagels?|miches?|boules?|b[a\u00e2]tards?|pav[e\u00e9]s?|levains?|filones?|fougasses?|rugbr[o\u00f8]ds?|integrales?|rusticas?|pumpernickels?|ryes?|brioches?|pitas?|naans?)\b/,
+    "bread",
+  ],
   [/\b(pastr(y|ies)|danish|scones?)\b/, "pastry"],
   [/\bbars?\b/, "bar"],
   [/\bflapjacks?\b/, "bar"],
@@ -126,6 +139,22 @@ const BREAD_KINDS: Array<[RegExp, string]> = [
   [/\bbrown\s*breads?\b/, "brown"],
   [/\bwhole\s*(wheat|meal)\b/, "wholemeal"],
   [/\bmulti\s*grains?\b/, "multigrain"],
+  // pain au levain is sourdough bread, under another name
+  [/\blevains?\b/, "sourdough"],
+  [/\brugbr[o\u00f8]ds?\b/, "rugbrod"],
+  [/\bfougasses?\b/, "fougasse"],
+  [/\bintegrales?\b/, "wholemeal"],
+  //
+  // A shape is not a kind, and does not belong in this table.
+  //
+  // Boule, batard, miche, pave, filone: those say how the loaf was formed,
+  // not what is in it. Listed here as kinds, they read as the kind named last
+  // in a name -- so a "Country Sourdough Boule" became a boule rather than a
+  // sourdough, and stopped comparing with the sourdough it is. They stay in
+  // the bread words above, which is what they do tell us: that this is a
+  // loaf. A "Buckwheat Pave" is then a loaf of an unnamed kind, and a baker
+  // pricing a named sourdough is not shown it -- which is right, because
+  // nothing on the page says the two are the same bread.
   [/\bwhite\s*(bread|loaf|tin)\b/, "white"],
 ];
 
