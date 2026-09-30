@@ -414,23 +414,41 @@ router.post(
                 : found.localHigh !== null && row.price > found.localHigh
                   ? "over"
                   : "in_range";
-            row.competitors = found.competitors.map((seller) => ({
-              name: seller.name,
-              distanceKm: null,
-              product: "",
-              price: seller.price,
-              quantity: null,
-              equivalentPrice: seller.price ?? 0,
-              unitPrice: seller.price ?? 0,
-              currency: fallback.currency || null,
-              uri: seller.uri,
-              sourceTitle: seller.sourceTitle,
-              sourceType: "ai_search_fallback",
-              confidence: 0.3,
-              matchQuality: "low",
-              matchScore: 0,
-              matchReason: "found by search, not read from the shop's own page",
-            })) as never;
+            // Added to what was read from the shops themselves, not put in
+            // place of it. This used to overwrite: a sourdough loaf matched at
+            // 0.9 off a bakery's own menu page, with its real name on it, was
+            // being replaced by a search result that knows only a shop and a
+            // number. The weaker source was hiding the stronger one.
+            const alreadyNamed = new Set(
+              (row.competitors as Array<{ name?: string }> | undefined)?.map((seller) =>
+                String(seller.name || "").toLowerCase(),
+              ) ?? [],
+            );
+            const searched = found.competitors
+              .filter((seller) => !alreadyNamed.has(String(seller.name || "").toLowerCase()))
+              .map((seller) => ({
+                name: seller.name,
+                distanceKm: null,
+                // The search says what a shop charges for the kind of bake
+                // that was asked about; it never names the shop's own item.
+                product: "",
+                price: seller.price,
+                quantity: null,
+                equivalentPrice: seller.price ?? 0,
+                unitPrice: seller.price ?? 0,
+                currency: fallback.currency || null,
+                uri: seller.uri,
+                sourceTitle: seller.sourceTitle,
+                sourceType: "ai_search_fallback",
+                confidence: 0.3,
+                matchQuality: "low",
+                matchScore: 0,
+                matchReason: "found by search, not read from the shop's own page",
+              }));
+            row.competitors = [
+              ...((row.competitors as unknown[]) ?? []),
+              ...searched,
+            ].slice(0, 12) as never;
           }
         } catch (error) {
           log.event("SEARCH_FALLBACK_USED", {

@@ -17,6 +17,14 @@ const PRICE_PATTERN =
 const NAME_PATTERN =
   /<(?:h[1-6]|a|span|div|p)\b[^>]*(?:class=["'][^"']*(?:title|name|product|item|heading)[^"']*["'])?[^>]*>([^<>]{3,90})<\/(?:h[1-6]|a|span|div|p)>/gi;
 
+// The heading a menu section sits under. Only real headings, and only short
+// ones: "Donuts", "Breads & Pastries" — never a paragraph that happens to be
+// in an h2.
+const SECTION_PATTERN = /<h[1-4]\b[^>]*>([^<>]{3,40})<\/h[1-4]>/gi;
+
+/** How far a heading reaches. Past this it is a different part of the menu. */
+const SECTION_REACH = 4_000;
+
 /** Page text with the parts that are never product names taken out. */
 function stripNoise(html: string): string {
   return html
@@ -53,6 +61,14 @@ function plausibleName(value: string): boolean {
   if (/[.!?]\s+\S/.test(text)) return false;
   if (/[,;:]$/.test(text)) return false;
   if (/^(contains|made with|served|perfect for|our |we )/i.test(text)) return false;
+  // A price is not a product. Shops write "from $40.00" above a range, and it
+  // was being read as the name of something, then matched against, then
+  // rejected — noise all the way through.
+  if (/^(from|starting at|only|just|now)?\s*[$€£₪]\s?\d/i.test(text)) return false;
+  if (/^\d+(\.\d+)?\s*[$€£₪]/.test(text)) return false;
+  // Neither is a size or a weight on its own: "12 oz", "500g", "Large".
+  if (/^\d+\s*(g|kg|oz|lb|ml|l|cm|in|pc|pcs|pack)\b/i.test(text)) return false;
+  if (/^(small|medium|large|regular|half|whole|single|dozen|half dozen)$/i.test(text)) return false;
   // "Pure, crisp hydration, essential for any moment" is a sentence about a
   // bottle of water; a product name does not have clauses in it.
   if (/,\s+[a-z]/.test(text)) return false;
@@ -153,6 +169,31 @@ export function extractHtml(html: string, sourceUrl: string, limit = 60): Extrac
   }
   if (names.length === 0) return [];
 
+  // Where each menu section starts, so a product whose own name says nothing
+  // can borrow the heading above it. This is why "Glazed" and "Boston Cream"
+  // under a Donuts heading were being thrown away: forty-two candidates on one
+  // check, rejected for having no category, which is how a menu is written.
+  //
+  // Deliberately the nearest heading rather than anything page-wide. A
+  // page-wide category once made a bottle of Topo Chico a sourdough; a heading
+  // four thousand characters above a price is a section, not a page.
+  const sections: Array<{ at: number; text: string }> = [];
+  let sectionMatch: RegExpExecArray | null;
+  SECTION_PATTERN.lastIndex = 0;
+  while ((sectionMatch = SECTION_PATTERN.exec(cleaned)) !== null) {
+    sections.push({ at: sectionMatch.index, text: decode(sectionMatch[1]) });
+  }
+
+  const sectionFor = (at: number): string | null => {
+    let found: string | null = null;
+    for (const section of sections) {
+      if (section.at >= at) break;
+      if (at - section.at > SECTION_REACH) continue;
+      found = section.text;
+    }
+    return found;
+  };
+
   const found: ExtractedProduct[] = [];
   const seen = new Set<string>();
   let priceMatch: RegExpExecArray | null;
@@ -169,7 +210,15 @@ export function extractHtml(html: string, sourceUrl: string, limit = 60): Extrac
     if (!nearest) continue;
     const key = normalizedNameKey(nearest.text);
     if (seen.has(key)) continue;
-    const product = build(nearest.text, priceMatch[0], sourceUrl, "html", 0.6, pageCurrency);
+    const product = build(
+      nearest.text,
+      priceMatch[0],
+      sourceUrl,
+      "html",
+      0.6,
+      pageCurrency,
+      sectionFor(at),
+    );
     if (product) {
       seen.add(key);
       found.push(product);

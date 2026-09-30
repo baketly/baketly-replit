@@ -209,10 +209,19 @@ export async function nearbyBakeriesAt(
     // shop=bakery and shop=pastry are the two the map uses for what a home
     // baker competes with; cafes are left out, since their prices are for
     // coffee more often than for cake.
+    // Three exact tag matches rather than one regex over them.
+    //
+    // A regex on a tag cannot use Overpass's index, so it walks every shop in
+    // the radius; an exact match is a lookup. In a quiet town nobody notices.
+    // In Brooklyn the main mirror answered 504 and the other two timed out, and
+    // a baker in one of the densest bakery cities on earth was told there were
+    // none nearby. nwr covers nodes, ways and relations in one clause each.
+    const around = `(around:${radius},${point.lat},${point.lon})`;
     const query =
       "[out:json][timeout:25];(" +
-      `node["shop"~"^(bakery|pastry|confectionery)$"](around:${radius},${point.lat},${point.lon});` +
-      `way["shop"~"^(bakery|pastry|confectionery)$"](around:${radius},${point.lat},${point.lon});` +
+      `nwr["shop"="bakery"]${around};` +
+      `nwr["shop"="pastry"]${around};` +
+      `nwr["shop"="confectionery"]${around};` +
       ");out center tags 60;";
 
     // Every mirror at once, and the first USEFUL answer wins.
