@@ -290,14 +290,27 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
       <div style={card}>
         <h1
           style={{
-            fontSize: 26,
-            margin: "0 0 18px",
+            fontSize: 27,
+            margin: "0 0 4px",
             textAlign: "center",
             fontFamily: "var(--font-heading, inherit)",
           }}
         >
-          Hi, Welcome <span aria-hidden="true">👋</span>
+          {mode === "signup" ? "Get Started" : "Welcome Back"}
         </h1>
+        <p
+          style={{
+            margin: "0 0 20px",
+            textAlign: "center",
+            fontSize: 12.5,
+            // tracked out, as in the reference: it reads as a caption under the
+            // title rather than as a second, smaller sentence
+            letterSpacing: "0.09em",
+            color: "#8a8578",
+          }}
+        >
+          {mode === "signup" ? "Set up your bakery" : "Sign in to continue"}
+        </p>
 
         <div
           role="tablist"
@@ -417,14 +430,24 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
           </button>
         </form>
 
+        {/* The rule says these are another way in, not a second form. */}
         {googleReady || appleReady ? (
           <div
             style={{
-              height: 1,
-              background: "var(--color-divider, #e6e0d4)",
-              margin: "22px 8px",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              margin: "22px 4px",
+              fontSize: 11.5,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#a8a296",
             }}
-          />
+          >
+            <span style={{ flex: 1, height: 1, background: "var(--color-divider, #e6e0d4)" }} />
+            or
+            <span style={{ flex: 1, height: 1, background: "var(--color-divider, #e6e0d4)" }} />
+          </div>
         ) : null}
 
         {googleReady ? (
