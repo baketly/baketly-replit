@@ -205,13 +205,34 @@ function bindSaleTitle(template: string): string {
       '<span class="text-muted" style="font-size:12px;font-feature-settings:\'tnum\'">{{ todayLabel }}</span>' +
       "</div>" +
       '<sc-if value="{{ saleAttached }}" hint-placeholder-val="{{ false }}">' +
+      '<div style="flex:none;display:flex;align-items:center;gap:8px;margin-top:6px">' +
+
+      // Leaving a market and finishing it are not the same act, and until now
+      // only finishing had a button. A baker who picked the wrong market, or
+      // who wants to sell something over the counter in the middle of a market
+      // day, had to finish the market to get out of it — which files the
+      // takings and closes it. This unhooks the till from the market and
+      // leaves both exactly as they were.
+      //
+      // Drawn quieter than the tick, and to its left: finishing is what you do
+      // at the end of the day, and this is the rarer thing.
+      '<button sc-camel-on-click="{{ leaveSaleEvent }}" aria-label="Leave this market without finishing it" ' +
+      'style="flex:none;width:40px;height:40px;border-radius:50%;cursor:pointer;padding:0;' +
+      'border:1px solid var(--color-neutral-300);background:transparent;' +
+      'color:var(--color-text);display:grid;place-items:center">' +
+      '<svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M15 7h2a5 5 0 0 1 0 10h-2"></path><path d="M9 17H7A5 5 0 0 1 7 7h2"></path>' +
+      '<path d="M9 12h6"></path><path d="M4 4l16 16"></path></svg>' +
+      "</button>" +
+
       '<button sc-camel-on-click="{{ finishSaleEvent }}" aria-label="Finish this market" ' +
-      'style="flex:none;width:40px;height:40px;margin-top:6px;border-radius:50%;border:0;' +
+      'style="flex:none;width:40px;height:40px;border-radius:50%;border:0;' +
       'background:var(--color-accent);color:#fff;display:grid;place-items:center;cursor:pointer;' +
       'padding:0;box-shadow:var(--shadow-sm)">' +
       '<svg width="21" height="21" sc-camel-view-box="0 0 24 24" fill="none" stroke="#fff" ' +
       'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>' +
-      "</button></sc-if></div>",
+      "</button></div></sc-if></div>",
   );
 }
 

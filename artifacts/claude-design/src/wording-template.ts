@@ -41,7 +41,21 @@ const REWRITES: readonly Rewrite[] = [
   // "expected", so all four now agree.
   ["Est. revenue", "Expected revenue"],
   ["Est. cost", "Expected cost"],
+  ["est. revenue", "expected revenue"],
   ["Units planned", "Units to bake"],
+
+  // The eyebrow over the name field on a new or edited market was still the
+  // sample market's own name, which read as a title the baker had not chosen
+  // and could not change. It is a label for the field under it, so it says so.
+  [">Saturday Market Prep<", ">Event name<"],
+
+  // What this was trying to say, in the order a baker would ask it: you
+  // cannot bake part of a batch; the same flour in two recipes is one line on
+  // the list; and ticking things off is shopping, not accounting.
+  [
+    "Each recipe is rounded up to full batches — 40 babkas ÷ 12 per batch = 4 batches — then matching ingredients are combined. Ticking items tracks collection only; it doesn't change costs.",
+    "You cannot bake part of a batch, so each recipe is rounded up to whole ones — 40 babkas at 12 a batch means 4 batches. Anything used in more than one recipe is then added together, so flour is one line and not three. Ticking things off is your shopping list only; it changes nothing about the costs.",
+  ],
 
   // --- sentences that needed saying differently -------------------------
   [
