@@ -35,9 +35,37 @@ const page = `<!doctype html>
   li { margin-bottom: 6px; }
   .updated { color: #8a8578; font-size: 13px; margin: 0 0 26px; }
   a { color: #5e6d31; }
+  /* Comfortably past the 44px Apple asks of a tap target, this being the only
+     way out of the page on a phone. */
+  .back {
+    display: inline-flex; align-items: center;
+    min-height: 44px; margin-bottom: 6px;
+    font-weight: 600; text-decoration: none;
+  }
 </style>
 </head>
 <body>
+<!-- Reached from inside the app, which has no chrome of its own: without this
+     there is no way back to Baketly but killing it. -->
+<a class="back" href="/">&lsaquo; Back to Baketly</a>
+<script>
+  // Going back is the right answer when there is somewhere to go back to, and
+  // the href is the right answer when there is not — but nothing on the page
+  // can tell the two apart. history.length counts a blank tab as an entry, and
+  // a referrer is withheld on exactly the cross-origin trip the app makes.
+  //
+  // So it tries going back and watches whether anything happened. The timer is
+  // cancelled as the page leaves, which is both the proof that back worked and
+  // the guard against it firing later if this page comes out of the cache.
+  document.querySelector('a.back').addEventListener('click', function (event) {
+    if (history.length <= 1) return;
+    event.preventDefault();
+    var giveUp = setTimeout(function () { location.href = '/'; }, 400);
+    addEventListener('pagehide', function () { clearTimeout(giveUp); });
+    history.back();
+  });
+</script>
+
 <h1>Baketly privacy policy</h1>
 <p class="updated">Last updated ${UPDATED}</p>
 
