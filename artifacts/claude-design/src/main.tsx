@@ -30,6 +30,7 @@ import { applyWordingBehavior } from "./wording-template";
 import { applySwipeBackBehavior } from "./swipe-back-template";
 import { applyCardPaymentBehavior } from "./card-payment-template";
 import { applyContactBehavior } from "./contact-template";
+import { applyReceiptBehavior } from "./receipt-template";
 import { applyReminderRoutingBehavior } from "./reminder-routing-template";
 import { applyRecipeGroupsBehavior } from "./recipe-groups-template";
 import { marketCheckIsDue, runMarketCheck, suggestPlaces } from "./market-check";
@@ -318,6 +319,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
   return applyWordingBehavior(
     applyLayoutBehavior(
     applyReminderRoutingBehavior(
+    applyReceiptBehavior(
     applyContactBehavior(
     applyCardPaymentBehavior(
     applySwipeBackBehavior(
@@ -349,6 +351,7 @@ window.__baketlyApplyRecipeRecords = (template) => {
           ),
         ),
       ),
+    ),
     ),
     ),
     ),
