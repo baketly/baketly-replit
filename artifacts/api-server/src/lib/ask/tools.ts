@@ -27,6 +27,11 @@ import { previousPeriod, resolvePeriod, type Period } from "./periods";
 import type { Workspace } from "./workspace";
 
 /** Every tool says what it looked at, so an answer can show its sources. */
+/** "1 market", "6 markets" — a source line that says "1 markets" reads like a bug, because it is one. */
+function countOf(n: number, one: string, many: string): string {
+  return n + " " + (n === 1 ? one : many);
+}
+
 export type SourceKind = "products" | "sales" | "events" | "market" | "pantry";
 
 export interface ToolOutcome {
@@ -106,9 +111,9 @@ export function getBakerySummary(workspace: Workspace, args: { period?: string }
       hourlyRateSet: workspace.hourlyRate > 0,
     },
     sources: [
-      { kind: "sales", detail: totals.orders + " sales, " + period.label },
+      { kind: "sales", detail: countOf(totals.orders, "sale", "sales") + ", " + period.label },
       ...(eventsInPeriod.length
-        ? [{ kind: "events" as const, detail: eventsInPeriod.length + " markets" }]
+        ? [{ kind: "events" as const, detail: countOf(eventsInPeriod.length, "market", "markets") }]
         : []),
     ],
   };
@@ -144,6 +149,7 @@ function profitOf(workspace: Workspace, profit: ProductProfit, period: Period) {
     packagingCost: profit.cost.packagingCost,
     labourCost: profit.cost.labourCosted ? profit.cost.labourCost : null,
     labourCosted: profit.cost.labourCosted,
+    labourMissing: profit.cost.labourMissing,
     costPerUnit: profit.cost.unitCost,
     profitPerUnitAtTodaysCost: profit.profitPerUnit,
     marginPercentAtTodaysCost: profit.marginPercent,
@@ -503,7 +509,7 @@ export function compareEvents(workspace: Workspace, args: { events?: unknown }):
         betterRevenueEvent: byRevenue[0].name,
       },
     },
-    sources: [{ kind: "events", detail: rollups.length + " markets" }],
+    sources: [{ kind: "events", detail: countOf(rollups.length, "market", "markets") }],
   };
 }
 

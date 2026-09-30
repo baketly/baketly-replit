@@ -44,6 +44,14 @@ export interface CostBreakdown {
   ingredientCost: number;
   packagingCost: number;
   labourCost: number;
+  /**
+   * Which half of the sum is missing, when labour is not costed.
+   *
+   * An answer that says "set an hourly rate" to a baker who set one last
+   * month is worse than saying nothing: the rate is there, the minutes are
+   * not, and they are left looking for a setting they already changed.
+   */
+  labourMissing: "rate" | "minutes" | "both" | null;
   unitCost: number;
   /** null when the baker has not set an hourly rate, so labour is not costed */
   labourCosted: boolean;
@@ -79,6 +87,8 @@ export function recipeCost(recipe: Recipe, workspace: Workspace): CostBreakdown 
     labourCost: round2(labour),
     unitCost: round2(ingredientCost + packaging + labour),
     labourCosted: rate > 0 && minutes > 0,
+    labourMissing:
+      rate > 0 && minutes > 0 ? null : rate <= 0 && minutes <= 0 ? "both" : rate <= 0 ? "rate" : "minutes",
   };
 }
 
