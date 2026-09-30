@@ -69,6 +69,88 @@ test("a drink under a bread heading is still not a bread", () => {
   }
 });
 
+// A cookie shop names its cookies "Funfetti" and "S'mores" and never writes
+// the word cookie, because the sentence underneath does. On one sweep 63% of
+// everything read came back as a name nothing could be told from, and those
+// sentences were sitting unused next to them.
+test("a product's own blurb names what its name does not", () => {
+  const page = `
+    <div>
+      <span class="product-title">Funfetti</span>
+      <p>Indulge in the playful combination of our buttery, sweet sugar cookie.</p>
+      <span class="price">$5.80</span>
+    </div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  assert.equal(at(found, "Funfetti")?.category, "cookie");
+});
+
+test("a section heading still beats the blurb where a page has one", () => {
+  const page = `
+    <h2>Donuts</h2>
+    <div>
+      <span class="product-title">Boston Cream</span>
+      <span class="desc">Best with a cookie on the side</span>
+      <span class="price">$3.50</span>
+    </div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  assert.equal(at(found, "Boston Cream")?.category, "donut");
+});
+
+// The blurb above sat in its own element, and the scanner read it as the name
+// of the product. The store holds "Classic, refreshing soda with a timeless
+// taste." as something a shop sells.
+test("a one-sentence blurb is not read as the product's name", () => {
+  const page = `
+    <div>
+      <span class="product-title">Boston Cream</span>
+      <p>Best with a cookie on the side.</p>
+      <span class="price">$3.50</span>
+    </div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  assert.equal(
+    found.some((product) => /best with a cookie/i.test(product.name)),
+    false,
+  );
+});
+
+test("a short name may still end in an abbreviation", () => {
+  const page = `
+    <div><span class="product-title">Bread Co.</span><span class="price">$6.00</span></div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  assert.equal(found.length, 1);
+});
+
+test("a blurb cannot overrule a name that already says what it is", () => {
+  const page = `
+    <div>
+      <span class="product-title">Sourdough Loaf</span>
+      <p>Our loaf is wonderful alongside a slice of cheesecake.</p>
+      <span class="price">$9.00</span>
+    </div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  assert.equal(at(found, "Sourdough Loaf")?.category, "sourdough");
+});
+
+test("a blurb mentioning a bake cannot make a drink into one", () => {
+  const page = `
+    <div>
+      <span class="product-title">Cold Brew Coffee</span>
+      <p>Perfect with any of our cookies or a slice of banana bread.</p>
+      <span class="price">$5.00</span>
+    </div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  const product = at(found, "Cold Brew");
+  for (const bake of ["cookie", "bread"]) {
+    assert.notEqual(product?.category, bake);
+  }
+});
+
 // Shops write a price above a range of sizes, and it was being read as the
 // name of a product — then matched against, then rejected. Noise all the way
 // through, and three of them on one Brooklyn check.

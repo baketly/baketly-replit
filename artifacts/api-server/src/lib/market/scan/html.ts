@@ -14,8 +14,24 @@ import { currencyFrom, parsePrice } from "./price";
 const PRICE_PATTERN =
   /(?:[$€£₪]|\bUSD\b|\bEUR\b|\bGBP\b|\bILS\b)\s?\d{1,4}(?:[.,]\d{1,2})?|\d{1,4}(?:[.,]\d{1,2})?\s?(?:[$€£₪]|\bUSD\b|\bEUR\b|\bGBP\b|\bILS\b)/g;
 
+// The tag's own attributes are kept, so NAMED_CLASS below can ask what the
+// page calls this element. Closing tag matched to the opening one: the
+// previous pattern would pair a <div> with a </span>.
 const NAME_PATTERN =
-  /<(?:h[1-6]|a|span|div|p)\b[^>]*(?:class=["'][^"']*(?:title|name|product|item|heading)[^"']*["'])?[^>]*>([^<>]{3,90})<\/(?:h[1-6]|a|span|div|p)>/gi;
+  /<(h[1-6]|a|span|div|p)\b([^>]*)>([^<>]{3,90})<\/\1>/gi;
+
+/**
+ * An element the page itself calls a product's name.
+ *
+ * "desc" is excluded deliberately: plenty of templates ship a
+ * class="product-description", and that is the blurb, not the name.
+ */
+const NAMED_CLASS = /class=["'][^"']*(?:title|name|product|item|heading)[^"']*["']/i;
+const DESC_CLASS = /class=["'][^"']*desc[^"']*["']/i;
+
+function looksNamed(attributes: string): boolean {
+  return NAMED_CLASS.test(attributes) && !DESC_CLASS.test(attributes);
+}
 
 // The heading a menu section sits under. Only real headings, and only short
 // ones: "Donuts", "Breads & Pastries" — never a paragraph that happens to be
@@ -46,6 +62,23 @@ function decode(value: string): string {
     .trim();
 }
 
+/**
+ * What the shop says about this one product: the text between its name and
+ * its price, which on a menu is its own blurb.
+ *
+ * This is where the category often is. A cookie shop lists "Funfetti" and
+ * "S'mores" and never writes the word cookie in a name, because the sentence
+ * underneath already says "the buttery, sweet sugar cookie". Sixty-three per
+ * cent of everything one sweep read came back as an unreadable name, and
+ * those sentences were sitting right there unused.
+ *
+ * Only the opening is kept. A blurb's first clause names the thing; further
+ * in it starts recommending what to drink with it.
+ */
+function blurbBetween(markup: string): string {
+  return decode(markup.replace(/<[^>]*>/g, " ")).slice(0, 160);
+}
+
 /** A name a person would recognise as a product rather than a button. */
 function plausibleName(value: string): boolean {
   const text = value.trim();
@@ -55,10 +88,17 @@ function plausibleName(value: string): boolean {
     return false;
   }
   // a whole sentence is a description, not a product name
-  if (text.split(/\s+/).length > 12) return false;
+  if (text.split(/\s+/).length > 9) return false;
   // Prose gives itself away by its punctuation: "Contains nuts. Delicious
   // peanut butter cookie," is a description that happens to sit near a price.
   if (/[.!?]\s+\S/.test(text)) return false;
+  // One sentence with nothing after it got through that, because the rule
+  // above wants punctuation in the middle. A shop's blurb sitting in its own
+  // paragraph just above the price was then read as the name of the product:
+  // "Classic, refreshing soda with a timeless taste." is in the store as a
+  // product. A trailing full stop is allowed only on something short enough
+  // to be an abbreviation in a name, as in "Ice Cream Co."
+  if (/[.!?]$/.test(text) && text.split(/\s+/).length > 5) return false;
   if (/[,;:]$/.test(text)) return false;
   if (/^(contains|made with|served|perfect for|our |we )/i.test(text)) return false;
   // A price is not a product. Shops write "from $40.00" above a range, and it
@@ -160,12 +200,14 @@ export function extractHtml(html: string, sourceUrl: string, limit = 60): Extrac
   // only what the product's own name says counts.
 
   // every candidate name and where it sits on the page
-  const names: Array<{ at: number; text: string }> = [];
+  const names: Array<{ at: number; text: string; named: boolean }> = [];
   let nameMatch: RegExpExecArray | null;
   NAME_PATTERN.lastIndex = 0;
   while ((nameMatch = NAME_PATTERN.exec(cleaned)) !== null) {
-    const text = decode(nameMatch[1]);
-    if (plausibleName(text)) names.push({ at: nameMatch.index, text });
+    const text = decode(nameMatch[3]!);
+    if (plausibleName(text)) {
+      names.push({ at: nameMatch.index, text, named: looksNamed(nameMatch[2] || "") });
+    }
   }
   if (names.length === 0) return [];
 
@@ -200,16 +242,34 @@ export function extractHtml(html: string, sourceUrl: string, limit = 60): Extrac
   PRICE_PATTERN.lastIndex = 0;
   while ((priceMatch = PRICE_PATTERN.exec(cleaned)) !== null && found.length < limit) {
     const at = priceMatch.index;
-    // the nearest name before the price, within a card's worth of markup
-    let nearest: { at: number; text: string } | null = null;
+    // Within a card's worth of markup before the price: the nearest element
+    // the page calls a name, and only failing that the nearest of anything.
+    //
+    // Nearest alone put the blurb ahead of the name, because a shop writes
+    // the description between the two. The scanner read "Classic, refreshing
+    // soda with a timeless taste." as a product, priced it, and offered it to
+    // the matcher.
+    let nearestNamed: { at: number; text: string; named: boolean } | null = null;
+    let nearestAny: { at: number; text: string; named: boolean } | null = null;
     for (const candidate of names) {
       if (candidate.at >= at) break;
       if (at - candidate.at > 1_200) continue;
-      nearest = candidate;
+      nearestAny = candidate;
+      if (candidate.named) nearestNamed = candidate;
     }
+    const nearest = nearestNamed || nearestAny;
     if (!nearest) continue;
     const key = normalizedNameKey(nearest.text);
     if (seen.has(key)) continue;
+    // A section heading is the better evidence where a page has one; this
+    // page had none, because site builders make headings out of styled divs.
+    // The product's own blurb is the fallback, and it is still the shop's own
+    // words about this exact product rather than anything page-wide.
+    //
+    // Safe as a hint because normalizeProduct consults a hint only when the
+    // name says nothing, and only for the words that name a bake: a blurb
+    // cannot turn a named cookie into something else, and cannot make
+    // anything a drink.
     const product = build(
       nearest.text,
       priceMatch[0],
@@ -217,7 +277,7 @@ export function extractHtml(html: string, sourceUrl: string, limit = 60): Extrac
       "html",
       0.6,
       pageCurrency,
-      sectionFor(at),
+      sectionFor(at) || blurbBetween(cleaned.slice(nearest.at, at)),
     );
     if (product) {
       seen.add(key);
