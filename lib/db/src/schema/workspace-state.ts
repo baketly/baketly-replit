@@ -225,12 +225,25 @@ export const workspaceStatePayloadSchema = z
       .optional(),
     // when Baketly may interrupt, and in whose clock; the timezone comes from
     // the phone rather than from the server, which is in the wrong place
+    //
+    // Every reminder the app offers needs its pair here before the app offers
+    // it. This object is strict and the workspace is saved whole, so a setting
+    // the app knows about and this does not fails to save the bakery, not just
+    // the setting. That is how the shopping reminder arrived: the toggle
+    // worked, the screen looked right, and every save after it came back 400
+    // with nobody watching.
     reminders: z
       .object({
         todosDaily: z.boolean(),
         todosAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
         marketEve: z.boolean(),
         marketAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+        // optional, so a workspace saved before these existed still loads
+        shoppingList: z.boolean().optional(),
+        shoppingAt: z
+          .string()
+          .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+          .optional(),
         timezone: z.string().max(60),
       })
       .strict()
