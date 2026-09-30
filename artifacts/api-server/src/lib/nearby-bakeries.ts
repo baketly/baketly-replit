@@ -301,7 +301,17 @@ export async function nearbyBakeriesAt(
         name: name.slice(0, 80),
         km: Math.round(km * 10) / 10,
         town: (tags["addr:city"] || tags["addr:town"] || "").slice(0, 60),
-        website: (tags.website || tags["contact:website"] || "").slice(0, 200),
+        // Four spellings, because the map has four. Reading only the
+        // first two left shops behind that had published a website under a
+        // tag nobody here had thought of, and a bakery with no website is a
+        // bakery Baketly cannot price.
+        website: (
+          tags.website ||
+          tags["contact:website"] ||
+          tags.url ||
+          tags["brand:website"] ||
+          ""
+        ).slice(0, 200),
         osmId: element.type && element.id ? element.type + "/" + element.id : undefined,
         lat,
         lon,
