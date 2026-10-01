@@ -77,46 +77,24 @@ function fieldsCanShrink(template: string): string {
       "input,select,textarea{min-width:0}" +
       // A date and a booth fee, on one line, on a phone.
       //
-      // The one thing worth knowing here: iOS does not draw a text box for
-      // input[type=date]. It draws its own widget -- "1 Oct 2026" where a
-      // desktop browser writes "01/10/2026" with a calendar button -- and
-      // that widget sizes itself. Told to be narrower, by width, by
-      // max-width, by a column share, it stayed its own size and painted
-      // across the booth fee beside it.
+      // Back to the layout this row started with -- two shares, the date
+      // the larger of them -- with one addition: the date is held to a
+      // size, rather than left to ask for whatever it likes.
       //
-      // Six goes at this row failed because each one picked a number for
-      // the date: a breakpoint, a 220px floor, then shares of 1.62, 1.3 and
-      // a half. Every one was a guess at something only the control knows,
-      // and none of them could be checked from a desktop browser, which
-      // renders the other widget entirely.
+      // The reason for the addition is that on iOS this is not a text box.
+      // It is the system date widget, drawing "1 Oct 2026" where a desktop
+      // browser draws "01/10/2026" with a calendar button, and it carries
+      // its own idea of how wide it should be. Every attempt to arrange
+      // this row by giving the column a share was arranging something that
+      // sizes itself, which is why the fee kept being sat on.
       //
-      // So the column stopped telling and started asking. "auto" lays the
-      // track out at the width the control reports, so there is nothing
-      // left over to spill, whatever that width is on a given phone. The
-      // fee takes the remainder. No number here is a guess.
-      "\n    .bk-pair{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px}" +
-      // min-width:0 belongs on the fee and nowhere near the date.
-      //
-      // It was put on both when the tracks were fr shares and the point was
-      // to let them go narrow. Left there under an auto track it undoes it:
-      // an auto track's floor is its content's min-content width, min-width:0
-      // drops that floor to zero, so the date collapsed and the fee's 1fr
-      // took what it gave up. On the phone that put "1 Oct 2026" in a box too
-      // small for it, clipped hard against its own right edge, while the fee
-      // sat in the larger half -- the opposite of the shares this row needs.
-      //
-      // The date column carries no floor of its own now, so auto can do what
-      // it was asked to do.
-      "\n    .bk-pair>*:last-child{min-width:0;overflow:hidden}" +
-      // Only the fee is told its width; the date keeps its own, which is the
-      // point of the auto column above.
-      //
-      // Nothing sets a height here. One was tried, and on the phone the date
-      // box grew taller than the fee rather than matching it: the native
-      // widget lays its own insides out, and a height from outside is one
-      // more instruction it does not take.
-      "\n    .bk-pair .field>.input,.bk-pair .field>div>.input{box-sizing:border-box}" +
-      "\n    .bk-pair>*:last-child .input{width:100%;min-width:0}",
+      // 140px fits the date iOS writes with room to spare, and is small
+      // enough to leave the fee a usable half of a phone screen. A cap
+      // rather than a width: on a wider screen the share still governs.
+      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:10px}" +
+      "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
+      "\n    .bk-pair .input{max-width:100%}" +
+      "\n    .bk-pair>*:first-child .input{max-width:140px}",
   );
 }
 
