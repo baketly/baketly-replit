@@ -11,7 +11,7 @@
 import type { MarketLogger } from "../log";
 import { competitorStore } from "../store";
 import type { Bakery, CompetitorProduct, ExtractedProduct } from "../types";
-import { extractWithAi } from "./ai";
+import { extractWithAi, pageText } from "./ai";
 import { productPageCandidates } from "./discover-pages";
 import { fetchPage, fetchPages } from "./fetch";
 import { extractHtml } from "./html";
@@ -26,6 +26,30 @@ import { extractProductPage, sitemapProductUrls } from "./sitemap";
 
 /** How long a bakery's products are trusted before its site is read again. */
 export const SCAN_TTL_MS = 7 * 24 * 60 * 60_000;
+
+/**
+ * How many pages of one site the model may be asked to read.
+ *
+ * A Portland deli cost six model calls and produced nothing; a doughnut shop's
+ * menu, four. Three is a shop page, a menu and one more.
+ */
+const MAX_AI_PAGES = 3;
+
+/**
+ * Whether a page has anything price-shaped on it at all.
+ *
+ * The model was being handed menus that list what a shop makes and not what
+ * it charges -- ninety products came back from one town with no price and
+ * were thrown away, after thirty seconds of asking. A page with no price on
+ * it has nothing a price check can use, however well it is read.
+ */
+function looksPriced(html: string): boolean {
+  const text = pageText(html);
+  const hits = text.match(
+    /[$€£₪]\s?\d|\d+[.,]\d{2}(?!\d)|\b\d+\s?(kr|zł|kč|ft|lei|chf|aed|nis)\b/gi,
+  );
+  return (hits?.length ?? 0) >= 3;
+}
 
 export interface ScanOptions {
   log: MarketLogger;
@@ -158,10 +182,28 @@ export async function scanBakery(bakery: Bakery, options: ScanOptions): Promise<
     homepage.body,
     options.maxPages ?? 5,
   );
-  const pages = [
+  const fetched = [
     homepage,
     ...(await fetchPages(candidates.filter((url) => url !== homepage.finalUrl))),
   ];
+  // One page, read once.
+  //
+  // /shop, /menu and /order on a small site all redirect to the homepage,
+  // and each arrived here as a page of its own: the same text was parsed
+  // three times and, when nothing could read it, handed to the model three
+  // times. A Portland deli cost five model calls for one page. The same
+  // destination, or the same body, is the same page.
+  const seenUrls = new Set<string>();
+  const seenBodies: string[] = [];
+  const pages = fetched.filter((page) => {
+    if (!page.ok) return true;
+    const where = page.finalUrl.replace(/\/+$/, "").toLowerCase();
+    if (seenUrls.has(where) || seenBodies.includes(page.body)) return false;
+    seenUrls.add(where);
+    seenBodies.push(page.body);
+    return true;
+  });
+  let aiPagesLeft = MAX_AI_PAGES;
 
   for (const page of pages) {
     if (!page.ok) {
@@ -196,6 +238,22 @@ export async function scanBakery(bakery: Bakery, options: ScanOptions): Promise<
       });
       continue;
     }
+    // and only about a page with prices on it, and only so many times
+    if (!looksPriced(page.body)) {
+      log.event("PRODUCT_REJECTED", {
+        url: page.finalUrl,
+        reason: "no prices on the page for the model to read",
+      });
+      continue;
+    }
+    if (aiPagesLeft <= 0) {
+      log.event("PRODUCT_REJECTED", {
+        url: page.finalUrl,
+        reason: "the model has already read " + MAX_AI_PAGES + " pages of this site",
+      });
+      continue;
+    }
+    aiPagesLeft -= 1;
     log.event("AI_EXTRACTION_FALLBACK", { url: page.finalUrl });
     const ai = await extractWithAi(
       page.body,

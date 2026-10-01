@@ -99,6 +99,12 @@ function plausibleName(value: string): boolean {
   if (/^(add to (cart|bag|basket)|buy now|shop now|view|more|read more|select options|sold out|home|menu|order|contact|about)$/i.test(text)) {
     return false;
   }
+  // Shop-wide boilerplate that sits near prices on a supermarket's page:
+  // "Save $25 weekly with for U", "New Lower Prices Terms & Conditions",
+  // "Guaranteed Fresh disclaimer" were all stored as things a bakery sells.
+  if (/\b(terms|conditions|disclaimer|coupons?|rewards|weekly ad|sign up|subscribe|save \$|guaranteed)\b/i.test(text)) {
+    return false;
+  }
   // Shopify themes label the two prices on a sale item, and both labels sit
   // just above a price. The store holds "Regular price" and "Sale price" as
   // things a bakery sells, at 69.00 each.
@@ -117,6 +123,11 @@ function plausibleName(value: string): boolean {
   // product. A trailing full stop is allowed only on something short enough
   // to be an abbreviation in a name, as in "Ice Cream Co."
   if (/[.!?]$/.test(text) && text.split(/\s+/).length > 5) return false;
+  // A product is not a question or an exclamation, and a four-word sentence
+  // is still a sentence: "First time shopping with us?" and "Discover our
+  // exclusive brands." were a supermarket's banners, stored as its bakes.
+  if (/[!?]$/.test(text)) return false;
+  if (/\.$/.test(text) && text.split(/\s+/).length > 3) return false;
   if (/[,;:]$/.test(text)) return false;
   if (/^(contains|made with|served|perfect for|our |we )/i.test(text)) return false;
   // A price is not a product. Shops write "from $40.00" above a range, and it
@@ -124,6 +135,12 @@ function plausibleName(value: string): boolean {
   // rejected — noise all the way through.
   if (/^(from|starting at|only|just|now)?\s*[$€£₪]\s?\d/i.test(text)) return false;
   if (/^\d+(\.\d+)?\s*[$€£₪]/.test(text)) return false;
+  // Nor is a price list. "Half $7.95 | Whole $13.00" sat above a loaf's price
+  // on a Portland menu and was stored as the name of a bread.
+  if ((text.match(/[$€£₪]\s?\d/g) || []).length >= 2) return false;
+  if (/^(half|whole|small|medium|large|mini|regular|single|dozen)\b[^a-z]*[$€£₪]?\s?\d/i.test(text)) {
+    return false;
+  }
   // Neither is a size or a weight on its own: "12 oz", "500g", "Large".
   if (/^\d+\s*(g|kg|oz|lb|ml|l|cm|in|pc|pcs|pack)\b/i.test(text)) return false;
   if (/^(small|medium|large|regular|half|whole|single|dozen|half dozen)$/i.test(text)) return false;

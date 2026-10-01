@@ -15,10 +15,77 @@ import type { Bakery } from "../types";
 import { googlePlacesBakeries, googlePlacesConfigured } from "./google-places";
 import { geocodePlace, osmBakeries, osmFailure } from "./osm";
 
+/**
+ * How long OpenStreetMap gets when Google has already answered.
+ *
+ * Overpass can take twenty or thirty seconds -- the whole of a check's
+ * patience -- and in the two towns probed it added one real shop and a candy
+ * store to Google's fifteen, after eighteen and thirty seconds of waiting.
+ * With Google's list in hand it gets a few seconds; alone, it gets the full
+ * wait, because then it is the only map there is.
+ */
+const OSM_ALONGSIDE_MS = 4_000;
+
+/** The lookup's answer, or null if it has not come within the time. */
+function osmWithin(lookup: Promise<Bakery[]>, ms: number | null): Promise<Bakery[] | null> {
+  if (ms === null) return lookup;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    lookup.then(
+      (found) => {
+        clearTimeout(timer);
+        resolve(found);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export interface DiscoveryOptions {
   radiusKm?: number;
   limit?: number;
   log: MarketLogger;
+  /** the kinds of bake the baker sells, so the search asks for the shops that sell them */
+  kinds?: string[];
+}
+
+/**
+ * The question a person would type to find a shop selling each kind of bake.
+ *
+ * "Bakery" alone, asked of a town centre, returns the patisseries and the
+ * coffee shops; a baker of loaves wants the bread bakeries, and asking for
+ * them by name is how Google finds them. Two at most, on top of the plain
+ * question, so a check with twelve products does not run twelve searches.
+ */
+const QUERY_FOR_KIND: Record<string, string> = {
+  bread: "bread bakery",
+  sourdough: "sourdough bread bakery",
+  croissant: "patisserie",
+  pastry: "patisserie",
+  macaron: "patisserie",
+  cake: "cake shop",
+  cupcake: "cake shop",
+  cheesecake: "cake shop",
+  cookie: "cookie bakery",
+  brownie: "cookie bakery",
+  bar: "cookie bakery",
+  donut: "donut shop",
+  pie: "pie bakery",
+  babka: "jewish bakery",
+  cinnamon_roll: "cinnamon roll bakery",
+  muffin: "bakery cafe",
+};
+
+export function queriesFor(kinds: string[]): string[] {
+  const queries: string[] = [];
+  for (const kind of kinds) {
+    const query = QUERY_FOR_KIND[kind];
+    if (query && !queries.includes(query)) queries.push(query);
+  }
+  return queries.slice(0, 2);
 }
 
 export interface DiscoveryResult {
@@ -134,13 +201,25 @@ export function mergeBakeries(
   // left, nearest first, and they are what the "worth a look yourself" list is
   // made of — a real bakery round the corner with no menu online is still
   // worth knowing about.
-  const byDistance = (a: Bakery, b: Bakery) =>
-    (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9);
+  //
+  // Within each of those, Google's own order holds. Its list arrives ranked
+  // -- real bakeries before the coffee shops and ice cream chains that also
+  // carry its bakery tag -- and sorting by distance here undid that, so a
+  // creamery fifty metres closer took the slot from the bread bakery a baker
+  // is actually competing with. Shops only OSM knew about follow, nearest
+  // first. The Google place id is the key because a merge can change a
+  // shop's own id.
+  const googleRank = new Map(
+    googleFound.map((bakery, index) => [bakery.googlePlaceId ?? bakery.id, index]),
+  );
+  const rankOf = (bakery: Bakery) => googleRank.get(bakery.googlePlaceId ?? bakery.id) ?? 1e6;
+  const inOrder = (a: Bakery, b: Bakery) =>
+    rankOf(a) - rankOf(b) || (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9);
   const canBePriced = (bakery: Bakery) => !!bakery.website;
 
   return [
-    ...merged.filter(canBePriced).sort(byDistance),
-    ...merged.filter((bakery) => !canBePriced(bakery)).sort(byDistance),
+    ...merged.filter(canBePriced).sort(inOrder),
+    ...merged.filter((bakery) => !canBePriced(bakery)).sort(inOrder),
   ];
 }
 
@@ -169,7 +248,12 @@ export async function discoverNearbyBakeries(
   let googleFound: Bakery[] = [];
   if (googlePlacesConfigured()) {
     try {
-      googleFound = await googlePlacesBakeries(origin, radiusKm, limit);
+      googleFound = await googlePlacesBakeries(
+        origin,
+        radiusKm,
+        limit,
+        queriesFor(options.kinds ?? []),
+      );
       sources.push("google");
       log.event("BAKERY_DISCOVERY_GOOGLE_SUCCESS", { count: googleFound.length });
     } catch (error) {
@@ -183,14 +267,26 @@ export async function discoverNearbyBakeries(
 
   let osmFound: Bakery[] = [];
   try {
-    osmFound = await osmBakeries(origin, radiusKm, limit);
+    const waited = await osmWithin(
+      osmBakeries(origin, radiusKm, limit),
+      googleFound.length >= 5 ? OSM_ALONGSIDE_MS : null,
+    );
+    if (waited === null) {
+      log.event("BAKERY_DISCOVERY_OSM_FALLBACK", {
+        count: 0,
+        reason:
+          "osm did not answer within " + OSM_ALONGSIDE_MS / 1000 + "s; carrying on with google",
+      });
+    } else {
+      osmFound = waited;
+    }
     if (osmFound.length) {
       sources.push("osm");
       log.event("BAKERY_DISCOVERY_OSM_FALLBACK", {
         count: osmFound.length,
         reason: googleFound.length ? "osm alongside google" : "osm alone",
       });
-    } else {
+    } else if (waited !== null) {
       // an empty answer from a map that failed is not an empty town
       log.event("BAKERY_DISCOVERY_OSM_FALLBACK", {
         count: 0,

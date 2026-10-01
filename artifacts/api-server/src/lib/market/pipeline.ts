@@ -72,10 +72,22 @@ export async function runPriceCheck(options: PipelineOptions): Promise<PipelineR
   const deadline = Date.now() + (options.budgetMs ?? 90_000);
 
   // ---- 1. who is nearby ---------------------------------------------------
+  // Told what the baker sells, so it looks for the shops that sell it. The
+  // twenty nearest places Google tags "bakery" in a town centre are coffee
+  // shops, doughnut counters and a creamery; a baker of loaves is competing
+  // with the bread bakeries a mile out, and those have to be asked for.
+  const kinds = [
+    ...new Set(
+      options.products
+        .map((product) => normalizeProduct(product.name).category)
+        .filter((category) => category !== "unknown"),
+    ),
+  ];
   const discovery = await discoverNearbyBakeries(options.location, {
     log,
     radiusKm: options.radiusKm ?? 12,
     limit: options.maxBakeries ?? 15,
+    kinds,
   });
 
   // ---- 2. what they sell --------------------------------------------------

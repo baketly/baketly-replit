@@ -11,8 +11,10 @@
 import { bakeryId } from "../store";
 import type { Bakery } from "../types";
 import { normalizeBakeryName, websiteDomain } from "./index";
+import { bakeryScore, collapseSameShop } from "./rank";
 
 const ENDPOINT = "https://places.googleapis.com/v1/places:searchNearby";
+const TEXT_ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
 const TIMEOUT_MS = 8_000;
 // what a home baker competes with; Google's own type names
 const INCLUDED_TYPES = ["bakery", "dessert_shop", "cake_shop", "donut_shop"];
@@ -66,6 +68,36 @@ export function googlePlacesConfigured(): boolean {
   return !!process.env.GOOGLE_PLACES_API_KEY;
 }
 
+/** One Places request, bounded. Throws on a provider failure. */
+async function placesSearch(
+  endpoint: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+): Promise<PlacesResponse> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": FIELDS,
+      },
+      signal: controller.signal,
+      body: JSON.stringify(body),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error("places " + response.status + " " + detail.slice(0, 200));
+  }
+  return (await response.json()) as PlacesResponse;
+}
+
 interface AddressComponent {
   longText?: string;
   shortText?: string;
@@ -106,75 +138,101 @@ function distanceKm(aLat: number, aLon: number, bLat: number, bLon: number): num
 }
 
 /**
- * Bakeries around a point, nearest first. Throws on a provider failure so the
- * caller can log it and fall back; it never returns a half-answer silently.
+ * Bakeries around a point, the most bakery-like first and the nearest among
+ * equals. Throws on a provider failure so the caller can log it and fall
+ * back; it never returns a half-answer silently.
  */
 export async function googlePlacesBakeries(
   origin: { latitude: number; longitude: number },
   radiusKm: number,
   limit: number,
+  /** what the baker sells, as the questions a person would type for it */
+  queries: string[] = [],
 ): Promise<Bakery[]> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return [];
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  let response: Response;
-  try {
-    response = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": FIELDS,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        includedTypes: INCLUDED_TYPES,
-        // Always Google's full page, never just the number of slots to fill.
-        //
-        // Asking for exactly `limit` and then dropping the parlours left the
-        // list SHORT of the limit, because a dropped place freed a slot no
-        // other bakery could take: one town went from fifteen bakeries to
-        // nine, and from seven priceable menus to three, purely from this.
-        // One search costs the same whatever this number is.
+  const circle = {
+    center: { latitude: origin.latitude, longitude: origin.longitude },
+    // Google's own ceiling is 50 km
+    radius: Math.min(50_000, Math.round(radiusKm * 1000)),
+  };
+
+  // Two searches, side by side.
+  //
+  // Nearest-first finds what is round the corner, and it is always asked for
+  // Google's full page, never just the number of slots to fill: asking for
+  // exactly `limit` and then dropping the parlours left the list SHORT of
+  // the limit, because a dropped place freed a slot no other bakery could
+  // take. One search costs the same whatever this number is.
+  //
+  // The second search asks the question a person would type -- "bakery" --
+  // ranked the way Google ranks it. In a dense town centre the twenty nearest
+  // places tagged bakery are coffee shops, doughnut counters and a creamery,
+  // and the bread bakeries a mile out are never among them; asked by name,
+  // Google puts those first. It is allowed to fail on its own, because the
+  // nearby search is the one that has to answer.
+  //
+  // And one more search per kind of thing the baker sells, up to two: a baker
+  // of loaves is asking about the bread bakeries, and "bread bakery" finds
+  // them where "bakery" alone finds the patisseries first.
+  const textQueries = ["bakery", ...queries.filter((query) => query !== "bakery")].slice(0, 3);
+  const [nearby, ...byRelevance] = await Promise.all([
+    placesSearch(ENDPOINT, apiKey, {
+      includedTypes: INCLUDED_TYPES,
+      maxResultCount: 20,
+      rankPreference: "DISTANCE",
+      locationRestriction: { circle },
+    }),
+    ...textQueries.map((textQuery) =>
+      placesSearch(TEXT_ENDPOINT, apiKey, {
+        textQuery,
+        // only the plain question is held to Google's bakery type; "cake
+        // shop" is allowed to find a cake shop
+        ...(textQuery === "bakery" ? { includedType: "bakery" } : {}),
         maxResultCount: 20,
-        rankPreference: "DISTANCE",
-        locationRestriction: {
-          circle: {
-            center: { latitude: origin.latitude, longitude: origin.longitude },
-            // Google's own ceiling is 50 km
-            radius: Math.min(50_000, Math.round(radiusKm * 1000)),
-          },
-        },
-      }),
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+        rankPreference: "RELEVANCE",
+        locationBias: { circle },
+      }).catch((): PlacesResponse => ({ places: [] })),
+    ),
+  ]);
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error("places " + response.status + " " + detail.slice(0, 200));
-  }
+  // the same place from any two searches is one place
+  const seen = new Set<string>();
+  const places = [
+    ...(nearby.places ?? []),
+    ...byRelevance.flatMap((response) => response.places ?? []),
+  ].filter((place) => {
+    const key = place.id || (place.displayName?.text || "") + "@" + (place.formattedAddress || "");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
-  const payload = (await response.json()) as PlacesResponse;
   const now = new Date().toISOString();
   const found: Bakery[] = [];
+  const scores = new Map<string, number>();
 
-  for (const place of payload.places ?? []) {
+  for (const place of places) {
     const name = (place.displayName?.text || "").trim();
     if (!name) continue;
     const latitude = Number(place.location?.latitude);
     const longitude = Number(place.location?.longitude);
     const hasPoint = Number.isFinite(latitude) && Number.isFinite(longitude);
+    const km = hasPoint
+      ? Math.round(distanceKm(origin.latitude, origin.longitude, latitude, longitude) * 10) / 10
+      : null;
+    // the relevance search is biased towards the circle, not held inside it
+    if (km !== null && km > radiusKm * 1.25) continue;
     const normalizedName = normalizeBakeryName(name);
     if (!sellsBakes(place.types, place.primaryType)) continue;
     const website = place.websiteUri || null;
     const domain = websiteDomain(website);
     const googlePlaceId = place.id || null;
+    const id = bakeryId({ googlePlaceId, domain, normalizedName });
+    scores.set(id, bakeryScore(name, place.types, place.primaryType));
     found.push({
-      id: bakeryId({ googlePlaceId, domain, normalizedName }),
+      id,
       googlePlaceId,
       osmId: null,
       name: name.slice(0, 120),
@@ -193,16 +251,20 @@ export async function googlePlacesBakeries(
       reviewCount: Number.isFinite(Number(place.userRatingCount))
         ? Number(place.userRatingCount)
         : null,
-      distanceKm: hasPoint
-        ? Math.round(distanceKm(origin.latitude, origin.longitude, latitude, longitude) * 10) / 10
-        : null,
+      distanceKm: km,
       discoverySource: "google" as const,
       lastDiscoveredAt: now,
       lastScannedAt: null,
     });
   }
 
-  return found
-    .sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9))
+  // one shop per website, the most bakery-like first, and among equals the
+  // nearest
+  return collapseSameShop(found)
+    .sort(
+      (a, b) =>
+        (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0) ||
+        (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9),
+    )
     .slice(0, limit);
 }

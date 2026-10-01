@@ -100,6 +100,29 @@ test("a market is built only from comparable products", () => {
   }
 });
 
+// Boulder offered a "Chocolate Chunk Cookie" at 175.00 -- a catering platter
+// with no count on it -- as comparable to a 3.50 cookie, and it would have
+// been the top of the market.
+test("a price eight times the baker's is a platter or a typo, not a comparable", () => {
+  const competitors = [
+    product("a", "Chocolate Chunk Cookie", 175, null),
+    product("a", "Chocolate Chip Cookie", 3.75, 1),
+    product("b", "Chocolate Chip Cookie", 3.25, 1),
+    product("c", "Chocolate Chip Cookie", 4, 1),
+  ];
+  const result = compareProduct(
+    { name: "Chocolate Chip Cookie", price: 3.5 },
+    competitors,
+    bakeries,
+    "USD",
+    silent,
+  );
+  assert.ok(result.stats, "expected a market from the three sensible prices");
+  assert.equal(result.stats.comparableBakeries, 3);
+  assert.equal(result.stats.max, 4);
+  assert.ok(!result.comparables.some((entry) => entry.product.price === 175));
+});
+
 test("four box sizes from one shop do not become four bakeries", () => {
   const competitors = [
     product("a", "6 Chocolate Chip Cookies", 21, 6),

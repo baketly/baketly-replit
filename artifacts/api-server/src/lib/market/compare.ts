@@ -149,6 +149,28 @@ export function compareProduct(
       continue;
     }
 
+    // A price eight times the baker's, or an eighth of it, is not the same
+    // thing at a different price: it is a tray, a catering order, or a typo.
+    // Boulder offered a "Chocolate Chunk Cookie" at 175.00 -- a platter with
+    // no count on it -- as comparable to a 3.50 cookie, and it would have
+    // been the top of the market.
+    if (unitPrice && (priced.unitPrice > unitPrice * 8 || priced.unitPrice < unitPrice / 8)) {
+      sameKindRejected += 1;
+      log.event("MATCH_REJECTED", {
+        productName: product.name,
+        bakeryName: bakery.name,
+        candidate: candidate.name,
+        score: match.matchScore,
+        reason:
+          "price too far from yours to be the same thing (" +
+          priced.unitPrice +
+          " vs " +
+          unitPrice +
+          ")",
+      });
+      continue;
+    }
+
     log.event("MATCH_ACCEPTED", {
       productName: product.name,
       bakeryName: bakery.name,

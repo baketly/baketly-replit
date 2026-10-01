@@ -24,6 +24,19 @@ test("a flavour under a heading takes the heading's kind", () => {
   assert.equal(at(found, "Funfetti")?.category, "cookie");
 });
 
+// A loaf's menu line read "Half $7.95 | Whole $13.00" just above its price,
+// and that line was stored as the name of a bread.
+test("a line of prices is not the name of a product", () => {
+  const page = `
+    <h2>Breads</h2>
+    <div><span class="product-title">Half $7.95 | Whole $13.00</span><span class="price">$7.95</span></div>
+    <div><span class="product-title">Walnut Loaf</span><span class="price">$7.55</span></div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  assert.equal(at(found, "Half $"), undefined);
+  assert.ok(at(found, "Walnut Loaf"));
+});
+
 test("the nearest heading wins, not the first one on the page", () => {
   const page = `
     <h2>Breads</h2>

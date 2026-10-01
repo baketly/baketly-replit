@@ -25,7 +25,10 @@ const NOT_A_BAKE: Array<[RegExp, ProductCategory]> = [
     /\b(sandwich(es)?|grilled\s*cheese|panini|melt|toastie|sub|hoagie|wrap|reuben|blt|burger|on\s+(rye|white|wheat|sourdough)\b|breakfast\s+(sandwich|bagel)|lox|schmear)\b/,
     "savoury",
   ],
-  [/\b(pizza|calzone|stromboli|quiche|empanada|sausage\s*roll|soup|salad)\b/, "savoury"],
+  [
+    /\b(pizza|calzone|stromboli|quiche|empanada|sausage\s*rolls?|spring\s*rolls?|egg\s*rolls?|lobster\s*rolls?|sushi|soup|salad)\b/,
+    "savoury",
+  ],
   // A filling, and something baked around it. Portland offered a "Ham &
   // Cheese Croissant" at 6.50 as the market price of a plain croissant.
   //
@@ -33,7 +36,9 @@ const NOT_A_BAKE: Array<[RegExp, ProductCategory]> = [
   // danish is cream cheese and sweet, and no "egg", because an egg bagel is
   // a kind of bagel.
   [
-    /\b(ham|bacon|sausage|salami|prosciutto|pepperoni|turkey|chicken|tuna|cheddar|feta|gruy[e\u00e8]re|pastrami)\b[\s\S]{0,20}\b(croissant|roll|bun|pastry|scone|bagel|danish|biscuit|muffin|loaf|bread)\b|\b(croissant|roll|bun|pastry|scone|bagel|danish|biscuit|muffin|loaf|bread)\b[\s\S]{0,20}\b(ham|bacon|sausage|salami|prosciutto|pepperoni|turkey|chicken|tuna|cheddar|feta|gruy[e\u00e8]re|pastrami)\b/,
+    // Plurals too. "Buttermilk Biscuits & Sausage Gravy" got past this on
+    // its final s and was priced as a cookie, at 0.92.
+    /\b(ham|bacon|sausage|salami|prosciutto|pepperoni|turkey|chicken|tuna|cheddar|feta|gruy[e\u00e8]re|pastrami|gravy)\b[\s\S]{0,20}\b(croissants?|rolls?|buns?|pastr(y|ies)|scones?|bagels?|danish(es)?|biscuits?|muffins?|loaf|loaves|breads?)\b|\b(croissants?|rolls?|buns?|pastr(y|ies)|scones?|bagels?|danish(es)?|biscuits?|muffins?|loaf|loaves|breads?)\b[\s\S]{0,20}\b(ham|bacon|sausage|salami|prosciutto|pepperoni|turkey|chicken|tuna|cheddar|feta|gruy[e\u00e8]re|pastrami|gravy)\b/,
     "savoury",
   ],
   [
@@ -50,6 +55,12 @@ const CATEGORY_WORDS: Array<[RegExp, ProductCategory]> = [
   [/\bcinnamon\s*(rolls?|buns?|swirls?)\b/, "cinnamon_roll"],
   [/\bcheese\s*cakes?\b/, "cheesecake"],
   [/\bdessert\s*(box|boxes|board|platter)\b/, "dessert_box"],
+  // Pastries before sourdough. "Sourdough Croissant" and "Sourdough Danish"
+  // are a croissant and a danish made with a starter, and with sourdough
+  // read first they were loaves -- priced, at 5.00, as the going rate for a
+  // 9.00 sourdough loaf.
+  [/\bcroissants?\b/, "croissant"],
+  [/\b(danish(es)?|scones?)\b/, "pastry"],
   [/\bsourdoughs?\b/, "sourdough"],
   [/\bbabkas?\b/, "babka"],
   [/\bmacarons?\b/, "macaron"],
@@ -59,11 +70,19 @@ const CATEGORY_WORDS: Array<[RegExp, ProductCategory]> = [
   [/\bblondies?\b/, "brownie"],
   [/\bmuffins?\b/, "muffin"],
   [/\bcroissants?\b/, "croissant"],
+  // The French counter. A Portland patisserie listed forty of these and every
+  // one came back unknown -- Kouign Amann, Canelé, Pain au Chocolat, Éclair,
+  // Mille-feuille -- so the one shop in town with readable prices contributed
+  // almost nothing. Accents and hyphens are gone by the time this is read.
+  [
+    /\b(pain\s*au\s*chocolat|chocolatines?|pain\s*aux?\s*raisins?|viennoiseries?|eclairs?|kouign\s*amann|kouign|caneles?|mille\s*feuilles?|millefeuilles?|choux|chouquettes?|palmiers?|turnovers?|cruffins?|strudels?|galettes?|financiers?|madeleines?|friands?|croustades?|paris\s*brest|religieuses?|profiteroles?|cream\s*puffs?|beignets?|rugelach|baklava|sfogliatelle|cannoli)\b/,
+    "pastry",
+  ],
   [/\b(donuts?|doughnuts?)\b/, "donut"],
   [/\bcookies?\b/, "cookie"],
   [/\bbiscuits?\b/, "cookie"],
   [/\bpies?\b/, "pie"],
-  [/\btarts?\b/, "pie"],
+  [/\b(tarts?|tartes?|tartelettes?|clafoutis)\b/, "pie"],
   // A bakery that takes bread seriously does not write the word bread. Over
   // five towns this list missed "Integrale", "Rustica", "DemiMiche",
   // "Rugbrod (Danish Rye)" and "Buckwheat Pave" -- the whole bread counter of
@@ -75,12 +94,17 @@ const CATEGORY_WORDS: Array<[RegExp, ProductCategory]> = [
   // The one synonym here is levain, which is what sourdough is called when
   // it is called anything else.
   [
-    /\b(loaf|loaves|breads?|baguettes?|challahs?|focaccias?|ciabattas?|bagels?|miches?|boules?|b[a\u00e2]tards?|pav[e\u00e9]s?|levains?|filones?|fougasses?|rugbr[o\u00f8]ds?|integrales?|rusticas?|pumpernickels?|ryes?|brioches?|pitas?|naans?)\b/,
+    /\b(loaf|loaves|breads?|baguettes?|challahs?|focaccias?|ciabattas?|bagels?|miches?|boules?|b[a\u00e2]tards?|pav[e\u00e9]s?|levains?|filones?|fougasses?|rugbr[o\u00f8]ds?|integrales?|rusticas?|pumpernickels?|ryes?|brioches?|pitas?|naans?|campagnes?|ficelles?|rolls?|buns?|pain\s*de\s*campagne|pain\s*de\s*mie|pain\s*complet)\b/,
     "bread",
   ],
   [/\b(pastr(y|ies)|danish|scones?)\b/, "pastry"],
   [/\bbars?\b/, "bar"],
   [/\bflapjacks?\b/, "bar"],
+  // and the cakes a French or Viennese bakery does not call cakes
+  [
+    /\b(gateaux?|buches?|tortes?|opera|black\s*forest|saint\s*honore|st\.?\s*honore|dacquoises?|petits?\s*fours?|entremets?|tiramisu|pavlova|charlottes?|fraisiers?|swiss\s*rolls?)\b/,
+    "cake",
+  ],
   [/\bcakes?\b/, "cake"],
 ];
 
@@ -120,6 +144,19 @@ const PASTRY_KINDS: Array<[RegExp, string]> = [
   [/\bpuffs?\b/, "puff"],
   [/\btarts?\b/, "tart"],
   [/\bgalettes?\b/, "galette"],
+  [/\bcaneles?\b/, "canele"],
+  [/\b(mille\s*feuilles?|millefeuilles?)\b/, "millefeuille"],
+  [/\b(choux|cream\s*puffs?|profiteroles?)\b/, "choux"],
+  [/\bchouquettes?\b/, "chouquette"],
+  [/\bpain\s*aux?\s*raisins?\b/, "pain_aux_raisins"],
+  [/\bfinanciers?\b/, "financier"],
+  [/\bmadeleines?\b/, "madeleine"],
+  [/\bfriands?\b/, "friand"],
+  [/\bcroustades?\b/, "croustade"],
+  [/\bviennoiseries?\b/, "viennoiserie"],
+  [/\bbeignets?\b/, "beignet"],
+  [/\breligieuses?\b/, "religieuse"],
+  [/\bparis\s*brest\b/, "paris_brest"],
 ];
 
 const BREAD_KINDS: Array<[RegExp, string]> = [
@@ -156,6 +193,16 @@ const BREAD_KINDS: Array<[RegExp, string]> = [
   // pricing a named sourdough is not shown it -- which is right, because
   // nothing on the page says the two are the same bread.
   [/\bwhite\s*(bread|loaf|tin)\b/, "white"],
+  [/\bpain\s*de\s*mie\b/, "white"],
+  [/\bpain\s*complet\b/, "wholemeal"],
+  // "Campagne" on a French board is a country loaf, and a baker's own
+  // "Country Loaf" should find it rather than every loaf with no kind at all.
+  [/\b(campagnes?|pain\s*de\s*campagne|country)\b/, "country"],
+  // a ficelle is a thin baguette
+  [/\bficelles?\b/, "baguette"],
+  // and a roll is its own thing: a baker pricing a loaf is not shown the
+  // dinner rolls, whatever they are made of
+  [/\brolls?\b/, "roll"],
 ];
 
 /** Flavours, and the words that mean the same flavour. */

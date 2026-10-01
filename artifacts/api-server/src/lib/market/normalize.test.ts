@@ -78,3 +78,46 @@ test("knows the bakery categories apart", () => {
     assert.equal(normalizeProduct(name).category, category, name);
   }
 });
+
+// A French bakery's board. The one shop in Portland whose prices could be
+// read listed forty of these, and every one came back unknown -- Campagne,
+// Ficelle, Kouign Amann, Canelé, Pain au Chocolat -- so a baker pricing a
+// country loaf was shown nothing from the shop that sells one.
+test("reads a French bakery's board", () => {
+  const cases: Array<[string, string, string | null]> = [
+    ["Campagne", "bread", "country"],
+    ["Pain de Campagne", "bread", "country"],
+    ["Country Loaf", "bread", "country"],
+    ["Seeded Ficelle", "bread", "baguette"],
+    ["Raisin Fennel Roll", "bread", "roll"],
+    ["Pain au Chocolat", "pastry", "pain_au_chocolat"],
+    ["Pain aux Raisins", "pastry", "pain_aux_raisins"],
+    ["Kouign Amann", "pastry", "kouign_amann"],
+    ["Canelé", "pastry", "canele"],
+    ["Éclair au Café", "pastry", "eclair"],
+    ["Mille-feuille (Seasonal)", "pastry", "millefeuille"],
+    ["Chouquette", "pastry", "chouquette"],
+    ["Gâteau au Chocolat", "cake", null],
+    ["Bûche de Noël", "cake", null],
+    ["Tarte au Citron", "pie", null],
+  ];
+  for (const [name, category, kind] of cases) {
+    const reading = normalizeProduct(name);
+    assert.equal(reading.category, category, name);
+    if (kind) assert.equal(reading.subcategory, kind, name);
+  }
+  // a roll is a bread, but a cinnamon roll is a cinnamon roll and a lobster
+  // roll is lunch
+  assert.equal(normalizeProduct("Cinnamon Roll").category, "cinnamon_roll");
+  assert.equal(normalizeProduct("Lobster Roll").category, "savoury");
+  // and breakfast is breakfast, in the plural as well as the singular
+  assert.equal(normalizeProduct("Buttermilk Biscuits & Sausage Gravy").category, "savoury");
+  assert.equal(normalizeProduct("Bacon Cheddar Scones").category, "savoury");
+  // and the kind named last still wins, so a sourdough shaped as a country
+  // loaf is a sourdough
+  assert.equal(normalizeProduct("Country Sourdough Boule").subcategory, "sourdough");
+  // a croissant made with a starter is a croissant, not a loaf
+  assert.equal(normalizeProduct("Sourdough Croissant").category, "croissant");
+  assert.equal(normalizeProduct("Sourdough Danish Cream Cheese").category, "pastry");
+  assert.equal(normalizeProduct("Sourdough Loaf").category, "sourdough");
+});
