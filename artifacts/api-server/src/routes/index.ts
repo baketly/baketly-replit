@@ -9,6 +9,7 @@ import messagesRouter from "./messages";
 import privacyRouter from "./privacy";
 import receiptsRouter from "./receipts";
 import remindersRouter from "./reminders";
+import supportRouter from "./support";
 import workspaceStateRouter from "./workspace-state";
 
 const router: IRouter = Router();
@@ -23,6 +24,7 @@ router.use(messagesRouter);
 router.use(privacyRouter);
 router.use(receiptsRouter);
 router.use(remindersRouter);
+router.use(supportRouter);
 router.use(workspaceStateRouter);
 
 export default router;
