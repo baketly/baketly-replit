@@ -98,7 +98,19 @@ function fieldsCanShrink(template: string): string {
       // with a fee written over it is neither.
       "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:10px}" +
       "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
-      "\n    .bk-pair .input{max-width:100%}",
+      // max-width alone does not hold a date input.
+      //
+      // iOS renders type="date" as a native control with an intrinsic width of
+      // its own, and max-width does not override that: measured in a 189.8px
+      // column, the control stayed 230px and its right edge landed 30px PAST
+      // the booth fee beside it. That is the overlap, and it is why widening
+      // the date column never helped -- the date was never the thing in the
+      // way of itself. overflow:hidden above was clipping the evidence, taking
+      // the right border and the calendar icon off and leaving a box that
+      // merely looked cut off.
+      //
+      // width:100% makes the column the authority instead of the control.
+      "\n    .bk-pair .input{width:100%;min-width:0;max-width:100%;box-sizing:border-box}",
   );
 }
 
