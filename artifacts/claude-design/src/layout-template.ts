@@ -94,7 +94,22 @@ function fieldsCanShrink(template: string): string {
       "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:10px}" +
       "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
       "\n    .bk-pair .input{max-width:100%}" +
-      "\n    .bk-pair>*:first-child .input{max-width:140px}",
+      "\n    .bk-pair>*:first-child .input{max-width:158px}" +
+      // Both boxes to the same height, without naming one.
+      //
+      // A date control and a text box do not measure the same, so the two sat
+      // on different baselines. A height in pixels was tried and the phone
+      // refused it: the native widget lays out its own insides and grew
+      // taller instead of matching.
+      //
+      // So nothing is told how tall to be. Each field becomes a column, the
+      // grid makes both columns the height of the taller, and the input in
+      // each grows into whatever is left under its label. The date still
+      // decides the height; the fee simply agrees with it.
+      "\n    .bk-pair .field{display:flex;flex-direction:column}" +
+      "\n    .bk-pair .field>.input{flex:1}" +
+      "\n    .bk-pair .field>div{flex:1;display:flex;flex-direction:column}" +
+      "\n    .bk-pair .field>div>.input{flex:1}",
   );
 }
 
