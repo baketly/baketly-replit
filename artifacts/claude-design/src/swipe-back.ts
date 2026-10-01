@@ -112,29 +112,76 @@ function clear(el: HTMLElement): void {
 }
 
 /**
- * Out to the right, then the screen underneath in from the left.
+ * A copy of the screen as it looks right now, to slide away on its own.
  *
- * Two halves, because only one screen is ever drawn: the one leaving goes
- * first, the app swaps what is on the page, and the one arriving slides the
- * short distance a phone moves an underlying screen. Done in one step it
- * reads as a jump; done in two it reads as one movement.
+ * The app draws one screen at a time, so going back replaces what is on the
+ * page: slide first and the space behind is empty, swap first and the screen
+ * you were on vanishes before it has left. Neither is what a phone does.
+ *
+ * Copying the outgoing screen onto a layer of its own settles it. The app can
+ * then swap underneath immediately -- so the screen you are going back to is
+ * there, in place, for the whole movement -- while the copy slides off the top
+ * of it. It is a picture, not a screen: nothing in it can be scrolled or
+ * tapped, and it is thrown away when it has gone.
  */
-function finish(el: HTMLElement): void {
+function ghostOf(el: HTMLElement, startX: number): HTMLElement {
+  const box = el.getBoundingClientRect();
+  const ghost = el.cloneNode(true) as HTMLElement;
+  ghost.removeAttribute("id");
+  for (const node of Array.from(ghost.querySelectorAll("[id]"))) node.removeAttribute("id");
+
+  ghost.style.position = "fixed";
+  ghost.style.left = box.left + "px";
+  ghost.style.top = box.top + "px";
+  ghost.style.width = box.width + "px";
+  ghost.style.height = box.height + "px";
+  ghost.style.margin = "0";
+  ghost.style.zIndex = "9999";
+  ghost.style.pointerEvents = "none";
+  ghost.style.overflow = "hidden";
+  // the body it was cut from is see-through; over the screen beneath it has
+  // to be opaque or both are legible at once
+  ghost.style.background = getComputedStyle(document.body).backgroundColor || "#faf6f0";
+  ghost.style.transform = `translateX(${startX}px)`;
+  ghost.style.transition = "none";
+  // and keep it looking exactly as it did, scrolled to wherever it was
+  ghost.scrollTop = el.scrollTop;
+  document.body.appendChild(ghost);
+  // a clone cannot be scrolled by the viewer, but it can be drawn scrolled
+  ghost.scrollTop = el.scrollTop;
+  return ghost;
+}
+
+/**
+ * Finish the journey: the screen behind arrives at once, the copy leaves.
+ *
+ * Both move together, which is the whole of the effect. The one arriving
+ * starts slightly to the left and settles, the way a phone moves the screen
+ * underneath; the copy carries on from wherever the finger left it.
+ */
+function finish(el: HTMLElement, from: number): void {
   if (reducedMotion()) {
     clear(el);
     goBack();
     return;
   }
-  put(el, "translateX(100%)", OUT_MS);
-  window.setTimeout(() => {
-    goBack();
-    // the arriving screen starts a little to the left, as the one behind would
-    put(el, "translateX(-22%)", 0);
-    // read a layout value so the browser treats the next line as a change
-    void el.offsetWidth;
-    put(el, "translateX(0)", IN_MS);
-    window.setTimeout(() => clear(el), IN_MS + 20);
-  }, OUT_MS);
+
+  const ghost = ghostOf(el, from);
+
+  // the real screen is free to become the previous one straight away
+  clear(el);
+  goBack();
+  put(el, "translateX(-22%)", 0);
+  void el.offsetWidth;
+  put(el, "translateX(0)", IN_MS);
+
+  // and the copy goes, over the top of it
+  void ghost.offsetWidth;
+  ghost.style.transition = `transform ${OUT_MS}ms ${EASE}`;
+  ghost.style.transform = "translateX(100%)";
+
+  window.setTimeout(() => ghost.remove(), OUT_MS + 40);
+  window.setTimeout(() => clear(el), IN_MS + 20);
 }
 
 function springBack(el: HTMLElement): void {
@@ -237,7 +284,7 @@ export function listenForSwipeBack(): void {
       const far = travelled >= window.innerWidth * COMMIT_SHARE;
       const flicked = travelled / elapsed >= FLICK_PX_PER_MS && travelled > WAKE_PX * 4;
 
-      if (far || flicked) finish(el);
+      if (far || flicked) finish(el, travelled);
       else springBack(el);
     },
     { passive: true },
