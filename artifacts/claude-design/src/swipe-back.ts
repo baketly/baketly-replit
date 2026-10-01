@@ -29,8 +29,16 @@ const WAKE_PX = 8;
 const DIRECTION_RATIO = 1.2;
 /** past this share of the screen, letting go completes the journey */
 const COMMIT_SHARE = 0.4;
-/** half way to the next tab and it is the next tab you get */
-const TAB_COMMIT_SHARE = 0.5;
+/**
+ * And this share of the pane, to land on the next tab.
+ *
+ * A fifth, measured against the pane rather than the window. Half a screen
+ * was most of a phone, and an unhurried swipe from the middle of the pane
+ * cannot cover it before running out of screen: the tab sprang back, and
+ * changing tab took a second, bigger swipe. A pager is swiped idly, with a
+ * thumb, and this is about what the ones that feel right ask for.
+ */
+const TAB_COMMIT_SHARE = 0.22;
 /**
  * Or this fast over the last moment of the drag, however far it got.
  *
@@ -39,9 +47,9 @@ const TAB_COMMIT_SHARE = 0.5;
  * swipes drags that average under the bar however briskly it then moves --
  * which is a swipe that plainly happened being read as no swipe at all.
  */
-const FLICK_PX_PER_MS = 0.35;
+const FLICK_PX_PER_MS = 0.2;
 /** and far enough that a twitch is not a flick */
-const FLICK_MIN_PX = 40;
+const FLICK_MIN_PX = 24;
 /** how far back "the last moment" reaches */
 const FLICK_WINDOW_MS = 45;
 
@@ -341,8 +349,21 @@ function slide(
 interface Pair {
   /** a copy of the tab the finger started on */
   leaving: HTMLElement;
-  /** a copy of the tab being dragged into view */
-  arriving: HTMLElement;
+  /**
+   * A copy of the tab being dragged into view, once there is one.
+   *
+   * Null for the first frame or two. The app needs a moment to draw the tab
+   * being moved to, and waiting for it before anything moved left the start
+   * of every swipe stuck to the screen: the finger went and the pane did not
+   * follow until it was already a third of the way across. The copy of the
+   * tab being left is made at once and moves immediately; this one joins it,
+   * in the right place, as soon as there is something to copy.
+   */
+  arriving: HTMLElement | null;
+  /** where the finger has got to, so a late arrival can catch up */
+  at: number;
+  /** set once the gesture is over, so a late arrival knows not to bother */
+  done: boolean;
   width: number;
   /** -1 when the content moves left, towards the next tab */
   dir: -1 | 1;
@@ -379,7 +400,14 @@ async function waitForTab(target: HTMLElement): Promise<boolean> {
   return target.classList.contains("active");
 }
 
-async function openPair(el: HTMLElement, dir: -1 | 1): Promise<Pair | null> {
+/**
+ * Take hold, now, without waiting for anything.
+ *
+ * Everything here is synchronous so that the pane moves on the same frame the
+ * finger does. The tab is told to change in passing; what it draws is picked
+ * up by fillPair a frame or two later.
+ */
+function beginPair(el: HTMLElement, dir: -1 | 1): Pair | null {
   const tabs = subTabs();
   if (!tabs) return null;
   const origin = tabs.list[tabs.index];
@@ -393,24 +421,43 @@ async function openPair(el: HTMLElement, dir: -1 | 1): Promise<Pair | null> {
   // The live pane becomes the destination and then is left entirely alone,
   // sitting at rest where it belongs. Nothing below moves it.
   target.click();
-  await waitForTab(target);
+
+  return {
+    leaving,
+    arriving: null,
+    at: 0,
+    done: false,
+    width,
+    dir,
+    origin,
+    target,
+    serial: ghostSerial,
+  };
+}
+
+/** And the other half, as soon as the app has drawn the tab moved to. */
+async function fillPair(pair: Pair): Promise<void> {
+  await waitForTab(pair.target);
   await nextFrame();
+  if (pair.done) return;
 
   const live = tabPane();
-  if (!live) {
-    leaving.remove();
-    return null;
-  }
-  // a likeness of it, waiting off the side the finger is pulling from
-  const arriving = ghostOf(live, dir < 0 ? width : -width);
-  return { leaving, arriving, width, dir, origin, target, serial: ghostSerial };
+  if (!live) return;
+
+  // a likeness of it, waiting off the side the finger is pulling from, and
+  // brought straight to wherever the finger has got to in the meantime
+  pair.arriving = ghostOf(live, pair.dir < 0 ? pair.width : -pair.width);
+  pair.serial = ghostSerial;
+  movePair(pair, pair.at);
 }
 
 /** Both of them, wherever the finger has got to. */
 function movePair(pair: Pair, dx: number): void {
-  const offset = pair.dir < 0 ? pair.width : -pair.width;
+  pair.at = dx;
   pair.leaving.style.transition = "none";
   pair.leaving.style.transform = `translateX(${dx}px)`;
+  if (!pair.arriving) return;
+  const offset = pair.dir < 0 ? pair.width : -pair.width;
   pair.arriving.style.transition = "none";
   pair.arriving.style.transform = `translateX(${dx + offset}px)`;
 }
@@ -422,18 +469,19 @@ let settleTimer = 0;
 function closePair(pair: Pair, settled: boolean): void {
   // anything still outstanding goes first, in the order it was asked for
   finishSettling();
+  pair.done = true;
   const ms = TAB_MS;
   const offset = pair.dir < 0 ? pair.width : -pair.width;
 
   const ease = `transform ${ms}ms ${EASE}`;
   pair.leaving.style.transition = ease;
-  pair.arriving.style.transition = ease;
+  if (pair.arriving) pair.arriving.style.transition = ease;
   if (settled) {
     pair.leaving.style.transform = `translateX(${-offset}px)`;
-    pair.arriving.style.transform = "translateX(0)";
+    if (pair.arriving) pair.arriving.style.transform = "translateX(0)";
   } else {
     pair.leaving.style.transform = "translateX(0)";
-    pair.arriving.style.transform = `translateX(${offset}px)`;
+    if (pair.arriving) pair.arriving.style.transform = `translateX(${offset}px)`;
   }
 
   const finish = () => {
@@ -510,21 +558,7 @@ export function listenForSwipeBack(): void {
   let drag: Drag | null = null;
   /** the two tabs, while a sideways drag has them open */
   let pair: Pair | null = null;
-  /** set while the pair is being built, so a fast finger cannot open two */
-  let opening = false;
-  /**
-   * What the finger decided, when it decided before the pair had opened.
-   *
-   * Bringing the next tab alongside takes a couple of frames, and a quick
-   * swipe is over inside them. The answer used to be thrown away and the
-   * half-built pair cancelled, so a brisk swipe did nothing at all and only
-   * the second, slower one worked -- which is why it took two swipes to
-   * change tab. The decision is kept here and applied when the pair arrives.
-   */
-  let decidedEarly: boolean | null = null;
-
   const letGo = () => {
-    decidedEarly = null;
     if (pair) {
       closePair(pair, false);
       pair = null;
@@ -619,21 +653,11 @@ export function listenForSwipeBack(): void {
         // drag moves the two of them together. Nothing happens where the row
         // has run out -- the screen stays put rather than pulling open on
         // nothing.
-        if (started.kind === "tabs" && engagedEl && !opening && !pair) {
+        if (started.kind === "tabs" && engagedEl && !pair) {
           const dir: -1 | 1 = travelled < 0 ? -1 : 1;
           if (tabInDirection(travelled)) {
-            opening = true;
-            void openPair(engagedEl, dir).then((opened) => {
-              opening = false;
-              // the finger may have gone by the time this is ready, in which
-              // case it has already said what it wanted
-              if (!drag?.engaged) {
-                if (opened) closePair(opened, decidedEarly === true);
-                decidedEarly = null;
-                return;
-              }
-              pair = opened;
-            });
+            pair = beginPair(engagedEl, dir);
+            if (pair) void fillPair(pair);
           }
         }
       }
@@ -685,7 +709,15 @@ export function listenForSwipeBack(): void {
       const moved = touch.clientX - started.x;
       const across = started.kind === "back" ? Math.max(0, moved) : Math.abs(moved);
       const share = started.kind === "back" ? COMMIT_SHARE : TAB_COMMIT_SHARE;
-      const far = across >= window.innerWidth * share;
+      // Against the pane for a tab, the window for going back. The pane is
+      // what is actually being pushed aside, and on a screen where it is
+      // narrower than the window, a share of the window is a distance the
+      // pane never has to travel.
+      const span =
+        started.kind === "back"
+          ? window.innerWidth
+          : open?.width || el.getBoundingClientRect().width || window.innerWidth;
+      const far = across >= span * share;
 
       // The speed it was going when it let go, not its average since being
       // put down. A swipe starting mid-screen cannot travel half a screen
@@ -698,16 +730,11 @@ export function listenForSwipeBack(): void {
         // and still going the way it set off
         (started.kind === "back" || Math.sign(touch.clientX - started.prevX) === Math.sign(moved));
 
-      // Sideways, with the next tab already alongside: let it arrive, or
-      // send it back. Either way the two finish the movement together.
+      // Sideways, with the next tab alongside: let it arrive, or send it
+      // back. Either way the two finish the movement together, and the copy
+      // of the arriving tab catches up on its own if it is not here yet.
       if (open) {
         closePair(open, far || flicked);
-        return;
-      }
-
-      // or the pair is still being built, and this is the answer it will want
-      if (opening) {
-        decidedEarly = far || flicked;
         return;
       }
 
