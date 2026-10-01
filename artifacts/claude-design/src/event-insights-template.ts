@@ -249,13 +249,21 @@ function addEventInsights(template: string): string {
   return template.replace(anchor, () => heading + insightsMarkup);
 }
 
-/** The tab is no longer only about return on investment. */
-function renameEventsHeading(template: string): string {
-  const anchor = '<h2 style="font-size:24px;margin:8px 0 4px">Event ROI</h2>';
+/**
+ * The heading goes entirely.
+ *
+ * It was "Event ROI", then "Markets" once the tab became about more than
+ * return on investment. Now that the tabs above it stay on screen while the
+ * pane turns over, the tab is already named a few pixels higher, and a
+ * heading underneath repeating it is one line of the screen spent saying
+ * where you already know you are.
+ */
+function dropEventsHeading(template: string): string {
+  const anchor = '<h2 style="font-size:24px;margin:8px 0 4px">Event ROI</h2>\n';
   if (!template.includes(anchor)) throw new Error("Missing events heading anchor");
-  return template.replace(anchor, () => '<h2 style="font-size:24px;margin:8px 0 4px">Markets</h2>');
+  return template.replace(anchor, () => "");
 }
 
 export function applyEventInsightsBehavior(template: string): string {
-  return renameEventsHeading(addEventInsights(addEventInsightsController(template)));
+  return dropEventsHeading(addEventInsights(addEventInsightsController(template)));
 }

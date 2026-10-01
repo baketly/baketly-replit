@@ -130,8 +130,7 @@ export function applyAnalyticsBehavior(template: string): string {
   </sc-if>
 
   <sc-if value="{{ analyticsProductsTab }}" hint-placeholder-val="{{ false }}">
-    <h2 style="font-size:24px;margin:8px 0 4px">Products</h2>
-    <p class="text-muted" style="font-size:13px;margin-bottom:20px">Selected month · ranked by revenue.</p>
+    <p class="text-muted" style="font-size:13px;margin:8px 0 20px">Selected month · ranked by revenue.</p>
     <div class="an-select-wrap"><select class="an-select" value="{{ analyticsMonth }}" data-bk-options="{{ monthOptionsJson }}" sc-camel-on-change="{{ setAnalyticsMonth }}"></select></div>
     
     <sc-if value="{{ hasProducts }}" hint-placeholder-val="{{ true }}">
