@@ -798,7 +798,17 @@ export function applyAnalyticsBehavior(template: string): string {
           hasNoEvents: eventsData.length === 0
         };
       })(),
-      onAnalytics: screen === 'analytics', goAnalytics: () => this.setState(st => ({ screen: 'analytics', stack: [...st.stack, st.screen], analyticsTab: 'overview' })),
+      // Analytics is a tab, so it starts a journey rather than continuing one.
+      //
+      // This handler replaced the plain tab navigation to also reset the
+      // Overview sub-tab, and in doing so it stopped going through go() --
+      // which is where a tab clears the stack. So tapping Analytics recorded
+      // whatever screen you were on as its opener, and the back gesture
+      // obediently went there: from Analytics it landed on Markets, which is
+      // not where Analytics was opened from, only where you happened to be.
+      // The other three tabs were never affected because none of them
+      // overrides go().
+      onAnalytics: screen === 'analytics', goAnalytics: () => this.setState({ screen: 'analytics', stack: [], analyticsTab: 'overview' }),
       onAnalyticsKept: screen === 'analyticsKept',
       onAnalyticsItems: screen === 'analyticsItems',
       onAnalyticsEvent: screen === 'analyticsEvent',
