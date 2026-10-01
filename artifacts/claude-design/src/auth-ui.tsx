@@ -294,10 +294,6 @@ export function AuthGate({ onSignedIn }: { onSignedIn: (user: SignedInUser) => v
             Questions, or a request about your data:{" "}
             <a href={`mailto:${policyContact()}`}>{policyContact()}</a>.
           </p>
-
-          <button type="button" onClick={() => setStage("form")} style={{ ...primary }}>
-            Back to login
-          </button>
         </div>
       </div>
     );
