@@ -162,6 +162,40 @@ function sliding(): HTMLElement | null {
   return hiddenBack()?.parentElement ?? null;
 }
 
+/**
+ * The part a tab swipe moves: everything under the row of tabs, and nothing
+ * above it.
+ *
+ * Going back takes the whole screen, because the whole screen is what
+ * changes. Changing tab does not change the heading or the tabs themselves,
+ * and dragging those along made the swipe look like the page escaping rather
+ * than the pane under the tabs turning over.
+ */
+function tabPane(): HTMLElement | null {
+  const pane = document.querySelector<HTMLElement>(".an-pane");
+  return pane && pane.offsetParent !== null ? pane : null;
+}
+
+/** What this drag has hold of. */
+function movingFor(kind: Kind): HTMLElement | null {
+  return kind === "tabs" ? tabPane() ?? sliding() : sliding();
+}
+
+/**
+ * Stop a pane that is held off to one side from widening the page.
+ *
+ * The pane is moved a whole width sideways while the drag is on, and the body
+ * it sits in scrolls, so without this it gains that width as somewhere to
+ * scroll to: the page can be dragged sideways into the empty space the pane
+ * left behind. Vertical scrolling is untouched, and it is put back as it was
+ * when the gesture ends.
+ */
+function holdWidth(on: boolean): void {
+  const body = sliding();
+  if (!body) return;
+  body.style.overflowX = on ? "hidden" : "";
+}
+
 function put(el: HTMLElement, transform: string, ms: number): void {
   el.style.transition = ms > 0 ? `transform ${ms}ms ${EASE}` : "none";
   el.style.transform = transform;
@@ -294,8 +328,9 @@ async function openPair(el: HTMLElement, dir: -1 | 1): Promise<Pair | null> {
 
   const width = el.getBoundingClientRect().width || window.innerWidth;
   const leaving = ghostOf(el, 0);
+  holdWidth(true);
 
-  // the live screen becomes the tab being dragged towards, once
+  // the live pane becomes the tab being dragged towards, once
   target.click();
   await nextFrame();
   await nextFrame();
@@ -334,6 +369,7 @@ function closePair(pair: Pair, settled: boolean): void {
       pair.origin.click();
     }
     clear(pair.arriving);
+    holdWidth(false);
   }, ms + 20);
 }
 
@@ -365,9 +401,9 @@ export function listenForSwipeBack(): void {
     if (pair) {
       closePair(pair, false);
       pair = null;
-    } else {
-      const el = sliding();
-      if (drag?.engaged && el) springBack(el);
+    } else if (drag?.engaged) {
+      const el = movingFor(drag.kind);
+      if (el) springBack(el);
     }
     drag = null;
   };
@@ -426,7 +462,7 @@ export function listenForSwipeBack(): void {
         }
         if (across < WAKE_PX || across < strayed * DIRECTION_RATIO) return;
         started.engaged = true;
-        const engagedEl = sliding();
+        const engagedEl = movingFor(started.kind);
         if (engagedEl) {
           engagedEl.style.willChange = "transform";
           engagedEl.style.transition = "none";
@@ -461,7 +497,7 @@ export function listenForSwipeBack(): void {
         return;
       }
 
-      const el = sliding();
+      const el = movingFor(started.kind);
       if (!el) return;
       // back never goes left; between tabs nothing moves until the pair is
       // ready, and nothing moves at all where the row has run out
@@ -484,7 +520,7 @@ export function listenForSwipeBack(): void {
         return;
       }
 
-      const el = sliding();
+      const el = movingFor(started.kind);
       if (!el) {
         if (open) closePair(open, false);
         return;

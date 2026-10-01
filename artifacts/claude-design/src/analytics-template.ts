@@ -3,6 +3,13 @@ export function applyAnalyticsBehavior(template: string): string {
   const newMarkup = `<!-- ══ ANALYTICS ══ -->
 <style>
 .an-tabs { display: flex; margin: 0 -20px 16px; padding: 0 10px; border-bottom: 1px solid var(--color-divider); }
+/* Everything below the tabs, in one piece.
+   The swipe between Overview, Products and Events moves this and nothing
+   else, so the heading and the tabs themselves stay where they are while
+   the pane under them changes -- the way a row of tabs behaves everywhere.
+   Without it the only thing the gesture could take hold of was the whole
+   scrolling body, which carried the heading and the tabs along with it. */
+.an-pane { }
 .an-tab {
   flex: 1; padding: 12px 0; text-align: center; font-size: 14px; font-weight: 500;
   color: var(--color-neutral-500); cursor: pointer; border-bottom: 2px solid transparent;
@@ -75,6 +82,7 @@ export function applyAnalyticsBehavior(template: string): string {
     <div class="an-tab {{ tabEventsCls }}" sc-camel-on-click="{{ setAnalyticsEvents }}">Events</div>
   </div>
 
+  <div class="an-pane">
   <sc-if value="{{ analyticsOverviewTab }}" hint-placeholder-val="{{ true }}">
     <div class="an-select-wrap">
       <select class="an-select" value="{{ analyticsMonth }}" data-bk-options="{{ monthOptionsJson }}" sc-camel-on-change="{{ setAnalyticsMonth }}"></select>
@@ -204,6 +212,7 @@ export function applyAnalyticsBehavior(template: string): string {
       </div>
     </sc-if>
   </sc-if>
+  </div>
 </div>
 </sc-if>
 
