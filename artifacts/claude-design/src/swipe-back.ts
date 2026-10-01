@@ -242,6 +242,7 @@ function ghostOf(el: HTMLElement, startX: number): HTMLElement {
   ghost.removeAttribute("id");
   for (const node of Array.from(ghost.querySelectorAll("[id]"))) node.removeAttribute("id");
 
+  ghost.dataset.bkGhost = "1";
   ghost.style.position = "fixed";
   ghost.style.left = box.left + "px";
   ghost.style.top = box.top + "px";
@@ -335,6 +336,27 @@ function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
+/**
+ * Wait until the tab has really changed, however long the phone takes.
+ *
+ * This used to wait two frames and assume. Two frames is enough on a quick
+ * machine and a guess everywhere else: park the pane off to one side before
+ * the app has finished drawing the new tab into it and the two come apart --
+ * the tab reads as changed while the pane still shows what it showed. Asking
+ * the page, rather than counting frames, holds on a slow phone and returns
+ * immediately on a fast one.
+ *
+ * It gives up after a while rather than waiting for ever. A gesture that
+ * cannot be shown is still a gesture that must end.
+ */
+async function waitForTab(target: HTMLElement): Promise<boolean> {
+  for (let frames = 0; frames < 20; frames += 1) {
+    if (target.classList.contains("active")) return true;
+    await nextFrame();
+  }
+  return target.classList.contains("active");
+}
+
 async function openPair(el: HTMLElement, dir: -1 | 1): Promise<Pair | null> {
   const tabs = subTabs();
   if (!tabs) return null;
@@ -348,12 +370,15 @@ async function openPair(el: HTMLElement, dir: -1 | 1): Promise<Pair | null> {
 
   // the live pane becomes the tab being dragged towards, once
   target.click();
-  await nextFrame();
+  await waitForTab(target);
+  // one more, so the paint that follows the change has happened too
   await nextFrame();
 
-  // and waits just off the side the finger is pulling from
-  put(el, `translateX(${dir < 0 ? width : -width}px)`, 0);
-  return { leaving, arriving: el, width, dir, origin };
+  // The pane is looked up again rather than trusted: changing tab may have
+  // drawn a new one, and moving the old one would move nothing anybody sees.
+  const arriving = tabPane() ?? el;
+  put(arriving, `translateX(${dir < 0 ? width : -width}px)`, 0);
+  return { leaving, arriving, width, dir, origin };
 }
 
 /** Both of them, wherever the finger has got to. */
@@ -386,6 +411,19 @@ function closePair(pair: Pair, settled: boolean): void {
     }
     clear(pair.arriving);
     holdWidth(false);
+    // And tidy after whatever the phone actually did.
+    //
+    // Everything above works on the elements this gesture began with, and a
+    // re-draw in the middle of it can leave a different pane on the page --
+    // one still holding a transform nobody will clear, or a copy nobody will
+    // remove. Both would be left on screen: a pane held off to one side is a
+    // tab that never arrived. So the page is put straight at the end, on
+    // whatever it is showing by then.
+    const settledPane = tabPane();
+    if (settledPane && settledPane !== pair.arriving) clear(settledPane);
+    for (const stray of Array.from(document.querySelectorAll<HTMLElement>("[data-bk-ghost]"))) {
+      stray.remove();
+    }
   }, ms + 20);
 }
 
