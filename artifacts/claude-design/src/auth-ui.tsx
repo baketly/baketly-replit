@@ -46,7 +46,14 @@ const shell: React.CSSProperties = {
   zIndex: 2147483000,
   background: "var(--color-bg, #f7f4ec)",
   display: "flex",
-  alignItems: "center",
+  // Not align-items:center, which is what cut the top off the privacy policy.
+  //
+  // Centring a flex child taller than its scrolling parent puts the top of it
+  // above the parent's scrollable area, where nothing can reach it: the policy
+  // opened part way down its own first page and would not scroll up to the
+  // heading or the back button. The card carries auto margins instead, which
+  // centre it while it fits and give way the moment it does not.
+  alignItems: "flex-start",
   justifyContent: "center",
   padding: "24px",
   overflowY: "auto",
@@ -56,6 +63,8 @@ const shell: React.CSSProperties = {
 
 const card: React.CSSProperties = {
   width: "min(100%, 400px)",
+  // centred while there is room, and never clipped when there is not
+  margin: "auto 0",
   background: "#fff",
   border: "1px solid var(--color-divider, #e6e0d4)",
   borderRadius: 22,
