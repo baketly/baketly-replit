@@ -95,7 +95,19 @@ function fieldsCanShrink(template: string): string {
       // left over to spill, whatever that width is on a given phone. The
       // fee takes the remainder. No number here is a guess.
       "\n    .bk-pair{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px}" +
-      "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
+      // min-width:0 belongs on the fee and nowhere near the date.
+      //
+      // It was put on both when the tracks were fr shares and the point was
+      // to let them go narrow. Left there under an auto track it undoes it:
+      // an auto track's floor is its content's min-content width, min-width:0
+      // drops that floor to zero, so the date collapsed and the fee's 1fr
+      // took what it gave up. On the phone that put "1 Oct 2026" in a box too
+      // small for it, clipped hard against its own right edge, while the fee
+      // sat in the larger half -- the opposite of the shares this row needs.
+      //
+      // The date column carries no floor of its own now, so auto can do what
+      // it was asked to do.
+      "\n    .bk-pair>*:last-child{min-width:0;overflow:hidden}" +
       // Only the fee is told its width; the date keeps its own, which is the
       // point of the auto column above.
       //
