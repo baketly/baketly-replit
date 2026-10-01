@@ -313,17 +313,28 @@ function slide(
  * difference between a screen that is being dragged and one that merely
  * reacts to having been dragged.
  *
- * The arriving tab is the live screen, switched the moment the drag commits
- * to a direction. The one being left is a copy, because the app only ever
- * draws one. The switch happens once, here, and not again until the gesture
- * ends -- which is what lets both be moved freely for the rest of it. Moving
- * the live screen in the same breath as changing it was what came apart
- * before: the re-draw dropped the transform.
+ * Both halves are copies, and the live pane is never moved. That is the whole
+ * of the design, and the earlier version got it wrong.
+ *
+ * Before, the arriving half WAS the live pane: switched at the start of the
+ * drag and then dragged about. Everything rested on one element being changed
+ * and animated at once, and a re-draw landing in the middle of that pulled the
+ * two apart -- the tab reading as changed with the pane left behind. Reported
+ * three times from the phone and never once reproducible here, which is what a
+ * timing fault looks like from the machine it happens to go right on.
+ *
+ * So nothing is asked of the live pane. The tab is changed once, which draws
+ * the destination into the pane at rest where it belongs, and two copies are
+ * laid over the top to do the moving. When they are taken away, what is
+ * underneath is whatever tab is active, sitting where it always was.
+ *
+ * The pane and the tab cannot disagree, because nothing here is capable of
+ * putting them out of step.
  */
 interface Pair {
   /** a copy of the tab the finger started on */
   leaving: HTMLElement;
-  /** the live screen, now showing the tab being dragged into view */
+  /** a copy of the tab being dragged into view */
   arriving: HTMLElement;
   width: number;
   /** -1 when the content moves left, towards the next tab */
@@ -368,48 +379,51 @@ async function openPair(el: HTMLElement, dir: -1 | 1): Promise<Pair | null> {
   const leaving = ghostOf(el, 0);
   holdWidth(true);
 
-  // the live pane becomes the tab being dragged towards, once
+  // The live pane becomes the destination and then is left entirely alone,
+  // sitting at rest where it belongs. Nothing below moves it.
   target.click();
   await waitForTab(target);
-  // one more, so the paint that follows the change has happened too
   await nextFrame();
 
-  // The pane is looked up again rather than trusted: changing tab may have
-  // drawn a new one, and moving the old one would move nothing anybody sees.
-  const arriving = tabPane() ?? el;
-  put(arriving, `translateX(${dir < 0 ? width : -width}px)`, 0);
+  const live = tabPane();
+  if (!live) {
+    leaving.remove();
+    return null;
+  }
+  // a likeness of it, waiting off the side the finger is pulling from
+  const arriving = ghostOf(live, dir < 0 ? width : -width);
   return { leaving, arriving, width, dir, origin };
 }
 
 /** Both of them, wherever the finger has got to. */
 function movePair(pair: Pair, dx: number): void {
+  const offset = pair.dir < 0 ? pair.width : -pair.width;
   pair.leaving.style.transition = "none";
   pair.leaving.style.transform = `translateX(${dx}px)`;
-  const offset = pair.dir < 0 ? pair.width : -pair.width;
-  put(pair.arriving, `translateX(${dx + offset}px)`, 0);
+  pair.arriving.style.transition = "none";
+  pair.arriving.style.transform = `translateX(${dx + offset}px)`;
 }
 
 function closePair(pair: Pair, settled: boolean): void {
   const ms = TAB_MS;
   const offset = pair.dir < 0 ? pair.width : -pair.width;
 
+  const ease = `transform ${ms}ms ${EASE}`;
+  pair.leaving.style.transition = ease;
+  pair.arriving.style.transition = ease;
   if (settled) {
-    pair.leaving.style.transition = `transform ${ms}ms ${EASE}`;
     pair.leaving.style.transform = `translateX(${-offset}px)`;
-    put(pair.arriving, "translateX(0)", ms);
+    pair.arriving.style.transform = "translateX(0)";
   } else {
-    pair.leaving.style.transition = `transform ${ms}ms ${EASE}`;
     pair.leaving.style.transform = "translateX(0)";
-    put(pair.arriving, `translateX(${offset}px)`, ms);
+    pair.arriving.style.transform = `translateX(${offset}px)`;
   }
 
   window.setTimeout(() => {
-    pair.leaving.remove();
     if (!settled) {
-      // put the tab back the way it was; the copy has covered the change
+      // put the tab back the way it was, under cover of the copies
       pair.origin.click();
     }
-    clear(pair.arriving);
     holdWidth(false);
     // And tidy after whatever the phone actually did.
     //
