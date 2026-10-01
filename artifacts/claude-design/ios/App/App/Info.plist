@@ -17,6 +17,12 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Baketly talks to its own API over HTTPS and uses no encryption of its
+	     own, which is the exemption every app using only standard TLS falls
+	     under. Declared here so App Store Connect stops asking at each
+	     submission. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
