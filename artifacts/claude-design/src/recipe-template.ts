@@ -366,7 +366,14 @@ function addPackagingController(template: string): string {
           setPackagingSupplier: e => setDraft({ supplier: e.target.value }),
           setPackagingPackPrice: e => setDraft({ packPrice: e.target.value }),
           setPackagingUnitsPerPack: e => setDraft({ unitsPerPack: e.target.value }),
-           cancelPackagingEdit: () => this.setState(st => { const stack = [...st.stack]; const previous = stack.pop() || 'ingredients'; return { screen: previous, stack, activePackagingKey: null, packagingDraft: null, packagingDeleteOpen: false, packagingSaveError: '' }; }),
+           // A quick action on the home screen opens a screen with no parent above
+           // it, so back popped the stack and landed on the home screen -- under a
+           // control that said \u2039 Ingredients. These screens belong to the Pantry
+           // whatever opened them, so that is where back goes when there is nothing
+           // else to go to. Reached from the Pantry itself the stack already says so
+           // and nothing changes; reached from anywhere else, that place still wins.
+           backToRecipes: () => this.setState(st => { const stack = [...st.stack]; const popped = stack.pop(); const orphan = !popped || popped === 'dash'; return orphan ? { screen: 'ingredients', stack: [], pantryTab: 'rec' } : { screen: popped, stack }; }),
+           cancelPackagingEdit: () => this.setState(st => { const stack = [...st.stack]; const popped = stack.pop(); const orphan = !popped || popped === 'dash'; const previous = orphan ? 'ingredients' : popped; return { screen: previous, stack: orphan ? [] : stack, pantryTab: orphan ? 'pack' : st.pantryTab, activePackagingKey: null, packagingDraft: null, packagingDeleteOpen: false, packagingSaveError: '' }; }),
           savePackaging: () => {
             const key = activeKey || 'pack-' + Date.now().toString(36);
             const normalized = normalize(key, this.state.packagingDraft);
@@ -762,7 +769,7 @@ function replaceRecipeEditorMarkup(template: string): string {
     )
     .replace(
       '<button class="btn btn-ghost" sc-camel-on-click="{{ back }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button>',
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ back }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ requestDeleteRecipe }}" style="min-height:44px;color:#b0563e">Delete</button></sc-if></div>',
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ backToRecipes }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ requestDeleteRecipe }}" style="min-height:44px;color:#b0563e">Delete</button></sc-if></div>',
     )
     .replace(
       '<span style="flex:none;font-size:14px;font-weight:600;font-feature-settings:\'tnum\'">{{ r.sell }}</span>',

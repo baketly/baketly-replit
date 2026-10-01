@@ -236,7 +236,13 @@ function addIngredientController(template: string): string {
                this.setState(st => st.ingredientScanRequest === request ? { ingredientScanLoading: false, ingredientScanError: error && error.message ? error.message : 'I couldn’t read that label. Please enter the details manually.', ingredientScanComplete: false } : null);
              }
            },
-           cancelIngredientEdit: () => this.setState(st => { const stack = [...st.stack]; const previous = stack.pop() || 'ingredients'; return { screen: previous, stack, activeIngredientKey: null, ingredientDraft: null, ingredientDeleteOpen: false, ingredientSaveError: '', ingredientScanRequest: (st.ingredientScanRequest || 0) + 1, ingredientScanLoading: false, ingredientScanError: '', ingredientScanComplete: false }; }),
+           // A quick action on the home screen opens a screen with no parent above
+           // it, so back popped the stack and landed on the home screen -- under a
+           // control that said \u2039 Ingredients. These screens belong to the Pantry
+           // whatever opened them, so that is where back goes when there is nothing
+           // else to go to. Reached from the Pantry itself the stack already says so
+           // and nothing changes; reached from anywhere else, that place still wins.
+           cancelIngredientEdit: () => this.setState(st => { const stack = [...st.stack]; const popped = stack.pop(); const orphan = !popped || popped === 'dash'; const previous = orphan ? 'ingredients' : popped; return { screen: previous, stack: orphan ? [] : stack, pantryTab: orphan ? 'ing' : st.pantryTab, activeIngredientKey: null, ingredientDraft: null, ingredientDeleteOpen: false, ingredientSaveError: '', ingredientScanRequest: (st.ingredientScanRequest || 0) + 1, ingredientScanLoading: false, ingredientScanError: '', ingredientScanComplete: false }; }),
           saveIngredient: () => {
             const key = activeKey || 'ingredient-' + Date.now().toString(36);
              const normalized = normalize(key, activeKey ? this.state.ingredientDraft : { ...blankIngredient, ...(this.state.ingredientDraft || {}) });

@@ -304,14 +304,14 @@ const recipePreview =
 /** A recipe is worth reading before it is edited: costs, lines and margin. */
 function recipeScreen(template: string): string {
   const headerRow =
-    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ back }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ requestDeleteRecipe }}" style="min-height:44px;color:#b0563e">Delete</button></sc-if></div>';
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ backToRecipes }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button><sc-if value="{{ existingRecipeMode }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" sc-camel-on-click="{{ requestDeleteRecipe }}" style="min-height:44px;color:#b0563e">Delete</button></sc-if></div>';
   const saveButton =
     '<button class="btn btn-primary btn-block" sc-camel-on-click="{{ saveRecipe }}" style="margin-top:16px;min-height:48px">{{ saveRecipeLabel }}</button>';
   if (!template.includes(headerRow)) throw new Error("Missing recipe header anchor");
   if (!template.includes(saveButton)) throw new Error("Missing recipe save anchor");
 
   const newHeader =
-    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ back }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ backToRecipes }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button>' +
     itemActions("editRecipe", "requestDeleteRecipe", "recipe", "recPreviewing", "existingRecipeMode") +
     "</div>";
 
