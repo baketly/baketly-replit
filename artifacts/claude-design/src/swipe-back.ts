@@ -36,6 +36,8 @@ const FLICK_PX_PER_MS = 0.5;
 
 const OUT_MS = 165;
 const IN_MS = 190;
+/** sideways, where the two tabs move as one piece and so share a duration */
+const TAB_MS = 230;
 const SPRING_BACK_MS = 190;
 /** the phone's own curve: quick to leave, gentle to arrive */
 const EASE = "cubic-bezier(.22,.61,.36,1)";
@@ -122,6 +124,20 @@ function insideSideScroller(target: EventTarget | null): boolean {
     node = node.parentElement;
   }
   return false;
+}
+
+/**
+ * The tab a drag in this direction would reach, if there is one.
+ *
+ * Left goes to the next, right to the one before. At either end of the row
+ * this is nothing, and the screen should not move at all: dragging past the
+ * last tab showed the empty space beyond it, which is a promise the row
+ * cannot keep.
+ */
+function tabInDirection(moved: number): HTMLElement | undefined {
+  const tabs = subTabs();
+  if (!tabs) return undefined;
+  return tabs.list[tabs.index + (moved < 0 ? 1 : -1)];
 }
 
 function goBack(): void {
@@ -237,6 +253,46 @@ function slide(
   window.setTimeout(() => clear(el), IN_MS + 20);
 }
 
+/**
+ * Sideways between two tabs: the one you are going to is simply already there.
+ *
+ * Only the copy moves. The destination is put in place at rest and stays
+ * still, so it is on the screen, complete, from the first frame -- there is no
+ * moment at which it is anywhere else, and so no moment at which anything can
+ * be seen between the two.
+ *
+ * Both halves were animated at first, the arriving tab starting flush against
+ * the leaving one so the pair travelled as one piece. Measured, they came
+ * apart anyway and left 140px of background showing: the leaving copy is a
+ * plain element and does as it is told, while the arriving tab is the live
+ * screen, which the app re-draws as the tab changes and which does not keep an
+ * inline transform across that. Two animations, one of them interrupted.
+ *
+ * A thing that does not move cannot be interrupted.
+ */
+function slideSideways(el: HTMLElement, moved: number, change: () => void): void {
+  if (reducedMotion()) {
+    clear(el);
+    change();
+    return;
+  }
+
+  const width = el.getBoundingClientRect().width || window.innerWidth;
+  const leavingEnds = moved < 0 ? -width : width;
+
+  const ghost = ghostOf(el, moved);
+
+  // the destination, at rest, underneath the copy
+  clear(el);
+  change();
+
+  void ghost.offsetWidth;
+  ghost.style.transition = `transform ${TAB_MS}ms ${EASE}`;
+  ghost.style.transform = `translateX(${leavingEnds}px)`;
+
+  window.setTimeout(() => ghost.remove(), TAB_MS + 40);
+}
+
 function springBack(el: HTMLElement): void {
   if (reducedMotion()) {
     clear(el);
@@ -326,8 +382,10 @@ export function listenForSwipeBack(): void {
 
       const el = sliding();
       if (!el) return;
-      // back never goes left; between tabs the screen follows either way
-      const x = started.kind === "back" ? Math.max(0, travelled) : travelled;
+      // back never goes left; between tabs the screen follows either way, and
+      // not at all where the row has run out -- there is nothing to drag into
+      const atTheEnd = started.kind === "tabs" && !tabInDirection(travelled);
+      const x = started.kind === "back" ? Math.max(0, travelled) : atTheEnd ? 0 : travelled;
       event.preventDefault();
       el.style.transform = `translateX(${x}px)`;
     },
@@ -370,13 +428,12 @@ export function listenForSwipeBack(): void {
       // Sideways: left for the next tab, right for the one before. At either
       // end of the row there is nothing to go to, and the screen says so by
       // coming back to where it was rather than changing nothing silently.
-      const tabs = subTabs();
-      const next = tabs ? tabs.list[tabs.index + (moved < 0 ? 1 : -1)] : undefined;
-      if (!tabs || !next) {
+      const next = tabInDirection(moved);
+      if (!next) {
         springBack(el);
         return;
       }
-      slide(el, moved, () => next.click(), moved < 0 ? "-100%" : "100%", moved < 0 ? "100%" : "-100%");
+      slideSideways(el, moved, () => next.click());
     },
     { passive: true },
   );
