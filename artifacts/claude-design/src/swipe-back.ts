@@ -254,43 +254,87 @@ function slide(
 }
 
 /**
- * Sideways between two tabs: the one you are going to is simply already there.
+ * The two tabs, side by side under the finger.
  *
- * Only the copy moves. The destination is put in place at rest and stays
- * still, so it is on the screen, complete, from the first frame -- there is no
- * moment at which it is anywhere else, and so no moment at which anything can
- * be seen between the two.
+ * A tab swipe shows both: the one leaving and the one arriving travel
+ * together, the whole time, so the next tab is visible from the first
+ * millimetre of the drag rather than appearing when it is over. That is the
+ * difference between a screen that is being dragged and one that merely
+ * reacts to having been dragged.
  *
- * Both halves were animated at first, the arriving tab starting flush against
- * the leaving one so the pair travelled as one piece. Measured, they came
- * apart anyway and left 140px of background showing: the leaving copy is a
- * plain element and does as it is told, while the arriving tab is the live
- * screen, which the app re-draws as the tab changes and which does not keep an
- * inline transform across that. Two animations, one of them interrupted.
- *
- * A thing that does not move cannot be interrupted.
+ * The arriving tab is the live screen, switched the moment the drag commits
+ * to a direction. The one being left is a copy, because the app only ever
+ * draws one. The switch happens once, here, and not again until the gesture
+ * ends -- which is what lets both be moved freely for the rest of it. Moving
+ * the live screen in the same breath as changing it was what came apart
+ * before: the re-draw dropped the transform.
  */
-function slideSideways(el: HTMLElement, moved: number, change: () => void): void {
-  if (reducedMotion()) {
-    clear(el);
-    change();
-    return;
-  }
+interface Pair {
+  /** a copy of the tab the finger started on */
+  leaving: HTMLElement;
+  /** the live screen, now showing the tab being dragged into view */
+  arriving: HTMLElement;
+  width: number;
+  /** -1 when the content moves left, towards the next tab */
+  dir: -1 | 1;
+  /** the control for the tab we started on, to return to if it is cancelled */
+  origin: HTMLElement;
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+async function openPair(el: HTMLElement, dir: -1 | 1): Promise<Pair | null> {
+  const tabs = subTabs();
+  if (!tabs) return null;
+  const origin = tabs.list[tabs.index];
+  const target = tabs.list[tabs.index + (dir < 0 ? 1 : -1)];
+  if (!origin || !target) return null;
 
   const width = el.getBoundingClientRect().width || window.innerWidth;
-  const leavingEnds = moved < 0 ? -width : width;
+  const leaving = ghostOf(el, 0);
 
-  const ghost = ghostOf(el, moved);
+  // the live screen becomes the tab being dragged towards, once
+  target.click();
+  await nextFrame();
+  await nextFrame();
 
-  // the destination, at rest, underneath the copy
-  clear(el);
-  change();
+  // and waits just off the side the finger is pulling from
+  put(el, `translateX(${dir < 0 ? width : -width}px)`, 0);
+  return { leaving, arriving: el, width, dir, origin };
+}
 
-  void ghost.offsetWidth;
-  ghost.style.transition = `transform ${TAB_MS}ms ${EASE}`;
-  ghost.style.transform = `translateX(${leavingEnds}px)`;
+/** Both of them, wherever the finger has got to. */
+function movePair(pair: Pair, dx: number): void {
+  pair.leaving.style.transition = "none";
+  pair.leaving.style.transform = `translateX(${dx}px)`;
+  const offset = pair.dir < 0 ? pair.width : -pair.width;
+  put(pair.arriving, `translateX(${dx + offset}px)`, 0);
+}
 
-  window.setTimeout(() => ghost.remove(), TAB_MS + 40);
+function closePair(pair: Pair, settled: boolean): void {
+  const ms = TAB_MS;
+  const offset = pair.dir < 0 ? pair.width : -pair.width;
+
+  if (settled) {
+    pair.leaving.style.transition = `transform ${ms}ms ${EASE}`;
+    pair.leaving.style.transform = `translateX(${-offset}px)`;
+    put(pair.arriving, "translateX(0)", ms);
+  } else {
+    pair.leaving.style.transition = `transform ${ms}ms ${EASE}`;
+    pair.leaving.style.transform = "translateX(0)";
+    put(pair.arriving, `translateX(${offset}px)`, ms);
+  }
+
+  window.setTimeout(() => {
+    pair.leaving.remove();
+    if (!settled) {
+      // put the tab back the way it was; the copy has covered the change
+      pair.origin.click();
+    }
+    clear(pair.arriving);
+  }, ms + 20);
 }
 
 function springBack(el: HTMLElement): void {
@@ -312,10 +356,19 @@ function springBack(el: HTMLElement): void {
  */
 export function listenForSwipeBack(): void {
   let drag: Drag | null = null;
+  /** the two tabs, while a sideways drag has them open */
+  let pair: Pair | null = null;
+  /** set while the pair is being built, so a fast finger cannot open two */
+  let opening = false;
 
   const letGo = () => {
-    const el = sliding();
-    if (drag?.engaged && el) springBack(el);
+    if (pair) {
+      closePair(pair, false);
+      pair = null;
+    } else {
+      const el = sliding();
+      if (drag?.engaged && el) springBack(el);
+    }
     drag = null;
   };
 
@@ -378,16 +431,42 @@ export function listenForSwipeBack(): void {
           engagedEl.style.willChange = "transform";
           engagedEl.style.transition = "none";
         }
+
+        // Sideways: bring the next tab alongside, now, so the rest of the
+        // drag moves the two of them together. Nothing happens where the row
+        // has run out -- the screen stays put rather than pulling open on
+        // nothing.
+        if (started.kind === "tabs" && engagedEl && !opening && !pair) {
+          const dir: -1 | 1 = travelled < 0 ? -1 : 1;
+          if (tabInDirection(travelled)) {
+            opening = true;
+            void openPair(engagedEl, dir).then((opened) => {
+              opening = false;
+              // the finger may have gone by the time this is ready
+              if (!drag?.engaged) {
+                if (opened) closePair(opened, false);
+                return;
+              }
+              pair = opened;
+            });
+          }
+        }
+      }
+
+      event.preventDefault();
+
+      // once the two tabs are side by side they move as the one thing
+      if (pair) {
+        movePair(pair, travelled);
+        return;
       }
 
       const el = sliding();
       if (!el) return;
-      // back never goes left; between tabs the screen follows either way, and
-      // not at all where the row has run out -- there is nothing to drag into
-      const atTheEnd = started.kind === "tabs" && !tabInDirection(travelled);
-      const x = started.kind === "back" ? Math.max(0, travelled) : atTheEnd ? 0 : travelled;
-      event.preventDefault();
-      el.style.transform = `translateX(${x}px)`;
+      // back never goes left; between tabs nothing moves until the pair is
+      // ready, and nothing moves at all where the row has run out
+      if (started.kind === "tabs") return;
+      el.style.transform = `translateX(${Math.max(0, travelled)}px)`;
     },
     { passive: false },
   );
@@ -397,14 +476,24 @@ export function listenForSwipeBack(): void {
     (event) => {
       const started = drag;
       drag = null;
-      if (!started?.engaged) return;
+      const open = pair;
+      pair = null;
+
+      if (!started?.engaged) {
+        if (open) closePair(open, false);
+        return;
+      }
 
       const el = sliding();
-      if (!el) return;
+      if (!el) {
+        if (open) closePair(open, false);
+        return;
+      }
 
       const touch = event.changedTouches[0];
       if (!touch) {
-        springBack(el);
+        if (open) closePair(open, false);
+        else springBack(el);
         return;
       }
 
@@ -414,6 +503,13 @@ export function listenForSwipeBack(): void {
       const share = started.kind === "back" ? COMMIT_SHARE : TAB_COMMIT_SHARE;
       const far = across >= window.innerWidth * share;
       const flicked = across / elapsed >= FLICK_PX_PER_MS && across > WAKE_PX * 4;
+
+      // Sideways, with the next tab already alongside: let it arrive, or
+      // send it back. Either way the two finish the movement together.
+      if (open) {
+        closePair(open, far || flicked);
+        return;
+      }
 
       if (!far && !flicked) {
         springBack(el);
@@ -425,15 +521,8 @@ export function listenForSwipeBack(): void {
         return;
       }
 
-      // Sideways: left for the next tab, right for the one before. At either
-      // end of the row there is nothing to go to, and the screen says so by
-      // coming back to where it was rather than changing nothing silently.
-      const next = tabInDirection(moved);
-      if (!next) {
-        springBack(el);
-        return;
-      }
-      slideSideways(el, moved, () => next.click());
+      // a sideways drag with no pair behind it reached the end of the row
+      springBack(el);
     },
     { passive: true },
   );
