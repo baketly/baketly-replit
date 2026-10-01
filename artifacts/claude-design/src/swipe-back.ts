@@ -236,13 +236,20 @@ function clear(el: HTMLElement): void {
  * of it. It is a picture, not a screen: nothing in it can be scrolled or
  * tapped, and it is thrown away when it has gone.
  */
+/** Counts the copies made, so each gesture can tidy only its own. */
+let ghostSerial = 0;
+
 function ghostOf(el: HTMLElement, startX: number): HTMLElement {
   const box = el.getBoundingClientRect();
   const ghost = el.cloneNode(true) as HTMLElement;
   ghost.removeAttribute("id");
   for (const node of Array.from(ghost.querySelectorAll("[id]"))) node.removeAttribute("id");
 
-  ghost.dataset.bkGhost = "1";
+  // Numbered, not just marked. Tidying up used to sweep every copy on the
+  // page, which took the copies a gesture starting a moment later had just
+  // made with it, and that gesture then had nothing to move.
+  ghostSerial += 1;
+  ghost.dataset.bkGhost = String(ghostSerial);
   ghost.style.position = "fixed";
   ghost.style.left = box.left + "px";
   ghost.style.top = box.top + "px";
@@ -341,6 +348,10 @@ interface Pair {
   dir: -1 | 1;
   /** the control for the tab we started on, to return to if it is cancelled */
   origin: HTMLElement;
+  /** the control for the tab it moved to, to tell whether we are still on it */
+  target: HTMLElement;
+  /** how far the ghost count had got, so a later gesture's copies survive */
+  serial: number;
 }
 
 function nextFrame(): Promise<void> {
@@ -392,7 +403,7 @@ async function openPair(el: HTMLElement, dir: -1 | 1): Promise<Pair | null> {
   }
   // a likeness of it, waiting off the side the finger is pulling from
   const arriving = ghostOf(live, dir < 0 ? width : -width);
-  return { leaving, arriving, width, dir, origin };
+  return { leaving, arriving, width, dir, origin, target, serial: ghostSerial };
 }
 
 /** Both of them, wherever the finger has got to. */
@@ -404,7 +415,13 @@ function movePair(pair: Pair, dx: number): void {
   pair.arriving.style.transform = `translateX(${dx + offset}px)`;
 }
 
+/** The previous gesture's tidying up, while it is still waiting to happen. */
+let settleRun: (() => void) | null = null;
+let settleTimer = 0;
+
 function closePair(pair: Pair, settled: boolean): void {
+  // anything still outstanding goes first, in the order it was asked for
+  finishSettling();
   const ms = TAB_MS;
   const offset = pair.dir < 0 ? pair.width : -pair.width;
 
@@ -419,10 +436,17 @@ function closePair(pair: Pair, settled: boolean): void {
     pair.arriving.style.transform = `translateX(${offset}px)`;
   }
 
-  window.setTimeout(() => {
+  const finish = () => {
     if (!settled) {
-      // put the tab back the way it was, under cover of the copies
-      pair.origin.click();
+      // Put the tab back the way it was, under cover of the copies -- but
+      // only if it is still the tab this gesture left it on. Somebody who
+      // swipes again, or taps a tab, inside the quarter second this waits has
+      // already said what they want, and clicking anyway took it off them
+      // again: the swipe worked, then undid itself, and it had to be done
+      // twice.
+      const now = subTabs();
+      const stillOurs = !!now && now.list[now.index] === pair.target;
+      if (stillOurs) pair.origin.click();
     }
     holdWidth(false);
     // And tidy after whatever the phone actually did.
@@ -435,10 +459,34 @@ function closePair(pair: Pair, settled: boolean): void {
     // whatever it is showing by then.
     const settledPane = tabPane();
     if (settledPane && settledPane !== pair.arriving) clear(settledPane);
+    // this gesture's copies and anything older, never a newer gesture's
     for (const stray of Array.from(document.querySelectorAll<HTMLElement>("[data-bk-ghost]"))) {
-      stray.remove();
+      if (Number(stray.dataset.bkGhost || 0) <= pair.serial) stray.remove();
     }
+  };
+
+  settleRun = finish;
+  settleTimer = window.setTimeout(() => {
+    if (settleRun === finish) finishSettling();
   }, ms + 20);
+}
+
+/**
+ * Finish the last gesture's tidying up now, rather than when its timer says.
+ *
+ * Everything above happens under cover of the copies and a quarter second
+ * after the finger has gone. A second swipe inside that quarter second used
+ * to land on a screen the first one had not finished with, and the first
+ * one's tail then fired underneath it. Running it the moment a new gesture
+ * begins means each swipe starts from a page that has settled.
+ */
+function finishSettling(): void {
+  const run = settleRun;
+  if (!run) return;
+  settleRun = null;
+  window.clearTimeout(settleTimer);
+  settleTimer = 0;
+  run();
 }
 
 function springBack(el: HTMLElement): void {
@@ -495,6 +543,13 @@ export function listenForSwipeBack(): void {
         drag = null;
         return;
       }
+
+      // Settle the last one before starting this one. A finger coming back
+      // down inside a quarter second found a screen mid-tidy, and the tidying
+      // then ran underneath the new gesture -- which is what made a tab
+      // change take two swipes.
+      finishSettling();
+
       const begin = (kind: Kind): Drag => ({
         x: touch.clientX,
         y: touch.clientY,
