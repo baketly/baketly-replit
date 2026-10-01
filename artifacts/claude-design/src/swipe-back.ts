@@ -244,6 +244,24 @@ function clear(el: HTMLElement): void {
  * of it. It is a picture, not a screen: nothing in it can be scrolled or
  * tapped, and it is thrown away when it has gone.
  */
+/**
+ * The colour actually behind an element: its own, or the nearest one above it
+ * that is not see-through. A copy laid over the live screen has to be opaque
+ * or both are legible at once, and the body's colour is not always the
+ * screen's -- in a browser the app sits in a frame on a page of another colour.
+ */
+function opaqueBackgroundBehind(el: HTMLElement): string {
+  let node: HTMLElement | null = el;
+  while (node) {
+    const colour = getComputedStyle(node).backgroundColor;
+    if (colour && colour !== "transparent" && !/rgba\(\s*\d+,\s*\d+,\s*\d+,\s*0\s*\)/.test(colour)) {
+      return colour;
+    }
+    node = node.parentElement;
+  }
+  return "#faf6f0";
+}
+
 /** Counts the copies made, so each gesture can tidy only its own. */
 let ghostSerial = 0;
 
@@ -269,7 +287,7 @@ function ghostOf(el: HTMLElement, startX: number): HTMLElement {
   ghost.style.overflow = "hidden";
   // the body it was cut from is see-through; over the screen beneath it has
   // to be opaque or both are legible at once
-  ghost.style.background = getComputedStyle(document.body).backgroundColor || "#faf6f0";
+  ghost.style.background = opaqueBackgroundBehind(el);
   ghost.style.transform = `translateX(${startX}px)`;
   ghost.style.transition = "none";
   // and keep it looking exactly as it did, scrolled to wherever it was
@@ -360,6 +378,18 @@ interface Pair {
    * in the right place, as soon as there is something to copy.
    */
   arriving: HTMLElement | null;
+  /**
+   * A copy of the row of tabs, showing the tab the finger started on.
+   *
+   * The app is asked to change tab the moment the drag begins, because that
+   * is the only way to get the next tab's content to copy -- and the live row
+   * marks the new tab at once. So the underline jumped to the next tab while
+   * the pane had barely moved, and on a swipe that did not go far enough it
+   * then jumped back: the tab moved and the window stayed put, which read as
+   * the gesture breaking. This covers the row until the pane has landed, so
+   * the mark moves when the content does.
+   */
+  rowGhost: HTMLElement | null;
   /** where the finger has got to, so a late arrival can catch up */
   at: number;
   /** set once the gesture is over, so a late arrival knows not to bother */
@@ -416,6 +446,10 @@ function beginPair(el: HTMLElement, dir: -1 | 1): Pair | null {
 
   const width = el.getBoundingClientRect().width || window.innerWidth;
   const leaving = ghostOf(el, 0);
+  // and the row of tabs as it is now, over the live one, before the live one
+  // is told to change
+  const row = origin.parentElement;
+  const rowGhost = row ? ghostOf(row, 0) : null;
   holdWidth(true);
 
   // The live pane becomes the destination and then is left entirely alone,
@@ -425,6 +459,7 @@ function beginPair(el: HTMLElement, dir: -1 | 1): Pair | null {
   return {
     leaving,
     arriving: null,
+    rowGhost,
     at: 0,
     done: false,
     width,
@@ -485,6 +520,7 @@ function closePair(pair: Pair, settled: boolean): void {
   }
 
   const finish = () => {
+    let reverted = false;
     if (!settled) {
       // Put the tab back the way it was, under cover of the copies -- but
       // only if it is still the tab this gesture left it on. Somebody who
@@ -494,7 +530,10 @@ function closePair(pair: Pair, settled: boolean): void {
       // twice.
       const now = subTabs();
       const stillOurs = !!now && now.list[now.index] === pair.target;
-      if (stillOurs) pair.origin.click();
+      if (stillOurs) {
+        pair.origin.click();
+        reverted = true;
+      }
     }
     holdWidth(false);
     // And tidy after whatever the phone actually did.
@@ -505,11 +544,22 @@ function closePair(pair: Pair, settled: boolean): void {
     // remove. Both would be left on screen: a pane held off to one side is a
     // tab that never arrived. So the page is put straight at the end, on
     // whatever it is showing by then.
-    const settledPane = tabPane();
-    if (settledPane && settledPane !== pair.arriving) clear(settledPane);
-    // this gesture's copies and anything older, never a newer gesture's
-    for (const stray of Array.from(document.querySelectorAll<HTMLElement>("[data-bk-ghost]"))) {
-      if (Number(stray.dataset.bkGhost || 0) <= pair.serial) stray.remove();
+    const sweep = () => {
+      const settledPane = tabPane();
+      if (settledPane && settledPane !== pair.arriving) clear(settledPane);
+      // this gesture's copies and anything older, never a newer gesture's
+      for (const stray of Array.from(document.querySelectorAll<HTMLElement>("[data-bk-ghost]"))) {
+        if (Number(stray.dataset.bkGhost || 0) <= pair.serial) stray.remove();
+      }
+    };
+    // Lifting the copies in the same breath as the click showed the tab that
+    // was being left for a frame, before the app had drawn the old one back.
+    // Two frames is what that takes here; a newer gesture's copies carry
+    // higher numbers and are left alone either way.
+    if (reverted) {
+      requestAnimationFrame(() => requestAnimationFrame(sweep));
+    } else {
+      sweep();
     }
   };
 
