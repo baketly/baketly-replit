@@ -21,6 +21,17 @@
 // so going by gesture and going by tapping are the same action taking the same
 // path through the app's state. Nothing here knows which screen is showing.
 
+/**
+ * Whether a sideways drag on Analytics changes tab.
+ *
+ * Off. It got close -- the pane follows the finger, a relaxed swipe lands,
+ * the mark moves with the content -- and in the hand it still was not right,
+ * and a navigation gesture that is nearly right is worse than a tap that is.
+ * The machinery below is kept so this is one word to turn back on; the tabs
+ * themselves are tapped meanwhile, which has always worked.
+ */
+const TAB_SWIPE = false;
+
 /** where a drag has to start to count as an edge swipe */
 const EDGE_PX = 28;
 /** how far before the screen starts moving at all: below this it is a tap */
@@ -652,7 +663,7 @@ export function listenForSwipeBack(): void {
         drag = begin("back");
         return;
       }
-      if (subTabs() && !insideSideScroller(event.target)) {
+      if (TAB_SWIPE && subTabs() && !insideSideScroller(event.target)) {
         drag = begin("tabs");
         return;
       }
