@@ -77,63 +77,34 @@ function fieldsCanShrink(template: string): string {
       "input,select,textarea{min-width:0}" +
       // A date and a booth fee, on one line, on a phone.
       //
-      // Two earlier goes at this were wrong in opposite directions. A
-      // breakpoint stacked them correctly in a 375px browser and still drew
-      // the fee over the date on the phone — a media query is only as honest
-      // as the width the device reports. Then a wrapping row with a 220px
-      // floor never overlapped, but wrapped on every phone, which is not what
-      // a date and a fee should do: they belong side by side, and they are
-      // short enough to be.
+      // The one thing worth knowing here: iOS does not draw a text box for
+      // input[type=date]. It draws its own widget -- "1 Oct 2026" where a
+      // desktop browser writes "01/10/2026" with a calendar button -- and
+      // that widget sizes itself. Told to be narrower, by width, by
+      // max-width, by a column share, it stayed its own size and painted
+      // across the booth fee beside it.
       //
-      // So: two tracks that always sit on one line, the date given the larger
-      // share because a formatted date is the wider thing by far, and the fee
-      // only ever a symbol and a number.
+      // Six goes at this row failed because each one picked a number for
+      // the date: a breakpoint, a 220px floor, then shares of 1.62, 1.3 and
+      // a half. Every one was a guess at something only the control knows,
+      // and none of them could be checked from a desktop browser, which
+      // renders the other widget entirely.
       //
-      // Overlapping is then made impossible rather than avoided. minmax(0,…)
-      // lets a track go under its content's own idea of a minimum, min-width:0
-      // lets the control follow it, and overflow:hidden on the field means
-      // that even where iOS insists on more room for its date control than the
-      // track allows, it is clipped at its own edge instead of painting across
-      // its neighbour. A clipped date is legible and obviously tight; a date
-      // with a fee written over it is neither.
-      // 1.62 to 1 was chosen when the date was thought to be short of room.
-      // It was not: measured on the phone, "1 Oct 2026" sat in a 184px box
-      // with its border closing cleanly, and the booth fee got whatever was
-      // left -- about 100px, once the currency symbol had taken its share.
-      // The fee was the cramped one, and the date is what had the slack.
-      //
-      // Closer to even, and a wider gutter between them. A date reads fine in
-      // 165px; a fee crushed into 100px next to a 184px date is what looks
-      // like two fields fighting.
-      // Even columns.
-      //
-      // Measured on the phone screen rather than guessed at: the date needs
-      // about 110px for "1 Oct 2026" and its padding, and had 155. Every
-      // widening of this column since the row was built has been solving a
-      // shortage the date never had, while the fee lived in what was left.
-      // Half each, and both have more than they need.
-      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:end}" +
+      // So the column stopped telling and started asking. "auto" lays the
+      // track out at the width the control reports, so there is nothing
+      // left over to spill, whatever that width is on a given phone. The
+      // fee takes the remainder. No number here is a guess.
+      "\n    .bk-pair{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px}" +
       "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
-      // max-width alone does not hold a date input.
+      // Only the fee is told its width; the date keeps its own, which is the
+      // point of the auto column above.
       //
-      // iOS renders type="date" as a native control with an intrinsic width of
-      // its own, and max-width does not override that: measured in a 189.8px
-      // column, the control stayed 230px and its right edge landed 30px PAST
-      // the booth fee beside it. That is the overlap, and it is why widening
-      // the date column never helped -- the date was never the thing in the
-      // way of itself. overflow:hidden above was clipping the evidence, taking
-      // the right border and the calendar icon off and leaving a box that
-      // merely looked cut off.
-      //
-      // width:100% makes the column the authority instead of the control.
-      // A date control is not the same height as a text box.
-      //
-      // Measured side by side: 50.4px against 48.5px, so the two boxes in a
-      // row sat on different baselines and neither edge lined up with the
-      // other. Two pixels is not much to read about and is plain to look at.
-      // An explicit height settles it for both.
-      "\n    .bk-pair .input{width:100%;min-width:0;max-width:100%;box-sizing:border-box;" +
-      "height:48px;line-height:normal}",
+      // Nothing sets a height here. One was tried, and on the phone the date
+      // box grew taller than the fee rather than matching it: the native
+      // widget lays its own insides out, and a height from outside is one
+      // more instruction it does not take.
+      "\n    .bk-pair .field>.input,.bk-pair .field>div>.input{box-sizing:border-box}" +
+      "\n    .bk-pair>*:last-child .input{width:100%;min-width:0}",
   );
 }
 
