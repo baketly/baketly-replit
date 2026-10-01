@@ -29,8 +29,8 @@ const WAKE_PX = 8;
 const DIRECTION_RATIO = 1.2;
 /** past this share of the screen, letting go completes the journey */
 const COMMIT_SHARE = 0.4;
-/** sideways between tabs is a shorter trip, so it asks for less */
-const TAB_COMMIT_SHARE = 0.25;
+/** half way to the next tab and it is the next tab you get */
+const TAB_COMMIT_SHARE = 0.5;
 /** or this fast, however far it got: a flick counts */
 const FLICK_PX_PER_MS = 0.5;
 
@@ -396,8 +396,19 @@ export function listenForSwipeBack(): void {
   let pair: Pair | null = null;
   /** set while the pair is being built, so a fast finger cannot open two */
   let opening = false;
+  /**
+   * What the finger decided, when it decided before the pair had opened.
+   *
+   * Bringing the next tab alongside takes a couple of frames, and a quick
+   * swipe is over inside them. The answer used to be thrown away and the
+   * half-built pair cancelled, so a brisk swipe did nothing at all and only
+   * the second, slower one worked -- which is why it took two swipes to
+   * change tab. The decision is kept here and applied when the pair arrives.
+   */
+  let decidedEarly: boolean | null = null;
 
   const letGo = () => {
+    decidedEarly = null;
     if (pair) {
       closePair(pair, false);
       pair = null;
@@ -478,9 +489,11 @@ export function listenForSwipeBack(): void {
             opening = true;
             void openPair(engagedEl, dir).then((opened) => {
               opening = false;
-              // the finger may have gone by the time this is ready
+              // the finger may have gone by the time this is ready, in which
+              // case it has already said what it wanted
               if (!drag?.engaged) {
-                if (opened) closePair(opened, false);
+                if (opened) closePair(opened, decidedEarly === true);
+                decidedEarly = null;
                 return;
               }
               pair = opened;
@@ -544,6 +557,12 @@ export function listenForSwipeBack(): void {
       // send it back. Either way the two finish the movement together.
       if (open) {
         closePair(open, far || flicked);
+        return;
+      }
+
+      // or the pair is still being built, and this is the answer it will want
+      if (opening) {
+        decidedEarly = far || flicked;
         return;
       }
 
