@@ -23,6 +23,13 @@
  * finish() cleared posQty in the same setState that opened the done screen, so
  * by the time the receipt box appeared the basket was already gone and there
  * was nothing to itemise. The lines are read off it first.
+ *
+ * Read from posRecipes keyed by id, which is what the till actually counts.
+ * The generated source had a hardcoded RECIPES list keyed by name, and the
+ * analytics patch rewires the whole till off it onto the baker's real recipes
+ * — so reading the old list matched nothing, every basket came out empty, and
+ * the server quite rightly answered "Nothing to send" about a sale that had
+ * just happened.
  */
 function captureWhatWasSold(template: string): string {
   const anchor =
@@ -39,9 +46,15 @@ function captureWhatWasSold(template: string): string {
     "                  method,\n" +
     "                  change: changeAmt,\n" +
     "                  // read before posQty is cleared on the next line\n" +
-    "                  lines: this.RECIPES\n" +
-    "                    .filter(r => (posQty[r.name] || 0) > 0)\n" +
-    "                    .map(r => ({ name: r.name, quantity: posQty[r.name] || 0, price: r.sell }))\n" +
+    "                  lines: posRecipes\n" +
+    "                    .filter(r => ((st.posQty || {})[r.id] || 0) > 0)\n" +
+    "                    .map(r => ({\n" +
+    "                      name: r.name,\n" +
+    "                      quantity: (st.posQty || {})[r.id] || 0,\n" +
+    "                      // what they paid, not the list price: a promotion or a\n" +
+    "                      // typed bundle price has to leave the lines adding up\n" +
+    "                      price: (Number(r.sell) || 0) * (total > 0 ? final / total : 1)\n" +
+    "                    }))\n" +
     "                },\n" +
     "                posQty: {}, posTendered: 0, posStage: 'idle', posSent: false, posContact: '', posPromo: 'none', posCustom: '',\n" +
     "                posSending: false, posReceiptNote: '',";
