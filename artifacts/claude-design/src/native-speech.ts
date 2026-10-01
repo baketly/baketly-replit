@@ -58,6 +58,16 @@ export function nativeSpeech(): NativeSpeech | null {
           if (Array.isArray(matches) && typeof matches[0] === "string") onText(matches[0]);
         });
 
+        // Every other verb on this plugin is reached with ?. because the
+        // plugin may not have it; start was called outright. A recogniser
+        // without a start is not one, and the TypeError would have been
+        // caught below and reported as "I did not catch that" -- a baker
+        // told the microphone misheard them when it never listened.
+        if (!speech.start) {
+          onError("Dictation is not available on this phone.");
+          return;
+        }
+
         const result = await speech.start({
           language: "en-US",
           partialResults: true,

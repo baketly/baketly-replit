@@ -19,6 +19,8 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@capacitor/cli": "^7.6.9",
     "@vitejs/plugin-react": "^4.3.4",
     "sharp": "^0.35.4",
