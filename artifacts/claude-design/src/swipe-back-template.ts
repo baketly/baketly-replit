@@ -11,6 +11,13 @@
 // so the navigation still runs through the app's own state rather than
 // something reaching into it from outside.
 
+// How far there is to go back, so the gesture can tell whether to start at
+// all. Without it a drag on a tab slid the screen across and sprang back
+// against nothing, which reads as the app refusing rather than as there being
+// nowhere to go.
+const backDepth = `      bkDepth: Array.isArray(this.state.stack) ? this.state.stack.length : 0,
+`;
+
 const backHandler = `      bkBack: () => this.setState(st => {
         const stack = Array.isArray(st.stack) ? [...st.stack] : [];
         const previous = stack.pop();
@@ -26,7 +33,8 @@ function addBackHandler(template: string): string {
   if (!anchor.test(template)) throw new Error("Missing stable controller anchor for back");
   return template.replace(
     anchor,
-    (_match, indent: string) => `${backHandler}${indent}onAnalytics: screen === 'analytics',`,
+    (_match, indent: string) =>
+      `${backHandler}${backDepth}${indent}onAnalytics: screen === 'analytics',`,
   );
 }
 
@@ -44,7 +52,7 @@ function addBackButton(template: string): string {
   const opens = template.indexOf(">", at) + 1;
   const button =
     '<button id="bk-back" type="button" tabindex="-1" aria-hidden="true"' +
-    ' sc-camel-on-click="{{ bkBack }}" style="display:none"></button>';
+    ' data-depth="{{ bkDepth }}" sc-camel-on-click="{{ bkBack }}" style="display:none"></button>';
   return template.slice(0, opens) + button + template.slice(opens);
 }
 
