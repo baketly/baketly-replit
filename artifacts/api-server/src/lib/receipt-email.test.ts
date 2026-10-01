@@ -33,6 +33,20 @@ test("one of something says neither a count nor a unit price", () => {
   assert.ok(!html.includes("each"));
 });
 
+// The till takes a typed amount as well as a basket: somebody buys a thing
+// that was never set up as a recipe, the baker types the price, they pay.
+// That receipt has a total and nothing to itemise, and it was being refused
+// with "Nothing to send" about a sale that had just happened.
+test("a sale with a total and no lines is still a receipt", () => {
+  const text = receiptText(receipt({ lines: [], total: 6 }));
+  assert.match(text, /Total {2}\$6\.00/);
+  // the total, and no blank row where the items would have been
+  const html = receiptHtml(receipt({ lines: [], total: 6 }));
+  assert.match(html, /Total/);
+  assert.match(html, /\$6\.00/);
+  assert.ok(!html.includes("each"));
+});
+
 test("the shop's name is the shop's, and a customer sees how they paid", () => {
   const text = receiptText(receipt({ bakeryName: "Zu Bakery", method: "Card" }));
   assert.match(text, /^Zu Bakery/);

@@ -82,15 +82,23 @@ export function receiptHtml(receipt: Receipt): string {
     .join("");
 
   const on = soldOnLabel(receipt.soldAt);
+  // A typed-amount sale has nothing to list, so the total stands alone rather
+  // than under an empty table.
+  const body =
+    receipt.lines.length === 0
+      ? '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
+        '<tr><td style="padding:7px 0;font-weight:600">Total</td>' +
+        `<td style="padding:7px 0;text-align:right;font-weight:600">${money(receipt.total, receipt.currency)}</td></tr></table>`
+      : '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
+        rows +
+        '<tr><td style="padding:12px 0 0;font-weight:600">Total</td>' +
+        `<td style="padding:12px 0 0;text-align:right;font-weight:600">${money(receipt.total, receipt.currency)}</td></tr></table>`;
+
   return (
     '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;font-size:15px;color:#22201c;max-width:420px">' +
     `<h2 style="margin:0 0 2px;font-size:20px">${escapeHtml(receipt.bakeryName)}</h2>` +
     `<p style="margin:0 0 18px;color:#6b665c;font-size:13px">Receipt${on ? " · " + escapeHtml(on) : ""}</p>` +
-    '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
-    rows +
-    '<tr><td style="padding:12px 0 0;font-weight:600">Total</td>' +
-    `<td style="padding:12px 0 0;text-align:right;font-weight:600">${money(receipt.total, receipt.currency)}</td></tr>` +
-    "</table>" +
+    body +
     `<p style="margin:16px 0 0;color:#6b665c;font-size:13px">Paid by ${escapeHtml(receipt.method.toLowerCase())}</p>` +
     '<p style="margin:22px 0 0;font-size:13px">Thank you — see you next time.</p>' +
     "</div>"
@@ -107,7 +115,8 @@ export function receiptText(receipt: Receipt): string {
     .join("\n");
   return (
     `${receipt.bakeryName}\nReceipt${on ? " - " + on : ""}\n\n` +
-    `${lines}\n\nTotal  ${money(receipt.total, receipt.currency)}\n` +
+    (lines ? `${lines}\n\n` : "") +
+    `Total  ${money(receipt.total, receipt.currency)}\n` +
     `Paid by ${receipt.method.toLowerCase()}\n\nThank you - see you next time.`
   );
 }

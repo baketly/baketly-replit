@@ -62,7 +62,13 @@ function readReceipt(body: unknown): Parsed {
     })
     .filter((line) => line.name);
 
-  if (lines.length === 0) return { error: "Nothing to send." };
+  // A sale with no lines is still a sale.
+  //
+  // The till takes a typed amount as well as a basket -- somebody buys a thing
+  // that was never set up as a recipe, the baker types the price, they pay.
+  // That receipt has a total and nothing to itemise, and refusing it told the
+  // baker "Nothing to send" about a sale that had just happened.
+  if (lines.length === 0 && total <= 0) return { error: "Nothing to send." };
 
   return {
     receipt: {
