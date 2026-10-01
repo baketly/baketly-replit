@@ -105,7 +105,14 @@ function fieldsCanShrink(template: string): string {
       // Closer to even, and a wider gutter between them. A date reads fine in
       // 165px; a fee crushed into 100px next to a 184px date is what looks
       // like two fields fighting.
-      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}" +
+      // Even columns.
+      //
+      // Measured on the phone screen rather than guessed at: the date needs
+      // about 110px for "1 Oct 2026" and its padding, and had 155. Every
+      // widening of this column since the row was built has been solving a
+      // shortage the date never had, while the fee lived in what was left.
+      // Half each, and both have more than they need.
+      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:end}" +
       "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
       // max-width alone does not hold a date input.
       //
@@ -119,7 +126,14 @@ function fieldsCanShrink(template: string): string {
       // merely looked cut off.
       //
       // width:100% makes the column the authority instead of the control.
-      "\n    .bk-pair .input{width:100%;min-width:0;max-width:100%;box-sizing:border-box}",
+      // A date control is not the same height as a text box.
+      //
+      // Measured side by side: 50.4px against 48.5px, so the two boxes in a
+      // row sat on different baselines and neither edge lined up with the
+      // other. Two pixels is not much to read about and is plain to look at.
+      // An explicit height settles it for both.
+      "\n    .bk-pair .input{width:100%;min-width:0;max-width:100%;box-sizing:border-box;" +
+      "height:48px;line-height:normal}",
   );
 }
 
