@@ -96,7 +96,16 @@ function fieldsCanShrink(template: string): string {
       // track allows, it is clipped at its own edge instead of painting across
       // its neighbour. A clipped date is legible and obviously tight; a date
       // with a fee written over it is neither.
-      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:10px}" +
+      // 1.62 to 1 was chosen when the date was thought to be short of room.
+      // It was not: measured on the phone, "1 Oct 2026" sat in a 184px box
+      // with its border closing cleanly, and the booth fee got whatever was
+      // left -- about 100px, once the currency symbol had taken its share.
+      // The fee was the cramped one, and the date is what had the slack.
+      //
+      // Closer to even, and a wider gutter between them. A date reads fine in
+      // 165px; a fee crushed into 100px next to a 184px date is what looks
+      // like two fields fighting.
+      "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}" +
       "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
       // max-width alone does not hold a date input.
       //
