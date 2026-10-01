@@ -8,16 +8,15 @@ theirs.
 
 ---
 
-## 1. Wait for Resend to verify baketly.com
+## 1. Receipts — done, but prove it once
 
-Receipts do not send until the four DNS records are verified. Until then the
-till reports, honestly, that the sending domain is not verified — but a reviewer
-who finishes a test sale sees the receipt box right there and will plausibly try
-it. A prominent control that cannot do its job is **Guideline 2.1**, and a
-rejection costs days where the DNS costs hours.
+baketly.com is verified in Resend and the four DNS records are live, so receipts
+can deliver. Send yourself one real receipt from the app before submitting:
+make a sale, put your own address in the receipt box, and check it arrives.
 
-Wait for all four records to read **Verified** in Resend, then send yourself one
-real receipt from the app to prove it end to end.
+It matters because a reviewer who finishes a test sale sees that box and will
+plausibly try it, and a prominent control that cannot do its job is
+**Guideline 2.1**.
 
 ---
 
@@ -73,8 +72,9 @@ go up; the version need not.
 - **Privacy policy URL**: `https://baketly-app.replit.app/api/privacy`
   Note the `/api`. Plain `/privacy` returns the app shell, so a reviewer
   following that link sees a blank page and rejects under 5.1.1(i).
-- **Support URL**: required, and it must resolve. `baketly.com` needs a page
-  with a way to make contact.
+- **Support URL**: `https://baketly.com` — live, and it carries the contact
+  address. `https://baketly-app.replit.app/api/support` also works and answers
+  the common questions directly, if you would rather point at that.
 
 ### Screenshots
 Required for 6.9" and 6.5" iPhones. Take them from the demo account **with the
