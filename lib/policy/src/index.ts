@@ -66,10 +66,6 @@ export const PRIVACY_SECTIONS: PolicySection[] = [
         text: "are sent to Google's Gemini API, together with the figures needed to answer them — for example a market's revenue and costs. Your full bakery is never sent.",
       },
       {
-        lead: "Speech,",
-        text: "when you use the microphone, is transcribed by the service your phone provides (Apple on iOS). Baketly receives only the resulting text.",
-      },
-      {
         lead: "A customer's email address,",
         text:
           "when you choose to send them a receipt, is sent to Resend, the service that delivers the email, along with what they bought, the total, and your bakery's name. Only an address you type in is ever used, and only for that one receipt: it is not stored afterwards, not added to any list, and never used to send anything else. Baketly does not email your customers unless you ask it to, one sale at a time.",
