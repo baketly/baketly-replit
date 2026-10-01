@@ -1,151 +1,193 @@
 # Submitting Baketly to the App Store
 
-What App Review asks for, and the answers as the code actually behaves. Written
-against Apple's guidelines in October 2026; the numbered references are theirs.
+Do these in order. The order matters: the first two steps change the build, so
+doing them afterwards means uploading twice.
 
-Everything in the first section is done in the repository. Everything after it
-is done by hand in App Store Connect, and is the part that gets apps rejected.
-
----
-
-## Already handled in the app
-
-| What | Guideline | Where |
-|---|---|---|
-| Delete your account, from inside the app | 5.1.1(v) | Settings → Delete my account → `DELETE /api/auth/account` |
-| Sign in with Apple, beside Google | 4.8 | Login screen, with email and password as a third option |
-| Privacy policy reachable without an account | 5.1.1(i) | Login screen → Privacy Policy |
-| Purpose strings for every permission asked for | 5.1.1(ii) | `Info.plist`: camera and photo library only |
-| No permissions asked for that nothing uses | 5.1.1 | Microphone and speech recognition removed with the plugin |
-| Export compliance answered | — | `ITSAppUsesNonExemptEncryption` is `false`: HTTPS only |
-| No ads, no tracking, no third-party analytics | 5.1.2 | None in the app |
-| No in-app purchases, no external payment links | 3.1 | The till records cash; card is marked coming soon and disabled |
+Written against Apple's guidelines in October 2026. Numbered references are
+theirs.
 
 ---
 
-## 1. A demo account, with something in it
+## 1. Wait for Resend to verify baketly.com
 
-**Guideline 2.1.** The app shows nothing without a login, so without this the
-reviewer sees a login screen and rejects the app as non-functional. An account
-with an empty bakery is barely better: every screen reads "nothing yet".
+Receipts do not send until the four DNS records are verified. Until then the
+till reports, honestly, that the sending domain is not verified — but a reviewer
+who finishes a test sale sees the receipt box right there and will plausibly try
+it. A prominent control that cannot do its job is **Guideline 2.1**, and a
+rejection costs days where the DNS costs hours.
 
-Do this on the **live** app, not a local build:
-
-1. Sign up in the App Store build, or at `https://baketly-app.replit.app`, with
-   an address you keep — `review@baketly.com` or similar.
-2. Open **Settings → Sample bakery → Load sample data**. It fills the app with a
-   demo pantry, recipes and six months of sales, so every screen has something
-   on it. This is the single most useful thing you can do for the reviewer.
-3. Run one market check on the Markets screen, so Analytics and the nearby
-   prices have real figures in them.
-4. Make one sale through the till so the Analytics tabs are not empty.
-
-Then in App Store Connect → **App Review Information**:
-
-- Sign-in required: **Yes**
-- Username and password: the account above
-- Leave the account alone until the app is approved. Reviewers come back to it.
+Wait for all four records to read **Verified** in Resend, then send yourself one
+real receipt from the app to prove it end to end.
 
 ---
 
-## 2. Privacy labels
+## 2. Pull and rebuild — again
 
-**App Store Connect → App Privacy.** These must match the privacy policy, and a
-mismatch is a common rejection. Derived from what the code actually sends.
+The app was set to iPhone only **after** your last rebuild. Upload the build you
+have now and Apple will test it on an iPad, and App Store Connect will demand
+iPad screenshots before it will take the submission.
 
-### Contact Info → Email Address — collected, linked to the user
-- **App Functionality.** The account itself.
-- Also covers **a customer's email address** typed into the till to send them a
-  receipt. It is sent to Resend, which delivers the email, and is not stored
-  afterwards. Declare it: it leaves the device, which is what Apple counts.
+```
+cd ~/baketly-replit && git stash && git pull && pnpm install
+cd artifacts/claude-design && VITE_API_BASE=https://baketly-app.replit.app pnpm --filter @workspace/claude-design run build && npx cap sync ios
+```
 
-### Contact Info → Name — collected, linked to the user
-- **App Functionality.** Only if the baker fills in a display name or a bakery
-  name. Both are optional, and both are stored.
-
-### User Content → Photos or Videos — collected, linked to the user
-- **App Functionality.** Recipe photographs are stored with the recipe.
-- Nutrition label photographs are sent to Google's Gemini API to be read and
-  are not kept afterwards. Declare them anyway: they leave the device.
-
-### User Content → Other User Content — collected, linked to the user
-- **App Functionality.** The bakery itself: ingredients, recipes, prices,
-  sales, markets. This is the app's whole purpose.
-
-### Location → Coarse Location — collected, linked to the user
-- **App Functionality.** The town or address typed in to find nearby bakeries.
-  The app never asks the phone for its location and has no location permission;
-  this is text the baker types. It still describes where they are, so declare it.
-
-### Everything else — not collected
-No identifiers, no usage data, no diagnostics, no purchases, no contacts, no
-health, no financial account data, no browsing history, no sensitive info.
-
-### The three follow-up questions
-- Used for tracking: **No** for every category.
-- Used for third-party advertising: **No.**
-- Linked to identity: **Yes**, for all of the above, since they hang off an
-  account.
+In Xcode, check **General → Deployment Info** shows iPhone with iPad unticked
+before you archive.
 
 ---
 
-## 3. Review notes
+## 3. The demo account
 
-**Guideline 4.2** is the real risk: Baketly is a web view in a native shell, and
-reviewers reject those as repackaged websites unless the native parts are
-obvious. They are there — but say so rather than hoping they are found.
+**Guideline 2.1.** Without one the reviewer sees a login screen, and an app that
+shows nothing is rejected as incomplete. An empty account is barely better:
+every screen reads "nothing yet".
 
-Paste something like this into **App Review Information → Notes**:
+On the **live** app, not a local build:
 
-> Baketly is a costing and pricing tool for home bakers: it works out what each
+1. Sign up with an address you keep — `review@baketly.com` or similar.
+2. **Settings → Sample bakery → Load sample data.** A demo pantry, recipes and
+   six months of sales. This is the single most useful thing you can do for the
+   reviewer.
+3. Run one market check from the Markets screen, so Analytics and the nearby
+   prices hold real figures.
+4. Record one cash sale through the till, so the Analytics tabs are not empty.
+5. Leave the account alone until the app is approved. Reviewers come back to it.
+
+---
+
+## 4. Upload the build
+
+Xcode → **Product → Archive** → Distribute App → App Store Connect.
+
+Version 1.0, build 1. If you upload again for any reason the build number must
+go up; the version need not.
+
+---
+
+## 5. App Store Connect
+
+### App Information
+- **Name**, **subtitle**, **category** — Business, or Food & Drink.
+- **Age rating**: nothing in Baketly rates above 4+.
+- **Privacy policy URL**: `https://baketly-app.replit.app/api/privacy`
+  Note the `/api`. Plain `/privacy` returns the app shell, so a reviewer
+  following that link sees a blank page and rejects under 5.1.1(i).
+- **Support URL**: required, and it must resolve. `baketly.com` needs a page
+  with a way to make contact.
+
+### Screenshots
+Required for 6.9" and 6.5" iPhones. Take them from the demo account **with the
+sample data loaded** — empty screens read as a broken app. No iPad screenshots,
+now that the app is iPhone only.
+
+### App Privacy
+
+Must match the privacy policy; a mismatch is a common rejection. Worked out from
+what the code actually sends.
+
+| Category | Collected | Linked to identity | Purpose |
+|---|---|---|---|
+| Contact Info → Email Address | Yes | Yes | App Functionality |
+| Contact Info → Name | Yes | Yes | App Functionality |
+| User Content → Photos or Videos | Yes | Yes | App Functionality |
+| User Content → Other User Content | Yes | Yes | App Functionality |
+| Location → Coarse Location | Yes | Yes | App Functionality |
+
+- **Email address** covers both the account and a customer's address typed into
+  the till to send a receipt. The second is somebody else's data: it goes to
+  Resend to be delivered, and is not stored. Declare it — it leaves the device,
+  which is what Apple counts.
+- **Name** is the display name and the bakery name. Both optional, both stored.
+- **Photos** are recipe pictures, which are stored, and nutrition labels, which
+  go to Google's Gemini API to be read and are not kept.
+- **Other User Content** is the bakery itself: ingredients, recipes, prices,
+  sales, markets.
+- **Coarse Location** is the town typed in to find nearby bakeries. The app never
+  asks the phone where it is and holds no location permission, but the text
+  still describes where the baker is, so declare it.
+
+Everything else: **not collected.** No identifiers, usage data, diagnostics,
+purchases, contacts, health, financial or browsing data.
+
+The three follow-ups: **tracking — no.** **Third-party advertising — no.**
+**Linked to identity — yes**, since all of it hangs off an account.
+
+### App Review Information
+- Sign-in required: **Yes**, with the demo account from step 3.
+- Notes: the text below.
+
+---
+
+## 6. Review notes
+
+**Guideline 4.2** is the real risk here. Baketly is a web view in a native
+shell, and reviewers reject those as repackaged websites unless the native parts
+are obvious. They are there — say so rather than hoping they are noticed.
+
+> Baketly is a costing and pricing tool for home bakers. It works out what each
 > bake costs from ingredient prices, what it earns at a market, and what nearby
-> bakeries charge.
+> bakeries charge for the same thing.
 >
-> Demo account: `<email>` / `<password>`. It is loaded with sample ingredients,
-> recipes and six months of sales, so every screen has data.
+> Demo account: `<email>` / `<password>`. It is loaded with a sample pantry,
+> recipes and six months of sales, so every screen has data in it.
 >
 > Features that use the device rather than the web:
 >
 > - **Camera.** Pantry → add an ingredient → scan a nutrition label. The
->   photograph is read on the server and the figures fill the form.
+>   photograph is read and the figures fill the form.
 > - **Local notifications.** Settings → Reminders. A reminder before a market
->   and before the shopping, scheduled on the device. Tapping one opens the
->   market or the shopping list it is about.
-> - **Sign in with Apple**, offered beside Google and email.
-> - The bakery is held on the device and works without a connection; it syncs
->   when there is one.
+>   and before the shopping, scheduled on the device; tapping one opens the
+>   market or the shopping list it belongs to.
+> - **Sign in with Apple**, offered beside Google and email and password.
+> - The bakery is held on the device and readable without a connection.
 >
-> Account deletion: Settings → Delete my account, which removes the account and
-> everything in it.
+> Account deletion: Settings → Delete my account. It removes the account, the
+> bakery and the session.
+>
+> Nearby prices are read from other bakeries' own public websites and shown with
+> a link to the page they came from. Nothing is reproduced beyond a product name
+> and a price.
 >
 > Payments: the till records cash sales as bookkeeping. Nothing is charged
 > through the app and there is no in-app purchase.
 
 ---
 
-## 4. Before the build goes up
+## Already satisfied, for reference
 
-- **Screenshots** for every size App Store Connect demands, taken from the
-  account with the sample data in it. Empty screens look like a broken app.
-- **Support URL** — required, and must resolve. `baketly.com` needs a page with
-  a way to make contact.
-- **Privacy policy URL** — `https://baketly-app.replit.app/api/privacy`. Note the
-  `/api`: plain `/privacy` returns the app shell, not the policy, and a reviewer
-  following it would see a blank page. Same words as the in-app screen; both come
-  from one file, `lib/policy`.
-- **Age rating.** Nothing in Baketly needs a rating above 4+.
-- **Publish the API first.** The in-app privacy policy and the receipt email
-  both come from the server, so the deployed API must be the current one before
-  the build is reviewed.
+| Requirement | Guideline | Where |
+|---|---|---|
+| Account deletion inside the app | 5.1.1(v) | Settings → Delete my account; removes workspace, user and session |
+| Sign in with Apple beside Google | 4.8 | Login screen, with email and password as a third option |
+| Privacy policy reachable without an account | 5.1.1(i) | Login screen → Privacy Policy |
+| A purpose string for every permission | 5.1.1(ii) | Camera and photo library, both used |
+| No permission asked for that nothing uses | 5.1.1 | Microphone and speech removed, with the plugin |
+| Third-party data sharing disclosed | 5.1.2(i) | Gemini and Resend, both named in the policy |
+| Export compliance answered | — | `ITSAppUsesNonExemptEncryption` false: HTTPS only |
+| App icon with no alpha channel | — | One 1024px icon, RGB |
+| No ads, tracking or analytics | 5.1.2 | None |
+| No in-app purchase, no external payment | 3.1 | Cash till; card disabled and marked coming soon |
 
 ---
 
-## Two things nobody will ask about until they do
+## If it comes back rejected
 
-**Receipts only work once `baketly.com` is verified in Resend.** Until then the
-till honestly reports that the sending domain is not verified, and no receipt
-reaches anybody. That is not a rejection, but it is a feature a reviewer might
-try.
+Most rejections are a question rather than a verdict. Answer in Resolution
+Center with specifics — which screen, which taps, what to look at — instead of
+resubmitting unchanged. A reply usually turns it round in a day; a silent
+resubmission starts the queue again.
 
-**The app needs its backend up for the whole review.** Guideline 2.1 is explicit
-that the service has to be running. A sleeping deployment reads as a broken app.
+The two most likely questions for this app:
+
+- **4.2, minimum functionality.** Point at the camera scanner and the
+  reminders, with the exact taps to reach each.
+- **5.1.1(v), account deletion.** Point at Settings → Delete my account.
+
+---
+
+## Keep the backend up
+
+**Guideline 2.1** is explicit that the service must be running during review.
+The deployment at `baketly-app.replit.app` has to stay live from submission
+until approval. A sleeping deployment reads as a broken app.
