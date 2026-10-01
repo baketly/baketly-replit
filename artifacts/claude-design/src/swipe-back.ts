@@ -11,9 +11,15 @@
 // back. Letting go past the halfway mark finishes it; letting go short of
 // that returns the screen to where it was.
 //
-// What it presses is the app's own hidden back button, so going back by
-// gesture and going back by tapping are the same action taking the same path
-// through the app's state. Nothing here knows which screen is showing.
+// On a tab there is nothing to go back to, and the same movement is used to
+// step sideways instead: Analytics has Overview, Products and Events, and a
+// horizontal drag moves between them. That one takes the finger from anywhere
+// on the screen rather than the edge, which is how a row of tabs is swiped
+// everywhere else.
+//
+// What it presses is the app's own hidden back button, or the app's own tab,
+// so going by gesture and going by tapping are the same action taking the same
+// path through the app's state. Nothing here knows which screen is showing.
 
 /** where a drag has to start to count as an edge swipe */
 const EDGE_PX = 28;
@@ -23,6 +29,8 @@ const WAKE_PX = 8;
 const DIRECTION_RATIO = 1.2;
 /** past this share of the screen, letting go completes the journey */
 const COMMIT_SHARE = 0.4;
+/** sideways between tabs is a shorter trip, so it asks for less */
+const TAB_COMMIT_SHARE = 0.25;
 /** or this fast, however far it got: a flick counts */
 const FLICK_PX_PER_MS = 0.5;
 
@@ -32,10 +40,14 @@ const SPRING_BACK_MS = 190;
 /** the phone's own curve: quick to leave, gentle to arrive */
 const EASE = "cubic-bezier(.22,.61,.36,1)";
 
+/** going back out of a screen, or sideways between tabs on one */
+type Kind = "back" | "tabs";
+
 interface Drag {
   x: number;
   y: number;
   at: number;
+  kind: Kind;
   /** set once the drag has proved itself horizontal; before that, undecided */
   engaged: boolean;
 }
@@ -76,6 +88,40 @@ function canGoBack(): boolean {
   if (backControl()) return true;
   const depth = Number(hiddenBack()?.getAttribute("data-depth") || "0");
   return depth > 0;
+}
+
+
+/**
+ * The row of tabs on the screen, if it has one, and which is showing.
+ *
+ * Analytics draws Overview, Products and Events as its own controls, with the
+ * showing one marked. Pressing one is what a tap does; this only finds them.
+ */
+function subTabs(): { list: HTMLElement[]; index: number } | null {
+  const list = Array.from(document.querySelectorAll<HTMLElement>(".an-tab")).filter(
+    (tab) => tab.offsetParent !== null,
+  );
+  if (list.length < 2) return null;
+  const index = list.findIndex((tab) => tab.classList.contains("active"));
+  return index === -1 ? null : { list, index };
+}
+
+/**
+ * Whether the finger landed on something that scrolls sideways itself.
+ *
+ * A wide table or a chart that runs off the screen is dragged horizontally to
+ * read it, and that has to keep working: a gesture that stole those drags
+ * would make the content unreadable to fix the navigation.
+ */
+function insideSideScroller(target: EventTarget | null): boolean {
+  let node = target instanceof Element ? target : null;
+  while (node && node !== document.body) {
+    const style = getComputedStyle(node);
+    const scrolls = style.overflowX === "auto" || style.overflowX === "scroll";
+    if (scrolls && node.scrollWidth > node.clientWidth + 2) return true;
+    node = node.parentElement;
+  }
+  return false;
 }
 
 function goBack(): void {
@@ -153,32 +199,39 @@ function ghostOf(el: HTMLElement, startX: number): HTMLElement {
 }
 
 /**
- * Finish the journey: the screen behind arrives at once, the copy leaves.
+ * Finish the movement: what arrives is there at once, the copy leaves.
  *
- * Both move together, which is the whole of the effect. The one arriving
- * starts slightly to the left and settles, the way a phone moves the screen
- * underneath; the copy carries on from wherever the finger left it.
+ * Both move together, which is the whole of the effect. Going back, the
+ * arriving screen starts slightly to the left and settles, the way a phone
+ * moves the screen underneath. Going sideways it comes the whole way in from
+ * the side the finger came from, because neither tab is under the other.
  */
-function finish(el: HTMLElement, from: number): void {
+function slide(
+  el: HTMLElement,
+  from: number,
+  change: () => void,
+  outTo: string,
+  inFrom: string,
+): void {
   if (reducedMotion()) {
     clear(el);
-    goBack();
+    change();
     return;
   }
 
   const ghost = ghostOf(el, from);
 
-  // the real screen is free to become the previous one straight away
+  // the real screen is free to become the next one straight away
   clear(el);
-  goBack();
-  put(el, "translateX(-22%)", 0);
+  change();
+  put(el, `translateX(${inFrom})`, 0);
   void el.offsetWidth;
   put(el, "translateX(0)", IN_MS);
 
   // and the copy goes, over the top of it
   void ghost.offsetWidth;
   ghost.style.transition = `transform ${OUT_MS}ms ${EASE}`;
-  ghost.style.transform = "translateX(100%)";
+  ghost.style.transform = `translateX(${outTo})`;
 
   window.setTimeout(() => ghost.remove(), OUT_MS + 40);
   window.setTimeout(() => clear(el), IN_MS + 20);
@@ -218,10 +271,25 @@ export function listenForSwipeBack(): void {
         drag = null;
         return;
       }
-      drag =
-        touch.clientX <= EDGE_PX && canGoBack()
-          ? { x: touch.clientX, y: touch.clientY, at: Date.now(), engaged: false }
-          : null;
+      const begin = (kind: Kind): Drag => ({
+        x: touch.clientX,
+        y: touch.clientY,
+        at: Date.now(),
+        kind,
+        engaged: false,
+      });
+
+      // Going back wins where both could apply: it is the gesture people
+      // already have in their hands, and it only ever starts at the edge.
+      if (touch.clientX <= EDGE_PX && canGoBack()) {
+        drag = begin("back");
+        return;
+      }
+      if (subTabs() && !insideSideScroller(event.target)) {
+        drag = begin("tabs");
+        return;
+      }
+      drag = null;
     },
     { passive: true },
   );
@@ -237,14 +305,17 @@ export function listenForSwipeBack(): void {
       const travelled = touch.clientX - started.x;
       const strayed = Math.abs(touch.clientY - started.y);
 
+      // going back is one way only; between tabs either way counts
+      const across = started.kind === "back" ? travelled : Math.abs(travelled);
+
       if (!started.engaged) {
         // still deciding: a drag that goes down before it goes across is a
         // scroll, and this gets out of its way for the rest of the gesture
-        if (strayed > WAKE_PX && strayed >= travelled) {
+        if (strayed > WAKE_PX && strayed >= across) {
           drag = null;
           return;
         }
-        if (travelled < WAKE_PX || travelled < strayed * DIRECTION_RATIO) return;
+        if (across < WAKE_PX || across < strayed * DIRECTION_RATIO) return;
         started.engaged = true;
         const engagedEl = sliding();
         if (engagedEl) {
@@ -255,8 +326,8 @@ export function listenForSwipeBack(): void {
 
       const el = sliding();
       if (!el) return;
-      // never to the left: this gesture only ever goes one way
-      const x = Math.max(0, travelled);
+      // back never goes left; between tabs the screen follows either way
+      const x = started.kind === "back" ? Math.max(0, travelled) : travelled;
       event.preventDefault();
       el.style.transform = `translateX(${x}px)`;
     },
@@ -279,13 +350,33 @@ export function listenForSwipeBack(): void {
         return;
       }
 
-      const travelled = Math.max(0, touch.clientX - started.x);
+      const moved = touch.clientX - started.x;
+      const across = started.kind === "back" ? Math.max(0, moved) : Math.abs(moved);
       const elapsed = Math.max(1, Date.now() - started.at);
-      const far = travelled >= window.innerWidth * COMMIT_SHARE;
-      const flicked = travelled / elapsed >= FLICK_PX_PER_MS && travelled > WAKE_PX * 4;
+      const share = started.kind === "back" ? COMMIT_SHARE : TAB_COMMIT_SHARE;
+      const far = across >= window.innerWidth * share;
+      const flicked = across / elapsed >= FLICK_PX_PER_MS && across > WAKE_PX * 4;
 
-      if (far || flicked) finish(el, travelled);
-      else springBack(el);
+      if (!far && !flicked) {
+        springBack(el);
+        return;
+      }
+
+      if (started.kind === "back") {
+        slide(el, moved, goBack, "100%", "-22%");
+        return;
+      }
+
+      // Sideways: left for the next tab, right for the one before. At either
+      // end of the row there is nothing to go to, and the screen says so by
+      // coming back to where it was rather than changing nothing silently.
+      const tabs = subTabs();
+      const next = tabs ? tabs.list[tabs.index + (moved < 0 ? 1 : -1)] : undefined;
+      if (!tabs || !next) {
+        springBack(el);
+        return;
+      }
+      slide(el, moved, () => next.click(), moved < 0 ? "-100%" : "100%", moved < 0 ? "100%" : "-100%");
     },
     { passive: true },
   );
