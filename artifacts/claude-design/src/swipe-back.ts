@@ -31,8 +31,19 @@ const DIRECTION_RATIO = 1.2;
 const COMMIT_SHARE = 0.4;
 /** half way to the next tab and it is the next tab you get */
 const TAB_COMMIT_SHARE = 0.5;
-/** or this fast, however far it got: a flick counts */
-const FLICK_PX_PER_MS = 0.5;
+/**
+ * Or this fast over the last moment of the drag, however far it got.
+ *
+ * Measured over the end of the movement rather than the whole touch. Taken
+ * from the first contact it is an average, and a finger that rests before it
+ * swipes drags that average under the bar however briskly it then moves --
+ * which is a swipe that plainly happened being read as no swipe at all.
+ */
+const FLICK_PX_PER_MS = 0.35;
+/** and far enough that a twitch is not a flick */
+const FLICK_MIN_PX = 40;
+/** how far back "the last moment" reaches */
+const FLICK_WINDOW_MS = 45;
 
 const OUT_MS = 165;
 const IN_MS = 190;
@@ -52,6 +63,11 @@ interface Drag {
   kind: Kind;
   /** set once the drag has proved itself horizontal; before that, undecided */
   engaged: boolean;
+  /** the latest position, and the one from a moment before it */
+  lastX: number;
+  lastAt: number;
+  prevX: number;
+  prevAt: number;
 }
 
 function reducedMotion(): boolean {
@@ -433,6 +449,10 @@ export function listenForSwipeBack(): void {
         at: Date.now(),
         kind,
         engaged: false,
+        lastX: touch.clientX,
+        lastAt: Date.now(),
+        prevX: touch.clientX,
+        prevAt: Date.now(),
       });
 
       // Going back wins where both could apply: it is the gesture people
@@ -460,6 +480,15 @@ export function listenForSwipeBack(): void {
 
       const travelled = touch.clientX - started.x;
       const strayed = Math.abs(touch.clientY - started.y);
+
+      // keep a sample from a moment ago, to read the speed at the end from
+      const now = Date.now();
+      if (now - started.lastAt >= FLICK_WINDOW_MS) {
+        started.prevX = started.lastX;
+        started.prevAt = started.lastAt;
+        started.lastX = touch.clientX;
+        started.lastAt = now;
+      }
 
       // going back is one way only; between tabs either way counts
       const across = started.kind === "back" ? travelled : Math.abs(travelled);
@@ -548,10 +577,19 @@ export function listenForSwipeBack(): void {
 
       const moved = touch.clientX - started.x;
       const across = started.kind === "back" ? Math.max(0, moved) : Math.abs(moved);
-      const elapsed = Math.max(1, Date.now() - started.at);
       const share = started.kind === "back" ? COMMIT_SHARE : TAB_COMMIT_SHARE;
       const far = across >= window.innerWidth * share;
-      const flicked = across / elapsed >= FLICK_PX_PER_MS && across > WAKE_PX * 4;
+
+      // The speed it was going when it let go, not its average since being
+      // put down. A swipe starting mid-screen cannot travel half a screen
+      // before running out of screen, so this is what carries most of them.
+      const window_ms = Math.max(1, Date.now() - started.prevAt);
+      const speed = Math.abs(touch.clientX - started.prevX) / window_ms;
+      const flicked =
+        speed >= FLICK_PX_PER_MS &&
+        across > FLICK_MIN_PX &&
+        // and still going the way it set off
+        (started.kind === "back" || Math.sign(touch.clientX - started.prevX) === Math.sign(moved));
 
       // Sideways, with the next tab already alongside: let it arrive, or
       // send it back. Either way the two finish the movement together.
