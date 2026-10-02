@@ -6,6 +6,13 @@
 	<string>Baketly uses the camera to photograph a nutrition label and read the details from it, so you do not have to type them in.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Baketly uses your photos so you can add a picture to a recipe, or read a nutrition label you have already photographed.</string>
+	<!-- Back, and used: Ask Baketly's microphone dictates a question into the
+	     box. Apple's recogniser does the transcribing, so both strings are
+	     needed, and both say exactly that. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Baketly uses the microphone so you can ask a question out loud instead of typing it with floury hands.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Baketly sends what you say to Apple to turn it into text, so your spoken question reaches the assistant.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
