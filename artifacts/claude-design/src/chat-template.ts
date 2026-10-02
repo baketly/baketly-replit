@@ -5,7 +5,21 @@
 // logic with calls to /api/ask and gives the dead controls something to do.
 
 const chatControllerLogic = `      ...(() => {
-        const stored = Array.isArray(this.state.chatMsgs) ? this.state.chatMsgs : [];
+        // The conversation starts over each time the app opens. What was said
+        // last week was answered last week; a baker opening the chat wants to
+        // ask something, not scroll past it. The saved messages are cleared
+        // on the first draw of a session, and the greeting stands in.
+        let stored = Array.isArray(this.state.chatMsgs) ? this.state.chatMsgs : [];
+        if (!this.__baketlyChatFresh) {
+          this.__baketlyChatFresh = true;
+          if (stored.length || (Array.isArray(this.state.chatActions) && this.state.chatActions.length)) {
+            window.setTimeout(() => this.setState({
+              chatMsgs: [], chatActions: [], chatFollowUps: [], chatLastTools: [],
+              chatFailed: '', chatError: '', chatPending: false
+            }), 0);
+          }
+          stored = [];
+        }
         const savedSales = Array.isArray(this.state.saleRecords) ? this.state.saleRecords.length : 0;
         const savedRecipes = Array.isArray(this.state.recipeRecords) ? this.state.recipeRecords.length : 0;
         const savedIngredients = Object.keys(this.state.ingredientRecords || {}).length;
@@ -402,7 +416,7 @@ function replaceChatBindings(template: string): string {
 const suggestionsMarkup = `  <sc-if value="{{ chatListening }}" hint-placeholder-val="{{ false }}">
     <div style="display:flex;align-items:center;gap:8px;margin:14px 0 8px;font-size:12px;color:var(--color-accent-700)">
       <span style="width:8px;height:8px;border-radius:50%;background:var(--color-accent);flex:none"></span>
-      <span>Listening — say what you need, then tap the microphone again.</span>
+      <span>Listening — say what you need, then tap Send.</span>
     </div>
   </sc-if>
   <sc-if value="{{ chatPending }}" hint-placeholder-val="{{ false }}">
@@ -445,11 +459,14 @@ function roundChatBubbles(template: string): string {
 }
 
 function bindChatComposer(template: string): string {
+  // The row holding the box, too: the suggestion buttons that used to sit
+  // between the last bubble and the box are gone, so the box gets its own
+  // room above it instead of touching the conversation.
   const input =
-    '<input class="input" placeholder="Ask about your bakery…" style="flex:1">';
+    '<div style="display:flex;gap:8px">\n    <input class="input" placeholder="Ask about your bakery…" style="flex:1">';
   if (!template.includes(input)) throw new Error("Missing chat input anchor");
   const boundInput =
-    '<input class="input" value="{{ chatDraft }}" sc-camel-on-change="{{ setChatDraft }}" placeholder="Ask about your bakery…" aria-label="Ask about your bakery" style="flex:1">';
+    '<div style="display:flex;gap:8px;margin-top:28px">\n    <input class="input" value="{{ chatDraft }}" sc-camel-on-change="{{ setChatDraft }}" placeholder="Ask about your bakery…" aria-label="Ask about your bakery" style="flex:1">';
   let out = template.replace(input, () => boundInput);
 
   const sendButton =
