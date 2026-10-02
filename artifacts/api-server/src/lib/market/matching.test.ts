@@ -50,6 +50,30 @@ test("a gluten-free luxury stuffed cookie is not a basic cookie", () => {
   assert.ok(!accepted(SIX_COOKIES, "Gluten-Free Luxury Stuffed Cookie"));
 });
 
+// Bristol's flapjacks and granola bars at 0.81 each and Victoria's Nanaimo
+// bars were in a fudge brownie's market, because bar and brownie are related
+// and nothing asked which bar.
+test("a named bar is not a brownie, a plain bar is its neighbour", () => {
+  assert.ok(!accepted("Fudge Brownie", "Traditional Flapjack x36"));
+  assert.ok(!accepted("Fudge Brownie", "Wild Granola Bar"));
+  assert.ok(!accepted("Fudge Brownie", "Nanaimo Bars"));
+  assert.ok(accepted("Fudge Brownie", "Jewel Bar"));
+  assert.ok(accepted("Fudge Brownie", "Chocolate Brownie x10"));
+});
+
+// Galway offered a "2 Tier Vintage Cake" at 200, and Victoria its pound cakes
+// at 15, as comparable to an 8" carrot cake.
+test("a tiered cake or a pound cake is not an 8-inch cake", () => {
+  assert.ok(!accepted("Carrot Cake 8 inch", "2 Tier Vintage Cake"));
+  assert.ok(!accepted("Carrot Cake 8 inch", "Lemon Pound Cake"));
+  // a sized cake still compares, and so does a plain one of the same flavour
+  assert.ok(accepted("Carrot Cake 8 inch", '8" Carrot Cake'));
+  assert.ok(accepted("Carrot Cake 8 inch", "Carrot Cake"));
+  // a plain cake of another flavour with no size given is shown, but never as
+  // a confident match
+  assert.notEqual(match("Carrot Cake 8 inch", "Fresh Cream Communion Cake").matchQuality, "high");
+});
+
 test("cupcakes compare across counts", () => {
   assert.ok(accepted("6 Vanilla Cupcakes", "12 Vanilla Cupcakes"));
 });

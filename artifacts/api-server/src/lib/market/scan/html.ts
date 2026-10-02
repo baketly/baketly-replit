@@ -11,8 +11,11 @@ import { normalizeProduct, normalizedNameKey } from "../normalize";
 import type { ExtractedProduct, SourceType } from "../types";
 import { currencyFrom, parsePrice } from "./price";
 
+// A number with a currency on either side of it -- including the shekel
+// written out, 45 ש"ח, which is how Israeli menus write it far more often
+// than with the symbol.
 const PRICE_PATTERN =
-  /(?:[$€£₪]|\bUSD\b|\bEUR\b|\bGBP\b|\bILS\b)\s?\d{1,4}(?:[.,]\d{1,2})?|\d{1,4}(?:[.,]\d{1,2})?\s?(?:[$€£₪]|\bUSD\b|\bEUR\b|\bGBP\b|\bILS\b)/g;
+  /(?:[$€£₪]|\bUSD\b|\bEUR\b|\bGBP\b|\bILS\b)\s?\d{1,4}(?:[.,]\d{1,2})?|\d{1,4}(?:[.,]\d{1,2})?\s?(?:[$€£₪]|\bUSD\b|\bEUR\b|\bGBP\b|\bILS\b|ש["״]?ח(?![א-ת]))/g;
 
 // The tag's own attributes are kept, so NAMED_CLASS below can ask what the
 // page calls this element. Closing tag matched to the opening one: the
@@ -102,7 +105,7 @@ function plausibleName(value: string): boolean {
   // Shop-wide boilerplate that sits near prices on a supermarket's page:
   // "Save $25 weekly with for U", "New Lower Prices Terms & Conditions",
   // "Guaranteed Fresh disclaimer" were all stored as things a bakery sells.
-  if (/\b(terms|conditions|disclaimer|coupons?|rewards|weekly ad|sign up|subscribe|save \$|guaranteed)\b/i.test(text)) {
+  if (/\b(terms|conditions|disclaimer|coupons?|rewards|weekly ad|sign up|subscribe|save \$|guaranteed|pricing|price list|meal deal)\b/i.test(text)) {
     return false;
   }
   // Shopify themes label the two prices on a sale item, and both labels sit
@@ -161,6 +164,12 @@ function build(
   /** the page this was read from — "…/collections/donuts" says what it is */
   categoryHint: string | null = null,
 ): ExtractedProduct | null {
+  // A menu line carries its price inside the name -- "Classic Cookies $2.25",
+  // "Famous Cinnamon Rolls $6 each", "Muffins $3.25 4 minimum each flavor" --
+  // and the whole line was stored as what the thing is called. The name is
+  // what comes before the money.
+  const cut = name.search(/\s*(?:[$€£₪]\s?\d|\d{1,4}(?:[.,]\d{1,2})?\s?[$€£₪])/);
+  if (cut > 0) name = name.slice(0, cut).trim();
   const key = normalizedNameKey(name);
   if (!key) return null;
   const parsed = parsePrice(priceText, pageCurrency);

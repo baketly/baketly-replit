@@ -51,6 +51,10 @@ const ATTRIBUTE_PENALTIES: Record<string, number> = {
   dairy_free: 0.2,
   stuffed: 0.3,
   luxury: 0.2,
+  // a tiered cake and a pound cake are different things from a layer cake,
+  // not a layer cake at a different price
+  tiered: 0.5,
+  pound_cake: 0.45,
 };
 
 /** Attributes both sharing is worth nothing; only a difference matters. */
@@ -151,6 +155,29 @@ export function matchProducts(
     if (!mine && theirs) score -= 0.15;
   }
 
+  // ---- which bar -----------------------------------------------------------
+  // Bar and brownie are related, and a flapjack is a bar, so Bristol's
+  // flapjacks and granola bars at 0.81 each and Victoria's Nanaimo bars were
+  // in a fudge brownie's market. A bar with a name of its own is its own
+  // thing; only the plain "bar" is a brownie's neighbour. The subcategory is
+  // a kind only when it is not just the flavour standing in for one.
+  const barish = (category: ProductCategory) => category === "bar" || category === "brownie";
+  if (barish(user.category) && barish(competitor.category) && user.category !== competitor.category) {
+    const theirKind =
+      competitor.category === "bar" && competitor.subcategory && competitor.subcategory !== competitor.flavor
+        ? competitor.subcategory
+        : null;
+    const myKind =
+      user.category === "bar" && user.subcategory && user.subcategory !== user.flavor
+        ? user.subcategory
+        : null;
+    const named = theirKind || myKind;
+    if (named && named !== "brownie") {
+      rejections.push("different kind of bar: " + named.replace(/_/g, " "));
+      return { matchScore: 0, matchQuality: "rejected", reasons, rejections };
+    }
+  }
+
   // ---- flavour ------------------------------------------------------------
   if (user.flavor && competitor.flavor) {
     if (user.flavor === competitor.flavor) {
@@ -175,6 +202,15 @@ export function matchProducts(
   }
 
   // ---- size ---------------------------------------------------------------
+  // A cake is priced by its size, and a listing that gives none could be a
+  // slice, a six-inch or a tier. The baker said 8"; the shop said nothing.
+  // Not a rejection -- most shops say nothing -- but a doubt that, with a
+  // different flavour as well, is enough to keep a "Fresh Cream Communion
+  // Cake" out of an 8" carrot cake's market.
+  if (user.diameterInches && !competitor.diameterInches && !competitor.weight) {
+    score -= 0.12;
+    reasons.push("the shop does not give a size");
+  }
   if (user.diameterInches && competitor.diameterInches) {
     const gap = Math.abs(user.diameterInches - competitor.diameterInches);
     // Cakes are sold by size, and two inches is not a detail: an 8" serves

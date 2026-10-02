@@ -154,7 +154,23 @@ export function compareProduct(
     // Boulder offered a "Chocolate Chunk Cookie" at 175.00 -- a platter with
     // no count on it -- as comparable to a 3.50 cookie, and it would have
     // been the top of the market.
-    if (unitPrice && (priced.unitPrice > unitPrice * 8 || priced.unitPrice < unitPrice / 8)) {
+    //
+    // Five times, not eight: Asheville's "Plain Croissant" at 30.00 and
+    // "Cinnamon Roll" at 36.00 were boxes with no count on them, and at seven
+    // times the baker's price they got through. A cake is held tighter still,
+    // because its price is mostly its size and a listing without a size can
+    // be anything from a slice to a tier. And a plural name with no count --
+    // "Chocolate Chunk Cookies" at 25.00 -- is a box however it is priced,
+    // so it is held tighter than a single.
+    const cakeLike =
+      reading.category === "cake" || reading.category === "cheesecake" || reading.category === "pie";
+    const boxish =
+      !candidate.quantity &&
+      /\b(box|boxes|set|pack|bundle|platter|tray|dozen|assorted)\b|[a-z]s$/i.test(
+        candidate.name.trim().split(/\s*[(—–|-]\s*/)[0].trim(),
+      );
+    const spread = boxish ? 3 : cakeLike ? 4 : 5;
+    if (unitPrice && (priced.unitPrice > unitPrice * spread || priced.unitPrice < unitPrice / spread)) {
       sameKindRejected += 1;
       log.event("MATCH_REJECTED", {
         productName: product.name,

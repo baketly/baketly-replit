@@ -45,8 +45,12 @@ const MAX_AI_PAGES = 3;
  */
 function looksPriced(html: string): boolean {
   const text = pageText(html);
+  // Symbol before or after the number, decimals or not, and the shekel as
+  // Israeli menus actually write it: "45 ₪", "₪45", "45 ש"ח", "45 שח". The
+  // first version of this knew "$45" and "45.00" and nothing else, and threw
+  // out seventeen Tel Aviv pages as having no prices on them.
   const hits = text.match(
-    /[$€£₪]\s?\d|\d+[.,]\d{2}(?!\d)|\b\d+\s?(kr|zł|kč|ft|lei|chf|aed|nis)\b/gi,
+    /[$€£₪]\s?\d|\d\s?[$€£₪]|\d\s?ש["״]?ח(?![א-ת])|\d+[.,]\d{2}(?!\d)|\b\d+\s?(kr|zł|kč|ft|lei|chf|aed|nis)\b/gi,
   );
   return (hits?.length ?? 0) >= 3;
 }

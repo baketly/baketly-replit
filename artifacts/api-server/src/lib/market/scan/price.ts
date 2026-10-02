@@ -10,7 +10,8 @@ const SYMBOLS: Array<[RegExp, string]> = [
   [/[$]|\bUSD\b/i, "USD"],
   [/€|\bEUR\b/i, "EUR"],
   [/£|\bGBP\b/i, "GBP"],
-  [/₪|\bILS\b|\bNIS\b/i, "ILS"],
+  // and the shekel written out, as Israeli menus do: 45 ש"ח, 45 שח
+  [/₪|\bILS\b|\bNIS\b|ש["״]?ח(?![א-ת])/i, "ILS"],
   [/\bCAD\b|\bC\$/i, "CAD"],
   [/\bAUD\b|\bA\$/i, "AUD"],
 ];

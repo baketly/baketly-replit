@@ -125,6 +125,27 @@ test("a price eight times the baker's is a platter or a typo, not a comparable",
 
 // A sourdough was told "2 bakeries charge 8.10-11.00" and shown, as the one
 // example from a shop, its 5.00 listing -- a figure the range had never used.
+// Asheville: "Plain Croissant" at 30.00 and "Brown Butter Chocolate Chunk
+// Cookies" at 25.00 are boxes with no count on them, and at seven times the
+// baker's price they were in the market as singles.
+test("a box with no count is not a single at seven times the price", () => {
+  const competitors = [
+    product("a", "Brown Butter Chocolate Chunk Cookies", 25, null),
+    product("b", "Chocolate Chip Cookie", 3.75, 1),
+    product("c", "Chocolate Chip Cookie", 4, 1),
+  ];
+  const result = compareProduct(
+    { name: "Chocolate Chip Cookie", price: 3.5 },
+    competitors,
+    bakeries,
+    "USD",
+    silent,
+  );
+  assert.ok(result.stats, "expected a market from the two singles");
+  assert.equal(result.stats.comparableBakeries, 2);
+  assert.ok(!result.comparables.some((entry) => entry.product.price === 25));
+});
+
 test("the row shown for a shop is the listing its vote was built from", () => {
   const competitors = [
     product("a", "Sourdough Baguette", 5, 1),

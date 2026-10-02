@@ -26,6 +26,22 @@ test("a flavour under a heading takes the heading's kind", () => {
 
 // A loaf's menu line read "Half $7.95 | Whole $13.00" just above its price,
 // and that line was stored as the name of a bread.
+// A menu line carries its price inside the name, and the whole line was
+// stored as what the thing is called.
+test("the name is what comes before the money", () => {
+  const page = `
+    <h2>Menu</h2>
+    <div><span class="product-title">Classic Cookies $2.25</span><span class="price">$2.25</span></div>
+    <div><span class="product-title">Famous Cinnamon Rolls $6 each</span><span class="price">$6.00</span></div>
+    <div><span class="product-title">Muffins $3.25 4 minimum each flavor</span><span class="price">$3.25</span></div>
+  `;
+  const found = extractHtml(page, "https://example.com/menu");
+  assert.ok(found.some((product) => product.name === "Classic Cookies"), "Classic Cookies");
+  assert.ok(found.some((product) => product.name === "Famous Cinnamon Rolls"), "Famous Cinnamon Rolls");
+  assert.ok(found.some((product) => product.name === "Muffins"), "Muffins");
+  assert.ok(!found.some((product) => /\$/.test(product.name)));
+});
+
 test("a line of prices is not the name of a product", () => {
   const page = `
     <h2>Breads</h2>

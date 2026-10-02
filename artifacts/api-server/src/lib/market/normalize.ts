@@ -46,7 +46,22 @@ const NOT_A_BAKE: Array<[RegExp, ProductCategory]> = [
     "drink",
   ],
   [/\b(gift\s*card|voucher|merch|t\s*shirt|hat|tote|mug|apron|candle|sticker)\b/, "not_food"],
-  [/\b(class|workshop|ticket|subscription|membership|donation|tip)\b/, "not_food"],
+  // A class is not a cookie, whatever it is decorating. "Biscuit Decorating
+  // for Kids & Parents -- Fri 02 Oct | 16:15-16:45" was in a cookie's
+  // market at 3.33 each. A time of day on a product is a booking.
+  [
+    /\b(class|classes|workshop|masterclass|course|lesson|tasting|experience|decorating|ticket|booking|subscription|membership|donation|tip|pricing|price\s*list)\b|\b\d{1,2}:\d{2}\b/,
+    "not_food",
+  ],
+  // and a chocolatier's bar is confectionery, not a bake
+  [/\b(chocolate|candy|protein|energy)\s*bars?\b/, "not_food"],
+  // a lunch deal is lunch
+  [/\b(meal\s*deal|lunch\s*deal|combo|breakfast\s*deal)\b/, "savoury"],
+  // the same in Hebrew: בורקס, כריך, סנדוויץ', פיצה are lunch; קפה, לאטה,
+  // קפוצ'ינו, מיץ are drinks
+  [/בורקס|כריך|סנדוויץ|פיצה|סלט/, "savoury"],
+  // שוקו is the drink only when it is not the start of שוקולד
+  [/קפה|לאטה|קפוצ|אספרסו|מיץ|שוקו(?!ל)|לימונדה/, "drink"],
 ];
 
 /** Words that name a kind of bake, longest phrases first so "cookie cake" wins. */
@@ -55,6 +70,25 @@ const CATEGORY_WORDS: Array<[RegExp, ProductCategory]> = [
   [/\bcinnamon\s*(rolls?|buns?|swirls?)\b/, "cinnamon_roll"],
   [/\bcheese\s*cakes?\b/, "cheesecake"],
   [/\bdessert\s*(box|boxes|board|platter)\b/, "dessert_box"],
+  // Hebrew, for the boards in Tel Aviv. No word boundaries: Hebrew attaches
+  // its articles and prepositions to the front of a word (הלחם, ולחם), so a
+  // word is matched wherever it appears. The forms of עוגה (cake) are kept
+  // apart from עוגיה (cookie) by their endings, and עוגת גבינה (cheesecake)
+  // is asked before either.
+  [/עוגת\s*גבינה/, "cheesecake"],
+  [/(גלגל|שבלול)\s*קינמון|סינבון/, "cinnamon_roll"],
+  [/עוגי/, "cookie"],
+  [/קרואסון/, "croissant"],
+  [/בראוני/, "brownie"],
+  [/מאפין/, "muffin"],
+  [/מקרון/, "macaron"],
+  [/סופגני/, "donut"],
+  [/פאי|טארט/, "pie"],
+  [/בבקה/, "babka"],
+  [/מחמצת/, "sourdough"],
+  [/לחם|חלה|חלות|באגט|פוקא?צ|בייגל|פיתה|לחמני|בריוש|ג'בטה/, "bread"],
+  [/דניש|רוגלך|מאפה/, "pastry"],
+  [/עוג(ה|ת|ות)(?![א-ת])/, "cake"],
   // Pastries before sourdough. "Sourdough Croissant" and "Sourdough Danish"
   // are a croissant and a danish made with a starter, and with sourdough
   // read first they were loaves -- priced, at 5.00, as the going rate for a
@@ -157,6 +191,23 @@ const PASTRY_KINDS: Array<[RegExp, string]> = [
   [/\bbeignets?\b/, "beignet"],
   [/\breligieuses?\b/, "religieuse"],
   [/\bparis\s*brest\b/, "paris_brest"],
+  [/\brugelach\b|רוגלך/, "rugelach"],
+  // Hebrew: דניש danish, קרואסון croissant
+  [/דניש/, "danish"],
+  [/קרואסון/, "croissant"],
+];
+
+/** Which bar it is, where the name says. A plain "bar" has no kind. */
+const BAR_KINDS: Array<[RegExp, string]> = [
+  [/\bflapjacks?\b/, "flapjack"],
+  [/\bgranola\b/, "granola"],
+  [/\b(seed|seeded|oat|oaty|muesli|cereal)\b/, "granola"],
+  [/\bnanaimo\b/, "nanaimo"],
+  [/\bmillionaires?\b/, "millionaire"],
+  [/\brocky\s*road\b/, "rocky_road"],
+  [/\blemon\s*bars?\b/, "lemon_bar"],
+  [/\bdate\s*bars?\b/, "date_bar"],
+  [/\bbrownie\b/, "brownie"],
 ];
 
 /** The kinds of loaf that are a shape or a form, rather than a dough. */
@@ -206,10 +257,40 @@ const BREAD_KINDS: Array<[RegExp, string]> = [
   // and a roll is its own thing: a baker pricing a loaf is not shown the
   // dinner rolls, whatever they are made of
   [/\brolls?\b/, "roll"],
+  // Hebrew: מחמצת sourdough, חלה challah, באגט baguette, פוקאצ'ה focaccia,
+  // בייגל bagel, פיתה pita, לחמנייה roll, בריוש brioche, שיפון rye,
+  // (לחם) מלא wholemeal, כפרי country
+  [/מחמצת/, "sourdough"],
+  [/חלה|חלות/, "challah"],
+  [/באגט/, "baguette"],
+  [/פוקא?צ/, "focaccia"],
+  [/בייגל/, "bagel"],
+  [/פיתה/, "pita"],
+  [/לחמני/, "roll"],
+  [/בריוש/, "brioche"],
+  [/שיפון/, "rye"],
+  [/מלא(?![א-ת])/, "wholemeal"],
+  [/כפרי/, "country"],
 ];
 
 /** Flavours, and the words that mean the same flavour. */
 const FLAVOURS: Array<[RegExp, string]> = [
+  // Hebrew first, longest first: שוקולד צ'יפס before שוקולד
+  [/שוקולד\s*צ'?יפס/, "chocolate_chip"],
+  [/שוקולד\s*לבן/, "white_chocolate"],
+  [/שוקולד\s*מריר/, "dark_chocolate"],
+  [/שוקולד/, "chocolate"],
+  [/וניל/, "vanilla"],
+  [/קרמל/, "caramel"],
+  [/לימון/, "lemon"],
+  [/גזר/, "carrot"],
+  [/תפוח/, "apple"],
+  [/בננה/, "banana"],
+  [/אוכמני/, "blueberry"],
+  [/פיסטוק/, "pistachio"],
+  [/קינמון/, "cinnamon"],
+  [/נוטלה/, "nutella"],
+  [/תות/, "strawberry"],
   [/\bchocolate\s*chips?\b/, "chocolate_chip"],
   [/\bchoc\s*chips?\b/, "chocolate_chip"],
   [/\bchocolate\s*chunks?\b/, "chocolate_chip"],
@@ -245,7 +326,18 @@ const FLAVOURS: Array<[RegExp, string]> = [
 
 /** Kinds of version: what makes two same-flavour products not comparable. */
 const ATTRIBUTES: Array<[RegExp, string]> = [
+  // A tiered or wedding cake is not an 8" cake at a different price, and a
+  // pound cake, loaf cake or traybake is a different thing from a layer cake.
+  // Galway's "2 Tier Vintage Cake" at 200 and Victoria's pound cakes at 15
+  // were both in the market for an 8" carrot cake.
+  [/\b(tiers?|tiered|wedding)\b/, "tiered"],
+  [/\b(pound\s*cakes?|loaf\s*cakes?|bundts?|tea\s*cakes?|tray\s*bakes?|traybakes?|sheet\s*cakes?)\b/, "pound_cake"],
   [/\bminis?\b/, "mini"],
+  // Hebrew: מיני mini, ללא גלוטן gluten free, טבעוני vegan, פרוסה slice
+  [/מיני(?![א-ת])/, "mini"],
+  [/ללא\s*גלוטן/, "gluten_free"],
+  [/טבעוני/, "vegan"],
+  [/פרוסה/, "slice"],
   [/\bbite\s*sized?\b/, "mini"],
   [/\bgiant\b/, "giant"],
   [/\bjumbo\b/, "giant"],
@@ -312,14 +404,26 @@ export function normalizeText(value: string): string {
     .replace(/[×✕]/g, "x")
     // hyphens join words that are two words elsewhere: gluten-free, 8-inch
     .replace(/[_/|,-]/g, " ")
-    .replace(/[^a-z0-9"'.\s]/g, " ")
+    // Hebrew letters stay. Everything else that is not a letter or a digit
+    // goes, which until now took the Hebrew with it: a Tel Aviv bakery's
+    // whole board read as blanks, and every one of its bakes was "unknown".
+    .replace(/[^a-z0-9"'.\sא-ת]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 /** How many items a listing is for, or null when the name does not say. */
-export function parseQuantity(text: string): number | null {
-  // "half dozen", "1/2 dozen", "2 dozen", "dozen"
+export function parseQuantity(raw: string): number | null {
+  // A number with a unit after it is not a count of bakes. "2 Tier Vintage
+  // Cake" was two cakes at half the price each; "8 inch", "2 hour class",
+  // "serves 12" are not counts either.
+  const text = raw.replace(
+    /\b\d{1,3}(?:\.\d+)?\s*(?:tiers?|tiered|layers?|inch(?:es)?|in|cm|mm|oz|lbs?|lb|g|kg|ml|l|hours?|hrs?|mins?|minutes?|days?|weeks?|people|persons?|servings?|portions?|slices?)\b/g,
+    " ",
+  );
+
+  // "half dozen", "1/2 dozen", "2 dozen", "dozen" -- and in Hebrew, תריסר
+  // (dozen), חצי תריסר (half dozen), שישייה (a six)
   const dozen = text.match(/\b(half|1\/2|\d+(?:\.\d+)?)?\s*doz(?:en)?\b/);
   if (dozen) {
     const amount = dozen[1];
@@ -327,6 +431,17 @@ export function parseQuantity(text: string): number | null {
     if (amount === "half" || amount === "1/2") return 6;
     const value = Number(amount);
     if (Number.isFinite(value) && value > 0) return Math.round(value * 12);
+  }
+  if (/חצי\s*תריסר/.test(text)) return 6;
+  if (/תריסר/.test(text)) return 12;
+  if (/שישייה/.test(text)) return 6;
+  // "6 יח'", "6 יחידות", "מארז 12", "מארז של 12"
+  const hebrewCount =
+    text.match(/\b(\d{1,3})\s*יח/) ||
+    text.match(/מארז\s*(?:של\s*)?(\d{1,3})\b/);
+  if (hebrewCount) {
+    const value = Number(hebrewCount[1]);
+    if (Number.isFinite(value) && value > 0 && value <= 100) return value;
   }
 
   const patterns: RegExp[] = [
@@ -491,6 +606,14 @@ export function normalizeProduct(
   // and which pastry, on the same footing
   if ((category === "pastry" || category === "croissant") && !subcategory) {
     subcategory = kindOf(PASTRY_KINDS);
+  }
+
+  // and which bar. Bar and brownie are near enough to price against each
+  // other, and so Bristol's flapjacks and granola bars at 0.81 each and
+  // Victoria's Nanaimo bars were in a fudge brownie's market. A named bar is
+  // its own thing; the plain "bar" stays a brownie's neighbour.
+  if (category === "bar" && !subcategory) {
+    subcategory = kindOf(BAR_KINDS);
   }
 
   let flavor: string | null = null;

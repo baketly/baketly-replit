@@ -131,11 +131,29 @@ export async function fetchPages(
   timeoutMs = TIMEOUT_MS,
 ): Promise<FetchedPage[]> {
   const results: FetchedPage[] = [];
+  // A host that has said "too many requests" is not asked again. The five
+  // conventional paths tried on every site arrive within a second of each
+  // other, and a Tel Aviv bakery answered the second with 429 and every one
+  // after it the same -- each a wasted round trip, and a shop annoyed.
+  const rateLimited = new Set<string>();
+  const hostOf = (url: string): string => {
+    try {
+      return new URL(url).hostname.toLowerCase();
+    } catch {
+      return url;
+    }
+  };
   let index = 0;
   const workers = Array.from({ length: Math.min(concurrency, urls.length) }, async () => {
     while (index < urls.length) {
       const at = index++;
+      const host = hostOf(urls[at]);
+      if (rateLimited.has(host)) {
+        results[at] = failure(urls[at], "status 429 (not asked again)", 429);
+        continue;
+      }
       results[at] = await fetchPage(urls[at], timeoutMs);
+      if (results[at].status === 429) rateLimited.add(host);
     }
   });
   await Promise.all(workers);

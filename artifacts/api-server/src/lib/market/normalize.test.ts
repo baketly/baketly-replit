@@ -128,3 +128,60 @@ test("reads a French bakery's board", () => {
   assert.equal(normalizeProduct("Sourdough Danish Cream Cheese").category, "pastry");
   assert.equal(normalizeProduct("Sourdough Loaf").category, "sourdough");
 });
+
+// A Tel Aviv bakery's board. Every one of these came back "unknown" because
+// the text normaliser threw the Hebrew letters away before anything looked.
+test("reads a Hebrew board", () => {
+  const cases: Array<[string, string, string | null]> = [
+    ["לחם מחמצת", "sourdough", "sourdough"], // לחם מחמצת
+    ["לחם כפרי", "bread", "country"], // לחם כפרי
+    ["חלה", "bread", "challah"], // חלה
+    ["באגט", "bread", "baguette"], // באגט
+    ["פוקאצ'ה", "bread", "focaccia"], // פוקאצ'ה
+    ["קרואסון חמאה", "croissant", "croissant"], // קרואסון חמאה
+    ["עוגיית שוקולד פאדג'", "cookie", null], // עוגיית שוקולד פאדג'
+    ["בראוניז", "brownie", null], // בראוניז
+    ["מאפין אוכמניות", "muffin", null], // מאפין אוכמניות
+    ["עוגת גזר", "cake", null], // עוגת גזר
+    ["עוגת גבינה", "cheesecake", null], // עוגת גבינה
+    ["שבלול קינמון", "cinnamon_roll", null], // שבלול קינמון
+    ["בורקס גבינה", "savoury", null], // בורקס גבינה
+    ["קפה הפוך", "drink", null], // קפה הפוך
+  ];
+  for (const [name, category, kind] of cases) {
+    const reading = normalizeProduct(name);
+    assert.equal(reading.category, category, name);
+    if (kind) assert.equal(reading.subcategory, kind, name);
+  }
+  // flavour and count read too: a box of six chocolate chip cookies
+  const box = normalizeProduct(
+    "מארז 6 עוגיות שוקולד צ'יפס",
+  );
+  assert.equal(box.category, "cookie");
+  assert.equal(box.flavor, "chocolate_chip");
+  assert.equal(box.quantity, 6);
+  assert.equal(parseQuantity("תריסר עוגיות"), 12); // תריסר עוגיות
+  // and שוקו the drink is not the start of שוקולד
+  assert.equal(normalizeProduct("עוגת שוקולד").category, "cake");
+});
+
+// Things that are not a bake, and counts that are not counts, each of which
+// was in a market somewhere.
+test("a class is not a cookie, a deal is not a cake, a tier is not a count", () => {
+  assert.equal(
+    normalizeProduct("Biscuit Decorating for Kids & Parents — Fri 02 Oct | Halloween | 16:15–16:45").category,
+    "not_food",
+  );
+  assert.equal(normalizeProduct("Meal deal").category, "savoury");
+  assert.equal(normalizeProduct("Dark Chocolate Bar").category, "not_food");
+  assert.equal(normalizeProduct("Cheesecake Pricing").category, "not_food");
+  // "2 Tier Vintage Cake" was two cakes at half the price each
+  assert.equal(parseQuantity("2 tier vintage cake"), null);
+  assert.ok(normalizeProduct("2 Tier Vintage Cake").attributes.includes("tiered"));
+  assert.ok(normalizeProduct("Lemon Pound Cake").attributes.includes("pound_cake"));
+  // a named bar is its own kind; a plain bar has none
+  assert.equal(normalizeProduct("Traditional Flapjack x36").subcategory, "flapjack");
+  assert.equal(normalizeProduct("Wild Granola Bar").subcategory, "granola");
+  assert.equal(normalizeProduct("Nanaimo Bars").subcategory, "nanaimo");
+  assert.equal(normalizeProduct("Jewel Bar").subcategory, null);
+});
