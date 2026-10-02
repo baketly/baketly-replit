@@ -68,22 +68,58 @@ test("a market with six sourdough loaves names the recipe it matched", () => {
   assert.equal(action.day, "2026-10-03");
   assert.equal(action.boothFee, 120);
   assert.deepEqual(action.items, [{ productId: "r1", name: "Sourdough Loaf 750g", quantity: 6 }]);
-  assert.match(out.proposal.summary, /6 × Sourdough Loaf 750g/);
+  assert.equal(out.proposal.choices, undefined, "nothing to ask");
+  // the lineup is listed by the card, line by line, not folded into the summary
+  assert.match(out.proposal.summary, /Farmers market/);
   assert.match(out.proposal.summary, /₪120/);
 });
 
-test("a name that fits two recipes is a question, not a guess", () => {
+test("a name that fits two recipes is asked on the card, not guessed at", () => {
   const out = runAction(bakery(), "createEvent", { items: [{ product: "sourdough", quantity: 6 }] }, TODAY);
-  assert.equal(out.proposal, null);
-  assert.deepEqual(out.result.ambiguous, [
-    { said: "sourdough", matches: ["Sourdough Loaf 750g", "Sourdough Cheddar Loaf"] },
+  assert.ok(out.proposal);
+  const action = out.proposal.action;
+  if (action.type !== "createEvent") throw new Error("wrong action");
+  // the line keeps its place and its quantity, with their words standing in
+  assert.deepEqual(action.items, [{ productId: "", name: "sourdough", quantity: 6 }]);
+  const choices = out.proposal.choices || [];
+  assert.equal(choices.length, 1);
+  assert.equal(choices[0].slot, "item:0");
+  assert.equal(choices[0].said, "sourdough");
+  assert.deepEqual(choices[0].options.map((option) => option.name), [
+    "Sourdough Loaf 750g",
+    "Sourdough Cheddar Loaf",
   ]);
+  // and the model is told to leave the asking to the card
+  assert.match(String(out.result.askingNote), /do not list their recipes/);
 });
 
-test("a recipe nobody has is refused with the list they do have", () => {
+test("a kind of thing they do not have a recipe for is asked with the likely ones", () => {
+  const out = runAction(bakery(), "createEvent", { items: [{ product: "loaves", quantity: 6 }, { product: "cookies", quantity: 15 }] }, TODAY);
+  assert.ok(out.proposal);
+  const choices = out.proposal.choices || [];
+  assert.deepEqual(choices.map((choice) => choice.slot), ["item:0", "item:1"]);
+  assert.deepEqual(choices[0].options.map((option) => option.name), [
+    "Sourdough Loaf 750g",
+    "Sourdough Cheddar Loaf",
+  ]);
+  assert.deepEqual(choices[1].options.map((option) => option.name), ["Chocolate Chip Cookie"]);
+});
+
+test("a recipe nobody has is asked about, with what they do have to tap", () => {
   const out = runAction(bakery(), "setProductPrice", { product: "Baguette", price: 10 }, TODAY);
-  assert.equal(out.proposal, null);
-  assert.deepEqual(out.result.theirRecipes, ["Sourdough Loaf 750g", "Sourdough Cheddar Loaf", "Chocolate Chip Cookie"]);
+  assert.ok(out.proposal);
+  const choices = out.proposal.choices || [];
+  assert.equal(choices.length, 1);
+  assert.equal(choices[0].slot, "product");
+  // a baguette is a loaf, so the loaves are offered and the cookie is not
+  assert.deepEqual(choices[0].options.map((option) => option.name), [
+    "Sourdough Loaf 750g",
+    "Sourdough Cheddar Loaf",
+  ]);
+  // the price is theirs; only which recipe is still open
+  if (out.proposal.action.type !== "setProductPrice") throw new Error("wrong action");
+  assert.equal(out.proposal.action.to, 10);
+  assert.equal(out.proposal.action.productId, "");
 });
 
 test("a price change says what it is from and to", () => {

@@ -14,6 +14,7 @@
 // never sees these tools, so the model cannot promise it something it has no
 // way to display.
 
+import { candidatesFor, ingredientCandidatesFor, type Candidate } from "./choices";
 import type { Recipe, Workspace } from "./workspace";
 
 export type Action =
@@ -36,12 +37,29 @@ export type Action =
       unit: string;
     };
 
+/**
+ * Something the baker is still owed an answer about before a change can be
+ * made: which recipe they meant by loaves. The app shows the options as
+ * buttons; picking one fills the slot in the action.
+ */
+export interface Choice {
+  /** where the answer goes: item:0 is the first of a market's items */
+  slot: string;
+  /** what they said that matched no one recipe */
+  said: string;
+  /** the question, in the words shown above the buttons */
+  question: string;
+  options: Candidate[];
+}
+
 /** One change, ready for the baker to confirm or wave away. */
 export interface Proposal {
   id: string;
   /** what will happen, in the words shown on the card */
   summary: string;
   action: Action;
+  /** asked on the card first, when something they said fits more than one recipe */
+  choices?: Choice[];
 }
 
 export const ACTION_NAMES = new Set([
@@ -260,8 +278,8 @@ function refuse(message: string, extra: Record<string, unknown> = {}): ActionOut
   return { result: { prepared: false, problem: message, ...extra }, proposal: null };
 }
 
-function prepare(summary: string, action: Action): ActionOutcome {
-  const proposal: Proposal = { id: proposalId(), summary, action };
+function prepare(summary: string, action: Action, choices: Choice[] = []): ActionOutcome {
+  const proposal: Proposal = { id: proposalId(), summary, action, ...(choices.length ? { choices } : {}) };
   return {
     result: {
       prepared: true,
@@ -269,9 +287,27 @@ function prepare(summary: string, action: Action): ActionOutcome {
       summary,
       // said plainly to the model, because it kept saying "done"
       note: "This is prepared, not done. It appears on the baker's screen as a card for them to confirm. Tell them what is waiting for their confirmation; do not say it has been added, created or changed.",
+      ...(choices.length
+        ? {
+            asking: choices.map((choice) => choice.said),
+            // The card asks, with their own recipes as buttons. The same
+            // question in the reply reads as a second one to answer, and the
+            // model used to list recipes the baker was about to tap.
+            askingNote:
+              "The baker is being asked on the card which recipe they meant by " +
+              choices.map((choice) => JSON.stringify(choice.said)).join(" and ") +
+              ", with buttons to tap. Do not ask which they meant, and do not list their recipes: say in one short sentence that it is ready and they can pick below.",
+          }
+        : {}),
     },
     proposal,
   };
+}
+
+/** The question put on the card when what they said fits no one recipe. */
+function askWhich(slot: string, said: unknown, options: Candidate[]): Choice {
+  const what = String(said ?? "").trim() || "that";
+  return { slot, said: what, question: "Which did you mean by “" + what + "”?", options };
 }
 
 /**
@@ -302,9 +338,12 @@ export function runAction(
     if ("error" in when) return refuse(when.error);
     const eventName = String(args.name ?? "").trim().slice(0, 160) || "Market";
     const boothFee = Math.max(0, Number(args.boothFee) || 0);
+    // "6 loaves and 15 cookies" names kinds, not recipes. A line that fits
+    // no one recipe keeps its place in the lineup with the words they used,
+    // and the card asks which recipe it is, offering the ones that look like
+    // what they said. The quantity is theirs either way.
     const items: Array<{ productId: string; name: string; quantity: number }> = [];
-    const unknown: string[] = [];
-    const ambiguous: Array<{ said: string; matches: string[] }> = [];
+    const choices: Choice[] = [];
     for (const raw of Array.isArray(args.items) ? args.items : []) {
       const item = (raw || {}) as { product?: unknown; quantity?: unknown };
       const quantity = Math.round(Number(item.quantity) || 0);
@@ -312,28 +351,27 @@ export function runAction(
       const found = findByName<Recipe>(workspace.recipes, (recipe) => recipe.name || "", item.product);
       if ("one" in found) {
         items.push({ productId: found.one.id, name: found.one.name, quantity: Math.min(quantity, 9_999) });
-      } else if ("several" in found) {
-        ambiguous.push({ said: String(item.product ?? ""), matches: found.several.map((recipe) => recipe.name) });
-      } else {
-        unknown.push(String(item.product ?? ""));
+        continue;
       }
+      const options = "several" in found
+        // they said something that fits a few of their recipes: those are the
+        // options, in the order the shortlist would have ranked them
+        ? candidatesFor(item.product, { ...workspace, recipes: found.several })
+        : candidatesFor(item.product, workspace);
+      if (!options.length) {
+        return refuse("They have no recipes yet, so there is nothing to bake for a market.");
+      }
+      const said = String(item.product ?? "").trim() || "that";
+      choices.push(askWhich("item:" + items.length, said, options));
+      items.push({ productId: "", name: said, quantity: Math.min(quantity, 9_999) });
     }
-    if (ambiguous.length) {
-      return refuse("More than one recipe matches; ask which they meant.", { ambiguous });
-    }
-    if (unknown.length) {
-      return refuse("No recipe by that name.", {
-        unknown,
-        theirRecipes: workspace.recipes.map((recipe) => recipe.name).slice(0, 40),
-      });
-    }
-    const what = items.length
-      ? ", baking " + items.map((item) => item.quantity + " × " + item.name).join(", ")
-      : "";
     const fee = boothFee > 0 ? ", booth fee " + money(boothFee, currency) : "";
+    // The lineup is not in the summary: the card lists it line by line, so a
+    // line still being asked about can show its buttons where it stands.
     return prepare(
-      "Create " + eventName + " on " + dayLabel(when.day, todayIso) + what + fee,
+      "Create " + eventName + " on " + dayLabel(when.day, todayIso) + fee,
       { type: "createEvent", name: eventName, day: when.day, boothFee, items },
+      choices,
     );
   }
 
@@ -341,15 +379,19 @@ export function runAction(
     const price = Number(args.price);
     if (!Number.isFinite(price) || price <= 0) return refuse("The new price has to be a number above zero.");
     const found = findByName<Recipe>(workspace.recipes, (recipe) => recipe.name || "", args.product);
-    if ("several" in found) {
-      return refuse("More than one recipe matches; ask which they meant.", {
-        ambiguous: found.several.map((recipe) => recipe.name),
-      });
-    }
-    if ("none" in found) {
-      return refuse("No recipe by that name.", {
-        theirRecipes: workspace.recipes.map((recipe) => recipe.name).slice(0, 40),
-      });
+    if (!("one" in found)) {
+      // the card asks which, rather than the chat asking them to type it again
+      const options = "several" in found
+        ? candidatesFor(args.product, { ...workspace, recipes: found.several })
+        : candidatesFor(args.product, workspace);
+      if (!options.length) return refuse("They have no recipes yet, so there is no price to change.");
+      const said = String(args.product ?? "").trim() || "that";
+      const to = Math.round(price * 100) / 100;
+      return prepare(
+        "Set " + said + " to " + money(to, currency),
+        { type: "setProductPrice", productId: "", name: said, from: 0, to },
+        [askWhich("product", said, options)],
+      );
     }
     const recipe = found.one;
     const from = Number(recipe.price) || 0;
@@ -368,15 +410,25 @@ export function runAction(
       ([key]) => !workspace.removedIngredientKeys.includes(key),
     );
     const found = findByName(entries, ([key, record]) => record.name || key, args.ingredient);
-    if ("several" in found) {
-      return refuse("More than one ingredient matches; ask which they meant.", {
-        ambiguous: found.several.map(([key, record]) => record.name || key),
-      });
-    }
-    if ("none" in found) {
-      return refuse("No ingredient by that name in the pantry.", {
-        theirIngredients: entries.map(([key, record]) => record.name || key).slice(0, 60),
-      });
+    if (!("one" in found)) {
+      const options = ingredientCandidatesFor(args.ingredient, "several" in found ? found.several : entries);
+      if (!options.length) return refuse("Their pantry is empty, so there is no package price to change.");
+      const said = String(args.ingredient ?? "").trim() || "that";
+      const to = Math.round(price * 100) / 100;
+      const sizeSaid = Number(args.packageSize);
+      return prepare(
+        "Set " + said + " to " + money(to, currency) + " a package",
+        {
+          type: "setIngredientPrice",
+          key: "",
+          name: said,
+          from: 0,
+          to,
+          packageSize: Number.isFinite(sizeSaid) && sizeSaid > 0 ? sizeSaid : null,
+          unit: "g",
+        },
+        [askWhich("ingredient", said, options)],
+      );
     }
     const [key, record] = found.one;
     const from = Number(record.packagePrice) || 0;
