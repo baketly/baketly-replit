@@ -94,6 +94,11 @@ function fieldsCanShrink(template: string): string {
       // the home screen's row of days scrolls sideways; the bar it would
       // draw under itself is noise on a row of buttons
       "\n    [data-bk-days]::-webkit-scrollbar{display:none}" +
+      // a new chat bubble rises into place rather than appearing; chat-pop.ts
+      // puts the class on the one bubble that is new, and only once
+      "\n    @keyframes bk-pop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}" +
+      "\n    .bk-pop{animation:bk-pop .24s cubic-bezier(.22,.61,.36,1) both;transform-origin:bottom left}" +
+      "\n    @media (prefers-reduced-motion:reduce){.bk-pop{animation:none}}" +
       "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:10px}" +
       "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
       "\n    .bk-pair .input{max-width:100%}" +

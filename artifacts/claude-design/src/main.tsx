@@ -5,6 +5,7 @@ import { listenForSignInReturn } from "./native-auth";
 import { ensureViewport, showLoadingScreen, whenSettled } from "./loading-screen";
 import { listenForSwipeBack } from "./swipe-back";
 import { keepDayStripInPlace } from "./day-strip";
+import { keepChatBubblesPopping } from "./chat-pop";
 import { keepSelectsFilled } from "./select-options";
 import { keepRemindersFresh } from "./native-reminders";
 import { nativeSpeech } from "./native-speech";
@@ -393,6 +394,7 @@ window.__baketlyDeleteAccount = async () => {
 keepSelectsFilled();
 listenForSwipeBack();
 keepDayStripInPlace();
+keepChatBubblesPopping();
 ensureViewport();
 showLoadingScreen();
 window.__baketlyReady = workspaceClient.hydrate();

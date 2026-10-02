@@ -18,7 +18,28 @@ export type AskAnswer = {
   sources: Array<{ kind: string; detail: string }>;
   /** what this answer looked up, handed back so the next question keeps its subject */
   lastTools: Array<{ name: string; args: Record<string, unknown> }>;
+  /** changes the server prepared for the baker to confirm on a card; nothing is applied until they do */
+  actions: AskAction[];
 };
+
+export type AskAction = {
+  id: string;
+  /** what will happen, in the words shown on the card */
+  summary: string;
+  action: { type: string } & Record<string, unknown>;
+};
+
+/** Today, as the phone sees it: the server's midnight is not the baker's. */
+function localDay(): string {
+  const now = new Date();
+  return (
+    now.getFullYear() +
+    "-" +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(now.getDate()).padStart(2, "0")
+  );
+}
 
 type Meta = Record<string, { name?: string; unit?: string; per?: number } | undefined>;
 
@@ -306,7 +327,9 @@ export async function askBaketly(
     const response = await apiFetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, history: history.slice(-8), lastTools }),
+      // canAct: this build can show a confirmation card, so the server may
+      // offer the model the tools that prepare a change
+      body: JSON.stringify({ question, history: history.slice(-8), lastTools, canAct: true, today: localDay() }),
       signal: controller.signal,
     });
     const payload = (await response.json().catch(() => ({}))) as Partial<AskAnswer> & { error?: unknown };
@@ -333,6 +356,20 @@ export async function askBaketly(
         : [],
       lastTools: Array.isArray(payload.lastTools)
         ? (payload.lastTools as Array<{ name: string; args: Record<string, unknown> }>).slice(0, 3)
+        : [],
+      // only well-formed proposals reach the screen; anything odd is dropped
+      actions: Array.isArray(payload.actions)
+        ? (payload.actions as unknown[])
+            .filter(
+              (entry): entry is AskAction =>
+                !!entry &&
+                typeof entry === "object" &&
+                typeof (entry as AskAction).id === "string" &&
+                typeof (entry as AskAction).summary === "string" &&
+                !!(entry as AskAction).action &&
+                typeof (entry as AskAction).action.type === "string",
+            )
+            .slice(0, 4)
         : [],
     };
   } catch (error) {

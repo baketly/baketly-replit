@@ -163,8 +163,8 @@ are obvious. They are there — say so rather than hoping they are noticed.
 | Account deletion inside the app | 5.1.1(v) | Settings → Delete my account; removes workspace, user and session |
 | Sign in with Apple beside Google | 4.8 | Login screen, with email and password as a third option |
 | Privacy policy reachable without an account | 5.1.1(i) | Login screen → Privacy Policy |
-| A purpose string for every permission | 5.1.1(ii) | Camera and photo library, both used |
-| No permission asked for that nothing uses | 5.1.1 | Microphone and speech removed, with the plugin |
+| A purpose string for every permission | 5.1.1(ii) | Camera, photo library, microphone and speech recognition — all used |
+| No permission asked for that nothing uses | 5.1.1 | The microphone is back from the build after review: it dictates a question into Ask Baketly, and the policy says Apple transcribes it |
 | Third-party data sharing disclosed | 5.1.2(i) | Gemini and Resend, both named in the policy |
 | Export compliance answered | — | `ITSAppUsesNonExemptEncryption` false: HTTPS only |
 | App icon with no alpha channel | — | One 1024px icon, RGB |

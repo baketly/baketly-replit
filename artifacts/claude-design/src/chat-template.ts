@@ -51,6 +51,10 @@ const chatControllerLogic = `      ...(() => {
                 chatMsgs: [...(Array.isArray(st.chatMsgs) ? st.chatMsgs : []), ...extra],
                 chatFollowUps: Array.isArray(result.followUps) ? result.followUps : [],
                 chatLastTools: Array.isArray(result.lastTools) ? result.lastTools : [],
+                // changes the server prepared, shown as cards until the baker
+                // confirms or waves each one away; a new answer's cards replace
+                // any still waiting from the last one
+                chatActions: (Array.isArray(result.actions) ? result.actions : []).map(entry => ({ ...entry, status: 'pending' })),
                 chatPending: false,
                 chatError: '',
                 chatFailed: ''
@@ -177,8 +181,86 @@ const chatControllerLogic = `      ...(() => {
           try { listener.start(); } catch (error) { this.__baketlyVoice = null; this.setState({ chatListening: false }); }
         };
 
+        // ---- changes the chat prepared, applied here and only here --------
+        //
+        // The server never touches a record. It checks what was asked against
+        // the bakery and hands back one exact change; the baker reads it on a
+        // card and taps Confirm, and this applies it through the same state
+        // the forms write -- a to-do with its day, a market shaped exactly as
+        // the event screen saves one, a price on the recipe, a package price
+        // on the ingredient with its history kept. Nothing happens on
+        // "Not now" except the card going away.
+        const describeDone = (action) => {
+          const cur = (({ USD: '$', EUR: '€', GBP: '£', ILS: '₪' })[this.state.currency] || '');
+          const m = v => cur ? cur + v : v + ' ' + (this.state.currency || '');
+          if (action.type === 'addTodo') return 'Added to the list for ' + action.day + ': ' + action.text;
+          if (action.type === 'createEvent') return 'Done: ' + action.name + ' is in your Markets for ' + action.day + (action.items && action.items.length ? ', with ' + action.items.map(i => i.quantity + ' × ' + i.name).join(', ') : '') + '.';
+          if (action.type === 'setProductPrice') return 'Done: ' + action.name + ' is now ' + m(action.to) + '.';
+          if (action.type === 'setIngredientPrice') return 'Done: ' + action.name + ' is now ' + m(action.to) + ' a package. Every recipe that uses it has moved with it.';
+          return 'Done.';
+        };
+        const applyAction = (action, st) => {
+          if (action.type === 'addTodo') {
+            return { todoItems: [...(Array.isArray(st.todoItems) ? st.todoItems : []), { text: String(action.text || '').slice(0, 120), done: false, day: action.day }] };
+          }
+          if (action.type === 'createEvent') {
+            const recipes = Array.isArray(st.recipeRecords) ? st.recipeRecords : [];
+            const plannedItems = (action.items || [])
+              .map(item => { const recipe = recipes.find(r => r.id === item.productId); return recipe ? { productId: recipe.id, name: recipe.name || 'Untitled recipe', quantity: Math.max(0, Math.round(Number(item.quantity) || 0)) } : null; })
+              .filter(item => item && item.quantity > 0);
+            const event = {
+              id: 'event-' + Date.now().toString(36),
+              name: String(action.name || 'Market').slice(0, 160),
+              occurredAt: action.day + 'T12:00:00.000Z',
+              boothFee: Math.max(0, Number(action.boothFee) || 0),
+              status: 'planned',
+              lineItems: [],
+              ...(plannedItems.length ? { plannedItems } : {})
+            };
+            return { eventRecords: [...(Array.isArray(st.eventRecords) ? st.eventRecords : []), event] };
+          }
+          if (action.type === 'setProductPrice') {
+            return { recipeRecords: (Array.isArray(st.recipeRecords) ? st.recipeRecords : []).map(r => r.id === action.productId ? { ...r, price: Number(action.to) } : r) };
+          }
+          if (action.type === 'setIngredientPrice') {
+            const records = st.ingredientRecords || {};
+            const before = records[action.key];
+            if (!before) return {};
+            const next = { ...before, packagePrice: Math.max(0, Number(action.to) || 0), ...(Number(action.packageSize) > 0 ? { packageSize: Number(action.packageSize) } : {}) };
+            // the old price goes into the history, the way the pantry form records it
+            const priceHistory = { ...(st.priceHistory || {}) };
+            const previousSize = Math.max(0, Number(before.packageSize) || 0);
+            const entry = {
+              at: new Date().toISOString(),
+              packagePrice: Math.max(0, Number(before.packagePrice) || 0),
+              packageSize: previousSize,
+              unit: String(before.unit || next.unit || 'g').slice(0, 10),
+              unitCost: previousSize > 0 ? (Math.max(0, Number(before.packagePrice) || 0)) / previousSize : 0
+            };
+            priceHistory[action.key] = [...(priceHistory[action.key] || []), entry].slice(-12);
+            return { ingredientRecords: { ...records, [action.key]: next }, priceHistory };
+          }
+          return {};
+        };
+        const settleAction = (id, status) => this.setState(st => {
+          const list = Array.isArray(st.chatActions) ? st.chatActions : [];
+          const entry = list.find(a => a.id === id);
+          if (!entry || entry.status !== 'pending') return null;
+          const changes = status === 'done' ? applyAction(entry.action, st) : {};
+          const line = status === 'done' ? describeDone(entry.action) : 'Left as it was.';
+          return {
+            ...changes,
+            chatActions: list.map(a => a.id === id ? { ...a, status } : a),
+            chatMsgs: [...(Array.isArray(st.chatMsgs) ? st.chatMsgs : []), { who: 'b', text: line }]
+          };
+        });
+        const pendingActions = (Array.isArray(this.state.chatActions) ? this.state.chatActions : []).filter(a => a && a.status === 'pending');
+
         return {
-          chatMsgs: shown.map(m => ({
+          chatMsgs: shown.map((m, i) => ({
+            // a stable name for the bubble, so a new one can be told from a
+            // redrawn one and animated once
+            key: 'm' + i + '-' + m.who + '-' + String(m.text || '').length,
             text: m.text,
             align: m.who === 'u' ? 'flex-end' : 'flex-start',
             border: m.who === 'u' ? 'var(--color-accent-300)' : 'var(--color-divider)',
@@ -190,6 +272,14 @@ const chatControllerLogic = `      ...(() => {
               : '',
             hasSources: Array.isArray(m.sources) && m.sources.length > 0
           })),
+          // cards for the changes waiting on the baker
+          chatActions: pendingActions.map(a => ({
+            key: 'a-' + a.id,
+            summary: a.summary,
+            confirm: () => settleAction(a.id, 'done'),
+            dismiss: () => settleAction(a.id, 'dismissed')
+          })),
+          chatHasActions: pendingActions.length > 0,
           retryAsk: retry,
           canRetry: !!this.state.chatFailed && !pending,
           chatDraft: this.state.chatDraft || '',
@@ -278,7 +368,7 @@ function roundChatBubbles(template: string): string {
   return template.replace(
     bubble,
     () =>
-      '<div style="align-self:{{ msg.align }};max-width:85%;display:flex;flex-direction:column;gap:4px">' +
+      '<div data-bk-bubble="{{ msg.key }}" style="align-self:{{ msg.align }};max-width:85%;display:flex;flex-direction:column;gap:4px">' +
       '<div style="border:1px solid {{ msg.border }};border-radius:{{ msg.radius }};padding:11px 16px;font-size:14px;line-height:1.55;background:{{ msg.bg }}">{{ msg.text }}</div>' +
       '<sc-if value="{{ msg.hasSources }}" hint-placeholder-val="{{ false }}">' +
       '<div class="text-muted" style="font-size:10.5px;padding:0 4px">{{ msg.sourceLine }}</div></sc-if>' +
@@ -303,23 +393,48 @@ function bindChatComposer(template: string): string {
     '<svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
     '<rect x="9" y="2" width="6" height="12" rx="3"></rect>' +
     '<path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v4"></path></svg></button>';
-  // The microphone is built and wired but does not work on the phone, and a
-  // control that does nothing is worse than one that is not there: a baker
-  // presses it, nothing happens, and they stop trusting the rest of the
-  // screen. It is held here rather than deleted — everything behind it
-  // stays — so putting it back is uncommenting one line once dictation works.
-  void microphone;
+  // Back on the screen. It was held out while the phone had no recogniser
+  // behind it; the native one is installed again, and the Info.plist strings
+  // with it, so the button does what it says.
   return out.replace(
     sendButton,
     () =>
+      microphone +
       '<button class="btn btn-primary btn-icon" sc-camel-on-click="{{ sendChat }}" aria-label="Send" style="width:44px;height:44px">',
   );
 }
 
+/**
+ * The cards for changes the chat has prepared, under the last message.
+ *
+ * A proposal is a bubble of its own with two buttons. Confirm applies it
+ * through the controller above and answers with what was done; Not now takes
+ * the card away and changes nothing. The card carries a bubble key like any
+ * message, so it arrives with the same movement.
+ */
+function addActionCards(template: string): string {
+  const anchor = "{{ msg.sourceLine }}</div></sc-if></div>\n    </sc-for>\n  </div>";
+  if (!template.includes(anchor)) throw new Error("Missing chat action card anchor");
+  const cards =
+    "{{ msg.sourceLine }}</div></sc-if></div>\n    </sc-for>\n" +
+    '    <sc-for list="{{ chatActions }}" as="act" hint-placeholder-count="0">\n' +
+    '      <div data-bk-bubble="{{ act.key }}" style="align-self:flex-start;max-width:85%;border:1px solid var(--color-accent-300);border-radius:20px 20px 20px 6px;padding:12px 16px;background:var(--color-accent-100);display:flex;flex-direction:column;gap:10px">\n' +
+    '        <div style="font-size:14px;line-height:1.5">{{ act.summary }}</div>\n' +
+    '        <div style="display:flex;gap:8px">\n' +
+    '          <button class="btn btn-primary" sc-camel-on-click="{{ act.confirm }}" style="min-height:40px;font-size:13px;padding:0 18px">Confirm</button>\n' +
+    '          <button class="btn btn-secondary" sc-camel-on-click="{{ act.dismiss }}" style="min-height:40px;font-size:13px;padding:0 14px">Not now</button>\n' +
+    "        </div>\n" +
+    "      </div>\n" +
+    "    </sc-for>\n  </div>";
+  return template.replace(anchor, () => cards);
+}
+
 export function applyChatBehavior(template: string): string {
-  return roundChatBubbles(
-    bindChatComposer(
-      replaceChatSuggestions(replaceChatBindings(replaceChatController(template))),
+  return addActionCards(
+    roundChatBubbles(
+      bindChatComposer(
+        replaceChatSuggestions(replaceChatBindings(replaceChatController(template))),
+      ),
     ),
   );
 }

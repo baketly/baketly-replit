@@ -19,6 +19,7 @@ import {
   GeminiProviderError,
   MissingGeminiKeyError,
 } from "../lib/gemini";
+import { actionDeclarations, isAction, runAction, type Proposal } from "../lib/ask/actions";
 import { askLogger } from "../lib/ask/log";
 import { runTool, toolDeclarations } from "../lib/ask/registry";
 import { suggestedQuestions } from "../lib/ask/suggestions";
@@ -124,6 +125,16 @@ const SYSTEM_RULES = [
   "If they ask something that is not about their bakery — the weather, general baking technique, their personal life, anything you have no record of — do not answer it. Say in one friendly line that you only know their own numbers, and invite them to ask something about the bakery instead.",
 ].join(" ");
 
+// What the model may set up, when the app in front of the baker can show the
+// cards. Only ever appended to the rules above for a client that said so.
+const ACTION_RULES = [
+  "You can set things up for the baker, but you never change anything yourself. The tools addTodo, createEvent, setProductPrice and setIngredientPrice each check a request against their records and prepare one exact change, which appears on their screen as a card for them to confirm. Nothing happens until they tap it.",
+  "When they ask you to add, create, open, book, plan, change, set, raise, lower or update something, call the matching tool with exactly what they said. Do not ask permission first -- the card is the permission. If the tool reports that more than one recipe or ingredient matches, ask which they meant, in one short question, and call it again with their answer.",
+  "After a tool has prepared a change, tell them in one short sentence what is waiting for their confirmation. Never say it is done, added, created, changed or updated, because it is not yet: 'I've set up tomorrow's market with 6 sourdough loaves -- confirm it below' is right; 'I've created the event' is wrong. If a tool refused, say why in their words and what would make it work.",
+  "Dates are yours to work out from today's date given above: 'tomorrow', 'Friday', 'the 15th', 'next week'. Pass them to the tools as YYYY-MM-DD.",
+  "A change is not advice. If they asked for a change, prepare it; if they asked what you think, say what you think and prepare nothing unless they then ask you to.",
+].join(" ");
+
 interface HistoryTurn {
   role: "user" | "model";
   text: string;
@@ -199,8 +210,23 @@ router.post(
     const startedAt = Date.now();
 
     try {
-      const body = req.body as { question?: unknown; history?: unknown; lastTools?: unknown };
+      const body = req.body as {
+        question?: unknown;
+        history?: unknown;
+        lastTools?: unknown;
+        canAct?: unknown;
+        today?: unknown;
+      };
       const question = typeof body.question === "string" ? body.question.trim() : "";
+      // An app that can show a confirmation card says so; one that cannot is
+      // never offered the tools that need it, so the model cannot promise a
+      // card an old build has no way to draw.
+      const canAct = body.canAct === true;
+      // the baker's own date, from their phone: the server's midnight is not theirs
+      const today =
+        typeof body.today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.today)
+          ? body.today
+          : new Date().toISOString().slice(0, 10);
       if (!question) {
         res.status(400).json({ error: "Ask a question first." });
         return;
@@ -253,13 +279,17 @@ router.post(
       // Market" and it meaning "in my whole bakery".
       const calledLast: Array<{ name: string; args: Record<string, unknown> }> = [];
 
+      // changes the model prepared, handed back for the app to show as cards
+      const proposals: Proposal[] = [];
+
       const conversation = await converseWithTools({
         apiKey,
-        toolDeclarations,
+        toolDeclarations: canAct ? [...toolDeclarations, ...actionDeclarations] : toolDeclarations,
         prompt: [
           SYSTEM_RULES,
+          canAct ? ACTION_RULES : "",
           "",
-          "Today is " + new Date().toISOString().slice(0, 10) + ".",
+          "Today is " + today + ".",
           workspace.bakeryName ? "Their bakery is called " + workspace.bakeryName + "." : "",
           previousLookups(body.lastTools),
           "",
@@ -277,6 +307,17 @@ router.post(
           log.event("ASK_BAKETLY_TOOL_REQUESTED", { tool: call.name });
           toolsUsed.push(call.name);
           calledLast.push({ name: call.name, args: call.args });
+          // an action prepares a change and hands it to the app; it never
+          // runs one, and it is only reachable when the app asked for it
+          if (canAct && isAction(call.name)) {
+            const prepared = runAction(workspace, call.name, call.args, today);
+            if (prepared.proposal) proposals.push(prepared.proposal);
+            log.event(prepared.proposal ? "ASK_BAKETLY_TOOL_SUCCESS" : "ASK_BAKETLY_TOOL_REFUSED", {
+              tool: call.name,
+              reason: prepared.proposal ? undefined : String(prepared.result.problem || "refused"),
+            });
+            return prepared.result;
+          }
           const outcome = runTool(workspace, call.name, call.args, log);
           for (const source of outcome.sources) {
             sources.set(source.kind + "|" + source.detail, source);
@@ -309,6 +350,9 @@ router.post(
         // handed back with the next question, so a follow-up keeps its subject
         lastTools: calledLast.slice(-3),
         followUps: suggestedQuestions(workspace),
+        // changes prepared for the baker to confirm; empty for an app that
+        // cannot show them, since it was never offered the tools
+        actions: proposals,
         requestId: log.requestId,
       });
     } catch (error) {

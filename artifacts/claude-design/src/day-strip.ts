@@ -108,13 +108,14 @@ export function keepDayStripInPlace(): void {
       if (place(row)) placed = row;
     });
   };
-  // Watched from the root, not the body: this runs before the app has drawn
-  // anything, and a page that rebuilds its body takes an observer on the
-  // body with it. Nothing replaces the root. And as a belt to those braces,
-  // a light tick -- settle returns at once when the row is where it should
-  // be, so the tick costs a lookup and a comparison.
+  // Watched from the document itself. This runs before the app has drawn
+  // anything, and the generated runtime draws the app by replacing the whole
+  // <html> element -- an observer on the body, or on <html>, dies with the
+  // node it watched. The Document node is never replaced. The tick below
+  // stays as a belt to those braces: settle returns at once when the row is
+  // where it should be, so it costs a lookup and a comparison.
   const observer = new MutationObserver(settle);
-  observer.observe(document.documentElement, {
+  observer.observe(document, {
     childList: true,
     subtree: true,
     attributes: true,
