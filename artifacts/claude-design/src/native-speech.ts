@@ -9,6 +9,7 @@
 // Kept as a global rather than an import because the chat screen is injected
 // source text inside a template literal and cannot import anything.
 
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { isNativeApp } from "./api";
 
 interface SpeechPlugin {
@@ -21,11 +22,31 @@ interface SpeechPlugin {
   removeAllListeners?: () => Promise<unknown>;
 }
 
+let registered: SpeechPlugin | null = null;
+
+/**
+ * The recogniser plugin, or null when the phone has none.
+ *
+ * The first version read window.Capacitor.Plugins.SpeechRecognition. Since
+ * Capacitor 3 that object only holds plugins whose JavaScript side has been
+ * registered -- and this app never imported the plugin's, so the lookup came
+ * back empty on a phone that had the recogniser installed, and the button
+ * fell through to a browser API the web view does not have. The plugin is
+ * registered here by name instead, which is all its own module does.
+ */
 function plugin(): SpeechPlugin | null {
-  const capacitor = (window as {
+  const fromWindow = (window as {
     Capacitor?: { Plugins?: { SpeechRecognition?: SpeechPlugin } };
-  }).Capacitor;
-  return capacitor?.Plugins?.SpeechRecognition ?? null;
+  }).Capacitor?.Plugins?.SpeechRecognition;
+  if (fromWindow?.start) return fromWindow;
+  if (registered) return registered;
+  try {
+    if (!Capacitor.isPluginAvailable("SpeechRecognition")) return null;
+    registered = registerPlugin<SpeechPlugin>("SpeechRecognition");
+  } catch {
+    return null;
+  }
+  return registered;
 }
 
 export interface NativeSpeech {
@@ -41,21 +62,35 @@ export interface NativeSpeech {
 /** iOS ends a recognition on its own after about a minute; this is the belt to that */
 const LONGEST_LISTEN_MS = 90_000;
 
-/** what the plugin's complaints mean to a baker */
+/** what the plugin's complaints mean to a baker; the raw words stay, for when they do not fit */
 function explain(error: unknown): string {
-  const text = String((error as { message?: unknown })?.message ?? error ?? "").toLowerCase();
+  const raw = String((error as { message?: unknown })?.message ?? error ?? "").trim();
+  const text = raw.toLowerCase();
   if (text.includes("permission") || text.includes("denied") || text.includes("not authorized")) {
     return "Baketly needs permission to use the microphone. You can allow it in Settings.";
+  }
+  if (text.includes("not implemented") || text.includes("unimplemented")) {
+    return "The microphone is not part of this build of the app.";
   }
   if (text.includes("not available") || text.includes("unavailable")) {
     return "Dictation is not available on this phone.";
   }
-  return "The microphone could not start. Try again, or type it.";
+  return "The microphone could not start" + (raw ? " (" + raw.slice(0, 120) + ")" : "") + ". Try again, or type it.";
 }
 
 export function nativeSpeech(): NativeSpeech | null {
+  if (!isNativeApp()) return null;
   const speech = plugin();
-  if (!isNativeApp() || !speech?.start) return null;
+  if (!speech?.start) {
+    // inside the app with no recogniser behind the button: say so, rather
+    // than letting the screen reach for a browser API the web view lacks
+    return {
+      async start(_onText, onError) {
+        onError("The microphone is not part of this build of the app.");
+      },
+      async stop() {},
+    };
+  }
 
   const quiet = async () => {
     // stopping a recogniser that already stopped is not a failure
@@ -88,12 +123,10 @@ export function nativeSpeech(): NativeSpeech | null {
         return;
       }
 
-      // The first version awaited start() and took its return as the end of
-      // the listening. With partial results on, start() returns the moment
-      // the engine is running, so the button flipped back to idle at once,
-      // the listeners were torn down, and whatever the baker said next was
-      // heard by nobody: "it says it didn't get anything". The end of the
-      // listening is an event, and this waits for it.
+      // With partial results on, start() returns the moment the engine is
+      // running, so awaiting it as "the end of the listening" flipped the
+      // button back to idle at once and tore the listeners down before a
+      // word was said. The end of the listening is an event, waited for here.
       await quiet();
       let finished = false;
       await new Promise<void>((resolve) => {
