@@ -55,8 +55,8 @@ const NOT_A_BAKE: Array<[RegExp, ProductCategory]> = [
   ],
   // and a chocolatier's bar is confectionery, not a bake
   [/\b(chocolate|candy|protein|energy)\s*bars?\b/, "not_food"],
-  // a lunch deal is lunch
-  [/\b(meal\s*deal|lunch\s*deal|combo|breakfast\s*deal)\b/, "savoury"],
+  // a lunch deal is lunch, and a cheeseboard biscuit is a cracker
+  [/\b(meal\s*deal|lunch\s*deal|combo|breakfast\s*deal|cheese\s*board|cheeseboard|crackers?|oatcakes?|water\s*biscuits?)\b/, "savoury"],
   // the same in Hebrew: בורקס, כריך, סנדוויץ', פיצה are lunch; קפה, לאטה,
   // קפוצ'ינו, מיץ are drinks
   [/בורקס|כריך|סנדוויץ|פיצה|סלט/, "savoury"],
@@ -86,7 +86,7 @@ const CATEGORY_WORDS: Array<[RegExp, ProductCategory]> = [
   [/פאי|טארט/, "pie"],
   [/בבקה/, "babka"],
   [/מחמצת/, "sourdough"],
-  [/לחם|חלה|חלות|באגט|פוקא?צ|בייגל|פיתה|לחמני|בריוש|ג'בטה/, "bread"],
+  [/לחם|חלה|חלות|בא?גט|פוקא?צ|בייגל|פיתה|לחמני|בריוש|ג'בטה/, "bread"],
   [/דניש|רוגלך|מאפה/, "pastry"],
   [/עוג(ה|ת|ות)(?![א-ת])/, "cake"],
   // Pastries before sourdough. "Sourdough Croissant" and "Sourdough Danish"
@@ -262,7 +262,8 @@ const BREAD_KINDS: Array<[RegExp, string]> = [
   // (לחם) מלא wholemeal, כפרי country
   [/מחמצת/, "sourdough"],
   [/חלה|חלות/, "challah"],
-  [/באגט/, "baguette"],
+  // באגט and בגט: Tel Aviv writes it both ways
+  [/בא?גט/, "baguette"],
   [/פוקא?צ/, "focaccia"],
   [/בייגל/, "bagel"],
   [/פיתה/, "pita"],

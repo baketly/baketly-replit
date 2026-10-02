@@ -163,6 +163,10 @@ test("reads a Hebrew board", () => {
   assert.equal(parseQuantity("תריסר עוגיות"), 12); // תריסר עוגיות
   // and שוקו the drink is not the start of שוקולד
   assert.equal(normalizeProduct("עוגת שוקולד").category, "cake");
+  // בגט מחמצת, spelt without the aleph, is a sourdough baguette: a baguette
+  assert.equal(normalizeProduct("בגט מחמצת").subcategory, "baguette");
+  // and a Bristol cheeseboard biscuit is a cracker, not a cookie
+  assert.equal(normalizeProduct("Stilton & Fig Cheeseboard Biscuits x6").category, "savoury");
 });
 
 // Things that are not a bake, and counts that are not counts, each of which

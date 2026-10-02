@@ -166,7 +166,7 @@ export function compareProduct(
       reading.category === "cake" || reading.category === "cheesecake" || reading.category === "pie";
     const boxish =
       !candidate.quantity &&
-      /\b(box|boxes|set|pack|bundle|platter|tray|dozen|assorted)\b|[a-z]s$/i.test(
+      /\b(box|boxes|set|pack|bundle|platter|tray|dozen|assorted)\b|[a-z]s$|מארז/i.test(
         candidate.name.trim().split(/\s*[(—–|-]\s*/)[0].trim(),
       );
     const spread = boxish ? 3 : cakeLike ? 4 : 5;
