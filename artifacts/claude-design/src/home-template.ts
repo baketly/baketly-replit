@@ -79,12 +79,21 @@ const homeController = `      ...(() => {
           ? 'You have ' + summaryParts.join(' and ') + ' today.'
           : 'Nothing booked today, and nothing on your list.';
 
-        const selected = Math.min(6, Math.max(0, Number(st.homeDayIndex) || 0));
+        // Last week, today, and the two weeks after it. The row used to be the
+        // seven days from today and nothing else, so a market from Saturday
+        // and the to-dos ticked off around it were unreachable by Monday, and
+        // nothing could be planned past next week. The row scrolls sideways
+        // now; it opens with today at the left, so the first seven days look
+        // as they always did, and the past is a swipe to the right.
+        const DAYS_BACK = 7;
+        const DAYS_AHEAD = 14;
+        const selected = Math.min(DAYS_AHEAD, Math.max(-DAYS_BACK, Number(st.homeDayIndex) || 0));
         const week = [];
-        for (let offset = 0; offset < 7; offset++) {
+        for (let offset = -DAYS_BACK; offset <= DAYS_AHEAD; offset++) {
           const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
           const key = dayKey(date);
           const isToday = offset === 0;
+          const isPast = offset < 0;
           const isPicked = offset === selected;
           week.push({
             letter: date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2),
@@ -95,12 +104,16 @@ const homeController = `      ...(() => {
             todoDotOpacity: (openTodosByDay[key] || 0) > 0 ? '1' : '0',
             todoDotColor: isPicked ? '#f5d58f' : '#d4953a',
             bg: isPicked ? 'var(--color-accent)' : (isToday ? 'var(--color-accent-100)' : 'transparent'),
-            color: isPicked ? '#ffffff' : 'var(--color-text)',
-            // every day carries its outline, so the row reads as seven
+            // a day that has gone is written more quietly, so the eye lands
+            // on today and what is still to come
+            color: isPicked ? '#ffffff' : (isPast ? '#9a947f' : 'var(--color-text)'),
+            // every day carries its outline, so the row reads as a row of
             // buttons rather than one selected day floating in space
             border: isPicked
               ? '1px solid var(--color-accent)'
-              : (isToday ? '1px solid var(--color-accent-300)' : '1px solid var(--color-neutral-400)'),
+              : (isToday
+                ? '1px solid var(--color-accent-300)'
+                : (isPast ? '1px solid var(--color-neutral-300)' : '1px solid var(--color-neutral-400)')),
             pick: () => this.setState({ homeDayIndex: offset })
           });
         }
@@ -108,8 +121,12 @@ const homeController = `      ...(() => {
         const pickedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + selected);
         const pickedLabel = selected === 0
           ? 'Today'
-          : pickedDate.toLocaleDateString('en-US', { weekday: 'long' })
-            + ', ' + pickedDate.getDate() + ' ' + pickedDate.toLocaleDateString('en-US', { month: 'long' });
+          : selected === -1
+            ? 'Yesterday'
+            : selected === 1
+              ? 'Tomorrow'
+              : pickedDate.toLocaleDateString('en-US', { weekday: 'long' })
+                + ', ' + pickedDate.getDate() + ' ' + pickedDate.toLocaleDateString('en-US', { month: 'long' });
 
         // A market that has happened opens its breakdown; one still to come
         // opens its own preview, loaded the same way the Upcoming list loads it.
@@ -227,7 +244,7 @@ const homeController = `      ...(() => {
         const addTodo = () => this.setState(s => {
           const text = String(s.todoDraft || '').trim().slice(0, 120);
           if (!text) return {};
-          const at = Math.min(6, Math.max(0, Number(s.homeDayIndex) || 0));
+          const at = Math.min(DAYS_AHEAD, Math.max(-DAYS_BACK, Number(s.homeDayIndex) || 0));
           const forDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + at);
           return { todoItems: [...(s.todoItems || []), { text, done: false, day: dayKey(forDay) }], todoDraft: '' };
         });
@@ -250,6 +267,13 @@ const homeController = `      ...(() => {
           homeDayItems: dayItems,
           homeDayHasItems: dayItems.length > 0,
           homeDayEmpty: dayItems.length === 0,
+          // a way back to today once the row has been scrolled or another
+          // day picked; the strip itself is scrolled by day-strip.ts
+          homeDayAway: selected !== 0,
+          goToday: () => {
+            this.setState({ homeDayIndex: 0 });
+            if (window.__baketlyDayStripToday) window.__baketlyDayStripToday();
+          },
 
           homeMonthLabel: now.toLocaleDateString('en-US', { month: 'long' }),
           homeProjectedStr: money(madeThisMonth + stillToCome),
@@ -380,9 +404,9 @@ ${quickAction("startNewEvent", "New<br>event", '<rect x="3" y="5" width="18" hei
 
   </div>
 
-  <div style="display:flex;gap:6px;margin-bottom:20px">
+  <div data-bk-days style="display:flex;gap:6px;margin-bottom:20px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch">
     <sc-for list="{{ homeWeek }}" as="day" hint-placeholder-count="7">
-      <div sc-camel-on-click="{{ day.pick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:30px 0 26px;border-radius:22px;cursor:pointer;background:{{ day.bg }};color:{{ day.color }};border:{{ day.border }};box-sizing:border-box">
+      <div sc-camel-on-click="{{ day.pick }}" style="flex:0 0 calc((100% - 36px) / 7);min-width:0;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:30px 0 26px;border-radius:22px;cursor:pointer;background:{{ day.bg }};color:{{ day.color }};border:{{ day.border }};box-sizing:border-box">
         <span style="font-size:17px;font-weight:600;line-height:1.1;font-feature-settings:'tnum'">{{ day.number }}</span>
         <span style="font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.7">{{ day.letter }}</span>
         <span style="display:flex;gap:3px"><span style="width:4px;height:4px;border-radius:50%;background:{{ day.dotColor }};opacity:{{ day.dotOpacity }}"></span><span style="width:4px;height:4px;border-radius:50%;background:{{ day.todoDotColor }};opacity:{{ day.todoDotOpacity }}"></span></span>
@@ -391,7 +415,10 @@ ${quickAction("startNewEvent", "New<br>event", '<rect x="3" y="5" width="18" hei
   </div>
 
 
-  <h6 style="margin:0 0 8px">{{ homeDayLabel }}</h6>
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 8px">
+    <h6 style="margin:0">{{ homeDayLabel }}</h6>
+    <sc-if value="{{ homeDayAway }}" hint-placeholder-val="{{ false }}"><button sc-camel-on-click="{{ goToday }}" style="border:0;background:none;padding:4px 0;cursor:pointer;color:var(--color-accent);font-size:12px;font-weight:600;letter-spacing:0.02em">Back to today</button></sc-if>
+  </div>
   <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
     <sc-for list="{{ homeDayItems }}" as="item" hint-placeholder-count="1">
       <div class="card" sc-camel-on-click="{{ item.open }}" style="gap:4px;padding:15px 16px;cursor:pointer">

@@ -4,6 +4,7 @@ import { apiFetch, rememberSession } from "./api";
 import { listenForSignInReturn } from "./native-auth";
 import { ensureViewport, showLoadingScreen, whenSettled } from "./loading-screen";
 import { listenForSwipeBack } from "./swipe-back";
+import { keepDayStripInPlace } from "./day-strip";
 import { keepSelectsFilled } from "./select-options";
 import { keepRemindersFresh } from "./native-reminders";
 import { nativeSpeech } from "./native-speech";
@@ -391,6 +392,7 @@ window.__baketlyDeleteAccount = async () => {
 // for a desktop and scaled down, then jumps when the app template arrives
 keepSelectsFilled();
 listenForSwipeBack();
+keepDayStripInPlace();
 ensureViewport();
 showLoadingScreen();
 window.__baketlyReady = workspaceClient.hydrate();

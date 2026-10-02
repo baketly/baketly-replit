@@ -91,6 +91,9 @@ function fieldsCanShrink(template: string): string {
       // 140px fits the date iOS writes with room to spare, and is small
       // enough to leave the fee a usable half of a phone screen. A cap
       // rather than a width: on a wider screen the share still governs.
+      // the home screen's row of days scrolls sideways; the bar it would
+      // draw under itself is noise on a row of buttons
+      "\n    [data-bk-days]::-webkit-scrollbar{display:none}" +
       "\n    .bk-pair{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:10px}" +
       "\n    .bk-pair>*{min-width:0;overflow:hidden}" +
       "\n    .bk-pair .input{max-width:100%}" +
