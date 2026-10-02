@@ -233,18 +233,12 @@ const settingsScreen = `
       </div>
 
       <!-- the sample bakery lived in Settings before the sections did; it
-           still belongs here rather than being lost to the rearrangement -->
-      <div style="border:1px solid var(--color-divider);border-radius:12px;background:#fff;padding:13px 14px;margin-top:6px">
-        <div class="text-muted" style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">Sample bakery</div>
-        <sc-if value="{{ sampleNotLoaded }}" hint-placeholder-val="{{ true }}">
-          <div class="text-muted" style="font-size:12px;line-height:1.5;margin-bottom:10px">Fill the app with a demo pantry, recipes and six months of sales, to try things out. It replaces what is here.</div>
-          <button class="btn btn-secondary" sc-camel-on-click="{{ loadSampleData }}" style="min-height:38px;font-size:12px">Load sample data</button>
-        </sc-if>
-        <sc-if value="{{ sampleLoaded }}" hint-placeholder-val="{{ false }}">
-          <div class="text-muted" style="font-size:12px;line-height:1.5;margin-bottom:10px">Sample data is loaded. Clearing it empties the pantry, recipes, sales and events.</div>
-          <button class="btn btn-secondary" sc-camel-on-click="{{ clearSampleData }}" style="min-height:38px;font-size:12px;color:#b0563e">Clear everything</button>
-        </sc-if>
-      </div>
+           no longer has buttons here, on purpose: the review account carries
+           the sample data already, and a reviewer or a baker pressing "Clear
+           everything" would have emptied it. The handlers stay in the
+           controller and the data stays wherever it was loaded; only the
+           controls went. The first line of this comment is an anchor the
+           recipe-groups section inserts itself above: leave it as it is. -->
     </div>
   </sc-if>
 
