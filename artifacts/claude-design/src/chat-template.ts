@@ -138,6 +138,16 @@ const chatControllerLogic = `      ...(() => {
           try { this.__baketlyVoice.stop(); } catch (error) {}
           this.__baketlyVoice = null;
         };
+        // One press on the mic starts the listening; pressing Send ends it
+        // and sends what was heard. The recogniser's last words can land a
+        // beat after it is told to stop, so the send waits that beat and
+        // reads the box then, not now.
+        const sendNow = () => {
+          if (!this.__baketlyVoice) { send(this.state.chatDraft); return; }
+          stopListening();
+          this.setState({ chatListening: false });
+          window.setTimeout(() => send(this.state.chatDraft), 350);
+        };
         const toggleVoice = () => {
           if (this.__baketlyVoice) { stopListening(); this.setState({ chatListening: false }); return; }
           if (native) {
@@ -185,60 +195,116 @@ const chatControllerLogic = `      ...(() => {
         //
         // The server never touches a record. It checks what was asked against
         // the bakery and hands back one exact change; the baker reads it on a
-        // card and taps Confirm, and this applies it through the same state
-        // the forms write -- a to-do with its day, a market shaped exactly as
-        // the event screen saves one, a price on the recipe, a package price
-        // on the ingredient with its history kept. Nothing happens on
-        // "Not now" except the card going away.
+        // card and taps the button, and this takes them to the thing itself
+        // so they can see it is right: a to-do lands on its day and the home
+        // screen opens on that day; a market opens as the filled-in event
+        // form, exactly as the event screen would have it, with Save still to
+        // press; a product price is applied and the recipe opened on it; a
+        // package price opens the ingredient form with the new price in it,
+        // and Save records the old one in the history the way the pantry
+        // form does. Nothing happens on "Not now" except the card going away.
         const describeDone = (action) => {
           const cur = (({ USD: '$', EUR: '€', GBP: '£', ILS: '₪' })[this.state.currency] || '');
           const m = v => cur ? cur + v : v + ' ' + (this.state.currency || '');
           if (action.type === 'addTodo') return 'Added to the list for ' + action.day + ': ' + action.text;
-          if (action.type === 'createEvent') return 'Done: ' + action.name + ' is in your Markets for ' + action.day + (action.items && action.items.length ? ', with ' + action.items.map(i => i.quantity + ' × ' + i.name).join(', ') : '') + '.';
+          if (action.type === 'createEvent') return 'Here is ' + action.name + ' for ' + action.day + (action.items && action.items.length ? ', with ' + action.items.map(i => i.quantity + ' × ' + i.name).join(', ') : '') + '. Look it over and press Save.';
           if (action.type === 'setProductPrice') return 'Done: ' + action.name + ' is now ' + m(action.to) + '.';
-          if (action.type === 'setIngredientPrice') return 'Done: ' + action.name + ' is now ' + m(action.to) + ' a package. Every recipe that uses it has moved with it.';
+          if (action.type === 'setIngredientPrice') return 'Here is ' + action.name + ' at ' + m(action.to) + ' a package. Press Save ingredient to keep it; every recipe that uses it moves with it.';
           return 'Done.';
+        };
+        // a YYYY-MM-DD read as a local day, and how many days from today it is
+        const localDay = iso => { const p = String(iso || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})/); return p ? new Date(Number(p[1]), Number(p[2]) - 1, Number(p[3])) : null; };
+        const daysFromToday = iso => {
+          const day = localDay(iso);
+          if (!day) return 0;
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          return Math.round((day.getTime() - today.getTime()) / 86400000);
         };
         const applyAction = (action, st) => {
           if (action.type === 'addTodo') {
-            return { todoItems: [...(Array.isArray(st.todoItems) ? st.todoItems : []), { text: String(action.text || '').slice(0, 120), done: false, day: action.day }] };
+            return {
+              todoItems: [...(Array.isArray(st.todoItems) ? st.todoItems : []), { text: String(action.text || '').slice(0, 120), done: false, day: action.day }],
+              // and show it: the home screen, opened on that day (the row
+              // holds last week and two weeks ahead; further out, today)
+              homeDayIndex: Math.min(14, Math.max(-7, daysFromToday(action.day))),
+              screen: 'dash',
+              stack: [],
+              sheet: false
+            };
           }
           if (action.type === 'createEvent') {
             const recipes = Array.isArray(st.recipeRecords) ? st.recipeRecords : [];
-            const plannedItems = (action.items || [])
-              .map(item => { const recipe = recipes.find(r => r.id === item.productId); return recipe ? { productId: recipe.id, name: recipe.name || 'Untitled recipe', quantity: Math.max(0, Math.round(Number(item.quantity) || 0)) } : null; })
-              .filter(item => item && item.quantity > 0);
-            const event = {
-              id: 'event-' + Date.now().toString(36),
-              name: String(action.name || 'Market').slice(0, 160),
-              occurredAt: action.day + 'T12:00:00.000Z',
-              boothFee: Math.max(0, Number(action.boothFee) || 0),
-              status: 'planned',
-              lineItems: [],
-              ...(plannedItems.length ? { plannedItems } : {})
+            const picked = [];
+            const quantities = {};
+            (action.items || []).forEach(item => {
+              const recipe = recipes.find(r => r.id === item.productId);
+              const quantity = Math.max(0, Math.round(Number(item.quantity) || 0));
+              if (!recipe || quantity <= 0 || picked.indexOf(recipe.id) !== -1) return;
+              picked.push(recipe.id);
+              quantities[recipe.id] = quantity;
+            });
+            // the same state startNewEvent sets, filled in; unsaved, so the
+            // form opens for editing and Save is the baker's to press
+            return {
+              eventOtherCosts: [],
+              eventCurrentId: 'event-' + Date.now().toString(36),
+              eventName: String(action.name || 'Market').slice(0, 160),
+              eventDate: String(action.day || '').slice(0, 10),
+              eventBoothFee: Math.max(0, Number(action.boothFee) || 0),
+              evQty: quantities,
+              evSold: {},
+              evStatus: 'planned',
+              evSaved: false,
+              actualRev: 0,
+              soldRev: 0,
+              cashQty: {},
+              cashPaid: '',
+              cashOrdersArr: [],
+              evPicked: picked,
+              evPickerOpen: false,
+              evPickerSel: [],
+              evEnteringResults: false,
+              eventDeleteOpen: false,
+              shopNeed: {},
+              shopNeedText: {},
+              editingKey: '',
+              screen: 'event',
+              stack: [...st.stack, st.screen]
             };
-            return { eventRecords: [...(Array.isArray(st.eventRecords) ? st.eventRecords : []), event] };
           }
           if (action.type === 'setProductPrice') {
-            return { recipeRecords: (Array.isArray(st.recipeRecords) ? st.recipeRecords : []).map(r => r.id === action.productId ? { ...r, price: Number(action.to) } : r) };
+            return {
+              recipeRecords: (Array.isArray(st.recipeRecords) ? st.recipeRecords : []).map(r => r.id === action.productId ? { ...r, price: Number(action.to) } : r),
+              // opened on the recipe, the way the Recipes list opens one
+              screen: 'recipeEditor',
+              editingKey: '',
+              stack: [...st.stack, st.screen],
+              activeRecipeId: action.productId,
+              recipeDraft: null,
+              recipeDeleteOpen: false,
+              ingPickerOpen: false,
+              packPickerOpen: false
+            };
           }
           if (action.type === 'setIngredientPrice') {
             const records = st.ingredientRecords || {};
-            const before = records[action.key];
-            if (!before) return {};
-            const next = { ...before, packagePrice: Math.max(0, Number(action.to) || 0), ...(Number(action.packageSize) > 0 ? { packageSize: Number(action.packageSize) } : {}) };
-            // the old price goes into the history, the way the pantry form records it
-            const priceHistory = { ...(st.priceHistory || {}) };
-            const previousSize = Math.max(0, Number(before.packageSize) || 0);
-            const entry = {
-              at: new Date().toISOString(),
-              packagePrice: Math.max(0, Number(before.packagePrice) || 0),
-              packageSize: previousSize,
-              unit: String(before.unit || next.unit || 'g').slice(0, 10),
-              unitCost: previousSize > 0 ? (Math.max(0, Number(before.packagePrice) || 0)) / previousSize : 0
+            if (!records[action.key]) return {};
+            // the record is left as it was; the new price sits in the draft,
+            // and saving the form moves the old one into the history
+            return {
+              screen: 'ingredientEdit',
+              editingKey: 'ing:' + action.key,
+              stack: [...st.stack, st.screen],
+              activeIngredientKey: action.key,
+              ingredientDraft: {
+                packagePrice: Math.max(0, Number(action.to) || 0),
+                ...(Number(action.packageSize) > 0 ? { packageSize: Number(action.packageSize) } : {})
+              },
+              ingredientSaveError: '',
+              ingredientDeleteOpen: false,
+              fromScan: false
             };
-            priceHistory[action.key] = [...(priceHistory[action.key] || []), entry].slice(-12);
-            return { ingredientRecords: { ...records, [action.key]: next }, priceHistory };
           }
           return {};
         };
@@ -254,6 +320,7 @@ const chatControllerLogic = `      ...(() => {
             chatMsgs: [...(Array.isArray(st.chatMsgs) ? st.chatMsgs : []), { who: 'b', text: line }]
           };
         });
+        const actionLabel = action => action && action.type === 'addTodo' ? 'Add' : 'Open';
         const pendingActions = (Array.isArray(this.state.chatActions) ? this.state.chatActions : []).filter(a => a && a.status === 'pending');
 
         return {
@@ -276,6 +343,7 @@ const chatControllerLogic = `      ...(() => {
           chatActions: pendingActions.map(a => ({
             key: 'a-' + a.id,
             summary: a.summary,
+            label: actionLabel(a.action),
             confirm: () => settleAction(a.id, 'done'),
             dismiss: () => settleAction(a.id, 'dismissed')
           })),
@@ -284,7 +352,7 @@ const chatControllerLogic = `      ...(() => {
           canRetry: !!this.state.chatFailed && !pending,
           chatDraft: this.state.chatDraft || '',
           setChatDraft: e => this.setState({ chatDraft: e.target.value.slice(0, 500) }),
-          sendChat: () => send(this.state.chatDraft),
+          sendChat: sendNow,
           toggleVoice,
           chatListening: this.state.chatListening === true,
           voiceLabel: this.state.chatListening === true ? 'Stop listening' : 'Speak your question',
@@ -421,7 +489,7 @@ function addActionCards(template: string): string {
     '      <div data-bk-bubble="{{ act.key }}" style="align-self:flex-start;max-width:85%;border:1px solid var(--color-accent-300);border-radius:20px 20px 20px 6px;padding:12px 16px;background:var(--color-accent-100);display:flex;flex-direction:column;gap:10px">\n' +
     '        <div style="font-size:14px;line-height:1.5">{{ act.summary }}</div>\n' +
     '        <div style="display:flex;gap:8px">\n' +
-    '          <button class="btn btn-primary" sc-camel-on-click="{{ act.confirm }}" style="min-height:40px;font-size:13px;padding:0 18px">Confirm</button>\n' +
+    '          <button class="btn btn-primary" sc-camel-on-click="{{ act.confirm }}" style="min-height:40px;font-size:13px;padding:0 18px">{{ act.label }}</button>\n' +
     '          <button class="btn btn-secondary" sc-camel-on-click="{{ act.dismiss }}" style="min-height:40px;font-size:13px;padding:0 14px">Not now</button>\n' +
     "        </div>\n" +
     "      </div>\n" +
