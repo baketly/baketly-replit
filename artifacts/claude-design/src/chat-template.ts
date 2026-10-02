@@ -335,7 +335,57 @@ const chatControllerLogic = `      ...(() => {
           };
         });
         const actionLabel = action => action && action.type === 'addTodo' ? 'Add' : 'Open';
+
+        // ---- which recipe did they mean? ---------------------------------
+        //
+        // "Six loaves and fifteen cookies" names kinds, not recipes. The
+        // server keeps the line and its quantity, and sends the recipes worth
+        // offering for it; the card asks, one question at a time, and a tap
+        // fills the line in. Nothing is applied until every question is
+        // answered and the baker presses the button, as before.
+        const answerChoice = (id, slot, option) => this.setState(st => {
+          const list = Array.isArray(st.chatActions) ? st.chatActions : [];
+          const entry = list.find(a => a.id === id);
+          if (!entry || entry.status !== 'pending') return null;
+          const action = { ...entry.action };
+          const index = String(slot || '').startsWith('item:') ? Number(String(slot).slice(5)) : -1;
+          if (index >= 0) {
+            const items = (Array.isArray(action.items) ? action.items : []).slice();
+            if (!items[index]) return null;
+            // their quantity, the recipe they picked
+            items[index] = option
+              ? { ...items[index], productId: option.id, name: option.name }
+              : null;
+            action.items = items.filter(Boolean);
+          } else if (option) {
+            if (action.type === 'setProductPrice') { action.productId = option.id; action.name = option.name; }
+            if (action.type === 'setIngredientPrice') { action.key = option.id; action.name = option.name; }
+          } else {
+            // nothing fits: the whole card goes, rather than a change to a
+            // recipe nobody picked
+            return { chatActions: list.map(a => a.id === id ? { ...a, status: 'dismissed' } : a) };
+          }
+          const left = (Array.isArray(entry.choices) ? entry.choices : []).filter(c => c.slot !== slot);
+          // dropping an item shifts the ones after it, and so their slots
+          const choices = index >= 0 && !option
+            ? left.map(c => {
+                const at = String(c.slot || '').startsWith('item:') ? Number(String(c.slot).slice(5)) : -1;
+                return at > index ? { ...c, slot: 'item:' + (at - 1) } : c;
+              })
+            : left;
+          return { chatActions: list.map(a => a.id === id ? { ...a, action, choices } : a) };
+        });
+
         const pendingActions = (Array.isArray(this.state.chatActions) ? this.state.chatActions : []).filter(a => a && a.status === 'pending');
+        const stillAsking = pendingActions.find(a => Array.isArray(a.choices) && a.choices.length);
+        const question = stillAsking ? stillAsking.choices[0] : null;
+        const readyActions = pendingActions.filter(a => !(Array.isArray(a.choices) && a.choices.length));
+
+        // a market's lineup is listed on its own card, so a line still being
+        // asked about is not folded into a sentence
+        const lineup = action => (action && action.type === 'createEvent' && Array.isArray(action.items) && action.items.length)
+          ? ', baking ' + action.items.map(i => i.quantity + ' × ' + i.name).join(', ')
+          : '';
 
         return {
           chatMsgs: shown.map((m, i) => ({
@@ -354,14 +404,36 @@ const chatControllerLogic = `      ...(() => {
             hasSources: Array.isArray(m.sources) && m.sources.length > 0
           })),
           // cards for the changes waiting on the baker
-          chatActions: pendingActions.map(a => ({
+          chatActions: readyActions.map(a => ({
             key: 'a-' + a.id,
-            summary: a.summary,
+            summary: a.summary + lineup(a.action),
             label: actionLabel(a.action),
             confirm: () => settleAction(a.id, 'done'),
             dismiss: () => settleAction(a.id, 'dismissed')
           })),
-          chatHasActions: pendingActions.length > 0,
+          chatHasActions: readyActions.length > 0,
+          // and the question standing between a card and its button
+          chatAsking: !!question,
+          chatQuestion: question ? question.question : '',
+          // a name of its own, so the question arrives with the same movement
+          // as a message and a new question is told from a redrawn one
+          chatAskKey: question && stillAsking ? 'q-' + stillAsking.id + '-' + question.slot : 'q',
+          chatAskingFor: question && stillAsking
+            ? (stillAsking.summary + lineup(stillAsking.action))
+            : '',
+          chatOptions: question
+            ? (question.options || []).slice(0, 6).map(option => ({
+              key: 'o-' + stillAsking.id + '-' + question.slot + '-' + option.id,
+              name: option.name,
+              detail: option.detail || '',
+              hasDetail: !!option.detail,
+              pick: () => answerChoice(stillAsking.id, question.slot, option)
+            }))
+            : [],
+          skipChoice: () => { if (question) answerChoice(stillAsking.id, question.slot, null); },
+          skipChoiceLabel: question && String(question.slot || '').startsWith('item:')
+            ? 'Leave it out'
+            : 'None of these',
           retryAsk: retry,
           canRetry: !!this.state.chatFailed && !pending,
           chatDraft: this.state.chatDraft || '',
@@ -465,8 +537,18 @@ function bindChatComposer(template: string): string {
   const input =
     '<div style="display:flex;gap:8px">\n    <input class="input" placeholder="Ask about your bakery…" style="flex:1">';
   if (!template.includes(input)) throw new Error("Missing chat input anchor");
+  // A box one line tall hides a spoken question as it is being spoken: the
+  // words scroll out of sight to the left and the baker cannot read back what
+  // the phone heard before sending it. A textarea grows instead, up to about
+  // five lines, and chat-grow.ts keeps its height to its content. The buttons
+  // sit at the bottom of the row so they stay beside the last line.
   const boundInput =
-    '<div style="display:flex;gap:8px;margin-top:28px">\n    <input class="input" value="{{ chatDraft }}" sc-camel-on-change="{{ setChatDraft }}" placeholder="Ask about your bakery…" aria-label="Ask about your bakery" style="flex:1">';
+    '<div style="display:flex;gap:8px;margin-top:28px;align-items:flex-end">\n    ' +
+    '<textarea class="input" data-bk-chatbox="1" value="{{ chatDraft }}" sc-camel-on-change="{{ setChatDraft }}" ' +
+    'placeholder="Ask about your bakery…" aria-label="Ask about your bakery" rows="1" maxlength="500" ' +
+    // closed here: an input is a void element and a textarea is not, and
+    // leaving it open swallowed the buttons, the row and the whole screen
+    'style="flex:1;resize:none;overflow-y:auto;max-height:124px;line-height:1.45;padding-top:11px;padding-bottom:11px;font-family:inherit"></textarea>';
   let out = template.replace(input, () => boundInput);
 
   const sendButton =
@@ -510,7 +592,23 @@ function addActionCards(template: string): string {
     '          <button class="btn btn-secondary" sc-camel-on-click="{{ act.dismiss }}" style="min-height:40px;font-size:13px;padding:0 14px">Not now</button>\n' +
     "        </div>\n" +
     "      </div>\n" +
-    "    </sc-for>\n  </div>";
+    "    </sc-for>\n" +
+    // The question a card is waiting on, with their own recipes to tap. Only
+    // ever one at a time, so it stands on its own rather than inside the card
+    // loop -- the design nests no list inside another anywhere, and this is
+    // not the screen to find out whether the engine would.
+    '    <sc-if value="{{ chatAsking }}" hint-placeholder-val="{{ false }}">\n' +
+    '      <div data-bk-bubble="{{ chatAskKey }}" style="align-self:flex-start;max-width:85%;border:1px solid var(--color-accent-300);border-radius:20px 20px 20px 6px;padding:12px 16px;background:var(--color-accent-100);display:flex;flex-direction:column;gap:10px">\n' +
+    '        <div style="font-size:14px;line-height:1.5">{{ chatAskingFor }}</div>\n' +
+    '        <div style="font-size:14px;line-height:1.5;font-weight:500">{{ chatQuestion }}</div>\n' +
+    '        <div style="display:flex;flex-wrap:wrap;gap:8px">\n' +
+    '          <sc-for list="{{ chatOptions }}" as="opt" hint-placeholder-count="0">\n' +
+    '            <button class="btn btn-secondary" sc-camel-on-click="{{ opt.pick }}" style="min-height:40px;font-size:13px;padding:0 14px;background:#fff">{{ opt.name }}</button>\n' +
+    "          </sc-for>\n" +
+    "        </div>\n" +
+    '        <button class="btn btn-ghost" sc-camel-on-click="{{ skipChoice }}" style="align-self:flex-start;min-height:34px;font-size:12px;padding:0 6px;margin-left:-6px">{{ skipChoiceLabel }}</button>\n' +
+    "      </div>\n" +
+    "    </sc-if>\n  </div>";
   return template.replace(anchor, () => cards);
 }
 

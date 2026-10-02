@@ -27,6 +27,19 @@ export type AskAction = {
   /** what will happen, in the words shown on the card */
   summary: string;
   action: { type: string } & Record<string, unknown>;
+  /**
+   * What the card asks before the change can be made: which of their recipes
+   * they meant by "loaves". Answered by tapping, not by typing it again.
+   */
+  choices?: AskChoice[];
+};
+
+export type AskChoice = {
+  /** where the answer goes: "item:0" is the first of a market's lines */
+  slot: string;
+  said: string;
+  question: string;
+  options: Array<{ id: string; name: string; detail?: string }>;
 };
 
 /** Today, as the phone sees it: the server's midnight is not the baker's. */

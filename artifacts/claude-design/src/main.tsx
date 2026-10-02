@@ -6,6 +6,7 @@ import { ensureViewport, showLoadingScreen, whenSettled } from "./loading-screen
 import { listenForSwipeBack } from "./swipe-back";
 import { keepDayStripInPlace } from "./day-strip";
 import { keepChatBubblesPopping } from "./chat-pop";
+import { keepChatBoxFitted } from "./chat-grow";
 import { keepSelectsFilled } from "./select-options";
 import { keepRemindersFresh } from "./native-reminders";
 import { nativeSpeech } from "./native-speech";
@@ -398,6 +399,7 @@ keepSelectsFilled();
 listenForSwipeBack();
 keepDayStripInPlace();
 keepChatBubblesPopping();
+keepChatBoxFitted();
 ensureViewport();
 showLoadingScreen();
 window.__baketlyReady = workspaceClient.hydrate();
