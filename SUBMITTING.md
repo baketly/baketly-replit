@@ -45,9 +45,11 @@ every screen reads "nothing yet".
 On the **live** app, not a local build:
 
 1. Sign up with an address you keep — `review@baketly.com` or similar.
-2. **Settings → Sample bakery → Load sample data.** A demo pantry, recipes and
-   six months of sales. This is the single most useful thing you can do for the
-   reviewer.
+2. The sample bakery — a demo pantry, recipes and six months of sales — is
+   already loaded on the review account and saved on the server. The Load and
+   Clear buttons were removed from Settings before submission, on purpose, so a
+   reviewer cannot wipe it. (The handlers are still in the controller; putting
+   the button back is a one-line change in `settings-template.ts`.)
 3. Run one market check from the Markets screen, so Analytics and the nearby
    prices hold real figures.
 4. Record one cash sale through the till, so the Analytics tabs are not empty.
