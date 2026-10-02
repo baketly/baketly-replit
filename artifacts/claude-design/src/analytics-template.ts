@@ -1093,8 +1093,10 @@ function addCommerceBehavior(template: string): string {
              remove: () => this.setState(st => ({ eventOtherCosts: (st.eventOtherCosts || []).filter((_, i) => i !== index) }))
            })),
            hasEventOtherCosts: draftOtherCosts.length > 0,
-           evCardMonth: (() => { const d = new Date(this.state.eventDate || Date.now()); return isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { month: 'short' }); })(),
-           evCardDay: (() => { const d = new Date(this.state.eventDate || Date.now()); return isNaN(d.getTime()) ? '' : String(d.getDate()); })(),
+           // the date is a plain YYYY-MM-DD; read as a local date, not as
+           // midnight UTC, which west of Greenwich is the evening before
+           evCardMonth: (() => { const p = String(this.state.eventDate || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})/); const d = p ? new Date(Number(p[1]), Number(p[2]) - 1, Number(p[3])) : new Date(this.state.eventDate || Date.now()); return isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { month: 'short' }); })(),
+           evCardDay: (() => { const p = String(this.state.eventDate || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})/); const d = p ? new Date(Number(p[1]), Number(p[2]) - 1, Number(p[3])) : new Date(this.state.eventDate || Date.now()); return isNaN(d.getTime()) ? '' : String(d.getDate()); })(),
            evCardSub: (() => {
              const planned = Object.keys(this.state.evQty || {}).filter(key => (Number((this.state.evQty || {})[key]) || 0) > 0).length;
              const booth = Number(this.state.eventBoothFee) || 0;
@@ -1103,7 +1105,7 @@ function addCommerceBehavior(template: string): string {
            eventOtherCostTotalStr: (({ USD: '$', EUR: '€', GBP: '£' })[this.state.currency] || '$') + draftOtherCostTotal.toFixed(2),
            addEventOtherCost: () => this.setState(st => ({ eventOtherCosts: [...(Array.isArray(st.eventOtherCosts) ? st.eventOtherCosts : []), { label: '', amount: '' }].slice(0, 20) })),
            setEventName: e => this.setState({ eventName: e.target.value.slice(0, 160) }), setEventDate: e => this.setState({ eventDate: e.target.value }), setEventBoothFee: e => this.setState({ eventBoothFee: Math.max(0, Number(e.target.value) || 0) }),
-           startNewEvent: () => this.setState(st => ({ eventOtherCosts: [], eventCurrentId: 'event-' + Date.now().toString(36), eventName: 'New market', eventDate: new Date().toISOString().slice(0, 10), eventBoothFee: 0, evQty: {}, evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, cashQty: {}, cashPaid: '', cashOrdersArr: [], screen: 'event', stack: st.stack })),
+           startNewEvent: () => this.setState(st => ({ eventOtherCosts: [], eventCurrentId: 'event-' + Date.now().toString(36), eventName: 'New market', eventDate: (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(), eventBoothFee: 0, evQty: {}, evSold: {}, evStatus: 'planned', evSaved: false, actualRev: 0, soldRev: 0, cashQty: {}, cashPaid: '', cashOrdersArr: [], screen: 'event', stack: st.stack })),
           updateRevenue: () => this.setState(st => {
             const occurredAt = (st.eventDate || '2026-09-12') + 'T12:00:00.000Z';
             const previous = (st.saleRecords || []).find(s => s.id === 'sale-' + eventId + '-direct');

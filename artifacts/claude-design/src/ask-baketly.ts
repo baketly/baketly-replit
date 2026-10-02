@@ -281,7 +281,7 @@ export function buildAskContext(
 
   return {
     currency: "USD",
-    today: new Date().toISOString().slice(0, 10),
+    today: localDay(),
     pantry: {
       ingredientCount: ingredientKeys.length,
       packagingCount: Object.keys(packagingMeta).length,

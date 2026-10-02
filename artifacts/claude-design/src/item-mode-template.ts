@@ -58,7 +58,14 @@ const modeController = `      ...(() => {
         const evSavedAlready = this.state.evSaved === true;
         const evOpenFor = openFor === 'ev:' + (this.state.eventCurrentId || '');
         const evEditing = !evSavedAlready || evOpenFor;
-        const evWhen = new Date(this.state.eventDate || Date.now());
+        // The date is a plain YYYY-MM-DD. Handed to new Date() as a string it
+        // is read as midnight UTC, and on a phone west of Greenwich that is
+        // the evening before -- the market view said Friday for a Saturday
+        // market the Markets list got right. Read as a local date instead.
+        const evParts = String(this.state.eventDate || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+        const evWhen = evParts
+          ? new Date(Number(evParts[1]), Number(evParts[2]) - 1, Number(evParts[3]))
+          : new Date(this.state.eventDate || Date.now());
         const evResultsOnly = this.state.evResultsOnly === true && this.state.evEnteringResults === true;
 
         return {
@@ -80,6 +87,16 @@ const modeController = `      ...(() => {
           evEditing,
           evPreviewing: evSavedAlready && !evOpenFor,
           editEvent: () => this.setState({ editingKey: 'ev:' + (this.state.eventCurrentId || '') }),
+          // the market's back button: to the chat when the chat opened it
+          evBackLabel: (Array.isArray(this.state.stack) && this.state.stack[this.state.stack.length - 1] === 'chat') ? 'Ask Baketly' : 'Markets',
+          evBack: () => {
+            const stack = Array.isArray(this.state.stack) ? this.state.stack : [];
+            if (stack[stack.length - 1] === 'chat') {
+              this.setState(st => ({ screen: 'chat', stack: (st.stack || []).slice(0, -1), evPickerOpen: false, evEnteringResults: false, evResultsOnly: false }));
+            } else {
+              this.go('markets');
+            }
+          },
           evDateLabel: isNaN(evWhen.getTime())
             ? ''
             : evWhen.toLocaleDateString('en-US', { weekday: 'long' }) + ', ' + evWhen.getDate()
@@ -438,9 +455,13 @@ function eventScreen(template: string): string {
   if (!template.includes(pickerStart)) throw new Error("Missing event picker anchor");
   if (!template.includes(bottomDelete)) throw new Error("Missing event bottom delete anchor");
 
+  // A market opened from the chat goes back to the chat, where the card that
+  // opened it was; one opened from the list goes back to the list.
+  const stackAwareBack =
+    '<button class="btn btn-ghost" sc-camel-on-click="{{ evBack }}" style="margin-left:-6px;min-height:44px">‹ {{ evBackLabel }}</button>';
   const header =
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
-    backButton +
+    stackAwareBack +
     '<sc-if value="{{ evShowMarketBody }}" hint-placeholder-val="{{ true }}">' +
     itemActions("editEvent", "askDeleteEvent", "event", "evPreviewing", "evCanDelete") +
     "</sc-if></div>";
