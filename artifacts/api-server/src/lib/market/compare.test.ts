@@ -123,6 +123,31 @@ test("a price eight times the baker's is a platter or a typo, not a comparable",
   assert.ok(!result.comparables.some((entry) => entry.product.price === 175));
 });
 
+// A sourdough was told "2 bakeries charge 8.10-11.00" and shown, as the one
+// example from a shop, its 5.00 listing -- a figure the range had never used.
+test("the row shown for a shop is the listing its vote was built from", () => {
+  const competitors = [
+    product("a", "Sourdough Baguette", 5, 1),
+    product("a", "Country French Sourdough", 9, 1),
+    product("a", "Fougasse Sourdough", 10, 1),
+    product("a", "Honey Whole Wheat Sourdough", 10, 1),
+    product("b", "Levain Batard", 8.1, 1),
+  ];
+  const result = compareProduct(
+    { name: "Sourdough Loaf", price: 9 },
+    competitors,
+    bakeries,
+    "USD",
+    silent,
+  );
+  assert.ok(result.stats, "expected a market");
+  const shown = oneEachBakery(result.comparables).find((entry) => entry.bakery.id === "a");
+  assert.ok(shown, "expected a row for Alpha Bakes");
+  // the shop's median sourdough is 9.50; the 5.00 baguette is not the example
+  assert.ok(shown.equivalentPrice !== 5, "showed the cheapest listing, not the one the range used");
+  assert.ok(Math.abs(shown.equivalentPrice - 9.5) <= 0.5);
+});
+
 test("four box sizes from one shop do not become four bakeries", () => {
   const competitors = [
     product("a", "6 Chocolate Chip Cookies", 21, 6),

@@ -251,14 +251,34 @@ export function compareProduct(
  * per bakery, so this is about the telling rather than the arithmetic.
  */
 export function oneEachBakery(entries: ComparableProduct[]): ComparableProduct[] {
+  // The row shown for a shop has to be the listing the range was built from.
+  //
+  // The market gives each bakery one vote, its median listing. The row used
+  // to be the cheapest of its best matches instead, so a sourdough was told
+  // "2 bakeries charge 8.10-11.00" and shown, as the example, a 5.00 loaf
+  // from one of them -- a figure the range had never used. Among a shop's
+  // best matches, the one nearest its median is the one the numbers mean.
+  const pricesByBakery = new Map<string, number[]>();
+  for (const entry of entries) {
+    const list = pricesByBakery.get(entry.bakery.id) || [];
+    list.push(entry.equivalentPrice);
+    pricesByBakery.set(entry.bakery.id, list);
+  }
+  const medianFor = (bakeryId: string): number => {
+    const sorted = [...(pricesByBakery.get(bakeryId) || [])].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+
   const best = new Map<string, ComparableProduct>();
   for (const entry of entries) {
     const held = best.get(entry.bakery.id);
+    const median = medianFor(entry.bakery.id);
     const better =
       !held ||
       entry.match.matchScore > held.match.matchScore ||
       (entry.match.matchScore === held.match.matchScore &&
-        entry.equivalentPrice < held.equivalentPrice);
+        Math.abs(entry.equivalentPrice - median) < Math.abs(held.equivalentPrice - median));
     if (better) best.set(entry.bakery.id, entry);
   }
   // the entries arrive ranked, and a Map keeps the order it was given

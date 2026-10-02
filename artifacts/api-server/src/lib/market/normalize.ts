@@ -159,6 +159,9 @@ const PASTRY_KINDS: Array<[RegExp, string]> = [
   [/\bparis\s*brest\b/, "paris_brest"],
 ];
 
+/** The kinds of loaf that are a shape or a form, rather than a dough. */
+const BREAD_FORMS = new Set(["baguette", "fougasse", "ciabatta", "focaccia", "bagel", "pita", "naan", "roll"]);
+
 const BREAD_KINDS: Array<[RegExp, string]> = [
   [/\bsourdoughs?\b/, "sourdough"],
   [/\bchallahs?\b/, "challah"],
@@ -473,6 +476,16 @@ export function normalizeProduct(
   // which loaf it is, where it is a loaf at all
   if ((category === "bread" || category === "sourdough") && !subcategory) {
     subcategory = kindOf(BREAD_KINDS);
+    // A shape beats the dough, whichever is named last. "Baguette
+    // Sourdough" is a baguette made with a starter, and it was being priced
+    // at 5.00 as a 750g sourdough loaf. Sourdough says what the dough is;
+    // baguette, fougasse, roll and the rest say what the thing is.
+    if (subcategory === "sourdough") {
+      const form = BREAD_KINDS.find(
+        ([pattern, kind]) => BREAD_FORMS.has(kind) && pattern.test(nameText),
+      );
+      if (form) subcategory = form[1];
+    }
   }
 
   // and which pastry, on the same footing

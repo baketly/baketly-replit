@@ -116,6 +116,13 @@ test("reads a French bakery's board", () => {
   // and the kind named last still wins, so a sourdough shaped as a country
   // loaf is a sourdough
   assert.equal(normalizeProduct("Country Sourdough Boule").subcategory, "sourdough");
+  // a shape beats the dough whichever is named last: "Baguette Sourdough" was
+  // priced at 5.00 as a 750g sourdough loaf
+  assert.equal(normalizeProduct("Baguette Sourdough").subcategory, "baguette");
+  assert.equal(normalizeProduct("Fougasse Sourdough").subcategory, "fougasse");
+  assert.equal(normalizeProduct("Sourdough Dinner Rolls").subcategory, "roll");
+  assert.equal(normalizeProduct("Country French Sourdough").subcategory, "sourdough");
+  assert.equal(normalizeProduct("Honey Whole Wheat Sourdough").subcategory, "sourdough");
   // a croissant made with a starter is a croissant, not a loaf
   assert.equal(normalizeProduct("Sourdough Croissant").category, "croissant");
   assert.equal(normalizeProduct("Sourdough Danish Cream Cheese").category, "pastry");
