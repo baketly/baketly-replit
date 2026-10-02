@@ -94,6 +94,8 @@ const settingsController = `      ...(() => {
           cancelDeleteAccount: () => this.setState({ accountDeleteOpen: false }),
           accountDeleteError: this.state.accountDeleteError || '',
           accountDeleting: this.state.accountDeleting === true,
+          // when this bundle was built, so the build on the phone can be told apart
+          buildStamp: (() => { const at = new Date(window.__baketlyBuiltAt || ''); return isNaN(at.getTime()) ? '' : 'Build ' + at.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); })(),
           confirmDeleteAccount: () => {
             if (this.state.accountDeleting) return;
             this.setState({ accountDeleting: true, accountDeleteError: '' });
@@ -280,6 +282,7 @@ const settingsScreen = `
     <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ false }}">
       <div class="text-muted" style="font-size:13px;line-height:1.5;padding:14px 0">You are not signed in, so nothing is being saved to your account on this device.</div>
     </sc-if>
+    <div class="text-muted" style="font-size:11px;text-align:center;margin-top:22px">{{ buildStamp }}</div>
   </sc-if>
 
   <sc-if value="{{ onBillingTab }}" hint-placeholder-val="{{ false }}">
