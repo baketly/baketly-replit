@@ -23,8 +23,5 @@ export default defineConfig({
       : {}),
   },
   preview: { port, host: '0.0.0.0', allowedHosts: true },
-  // stamped into the bundle and shown at the foot of Settings, so the build
-  // running on a phone can be told from the one just made
-  define: { __BAKETLY_BUILT_AT__: JSON.stringify(new Date().toISOString()) },
   build: { outDir: 'dist/public', emptyOutDir: true },
 });

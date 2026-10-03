@@ -10,7 +10,6 @@ import { keepChatBoxFitted } from "./chat-grow";
 import { keepSelectsFilled } from "./select-options";
 import { keepRemindersFresh } from "./native-reminders";
 import { nativeSpeech } from "./native-speech";
-import { stampBuild } from "./build-stamp";
 import { applyIngredientRecordBehavior } from "./ingredient-template";
 import { applyRecipeRecordBehavior } from "./recipe-template";
 import { applyAnalyticsBehavior } from "./analytics-template";
@@ -377,8 +376,6 @@ window.__baketlyAskContext = buildAskContext;
 window.__baketlyApiFetch = apiFetch;
 // the injected chat screen reaches the phone's own recogniser through this
 window.__baketlyNativeSpeech = nativeSpeech;
-// and Settings shows when this bundle was built
-stampBuild();
 // and the phone raises Baketly's reminders itself, topped up on every launch
 keepRemindersFresh();
 // Leaving for good: the server forgets the bakery, then the app forgets the
