@@ -484,6 +484,28 @@ function replaceRecipeEditorLogic(template: string): string {
           if (!st.activeRecipeId) return { recipeDraft: { ...blankRecipe, ...(st.recipeDraft || {}), ...update }, recipeSaveError: '' };
           return { recipeRecords: (st.recipeRecords || []).map(r => r.id === st.activeRecipeId ? { ...r, ...update } : r) };
         });
+        // ---- numbers you can actually type into ---------------------------
+        //
+        // A number field read its value back out of the record on every
+        // redraw, through the same rounding that displays it. The price was
+        // the worst of them: "8" came back as "8.00" between one keystroke and
+        // the next, the caret landed after the decimals, and emptying the box
+        // put a 0 in it before a new figure could be typed. What the baker is
+        // typing is kept as they typed it and shown back, for as long as it
+        // still means the number that is stored; the moment it does not --
+        // another recipe opened, the figure changed elsewhere -- the record
+        // wins again, so nothing stale can be left on screen. The last
+        // argument is what the record holds when the box has been cleared:
+        // zero for a price, one for a yield, which cannot be none.
+        const typing = (key, stored, shown, empty) => {
+          const raw = (this.state.recipeTyped || {})[key];
+          if (typeof raw !== 'string') return shown;
+          if (raw.trim() === '') return stored === empty ? '' : shown;
+          const asTyped = parseFloat(raw);
+          return !isNaN(asTyped) && asTyped === stored ? raw : shown;
+        };
+        const setTyped = (key, raw) => this.setState(st => ({ recipeTyped: { ...(st.recipeTyped || {}), [key]: String(raw) } }));
+
         const deleteRecipe = () => {
           if (!this.state.activeRecipeId) return;
           const id = this.state.activeRecipeId;
@@ -553,10 +575,22 @@ function replaceRecipeEditorLogic(template: string): string {
             input.value = '';
           },
           removeRecipePhoto: () => { this.setState({ recipePhotoError: '' }); updateRecipe({ photo: undefined }); },
-          recipeYield: String(y),
-          setRecipeYield: e => { const value = parseInt(e.target.value, 10); updateRecipe({ yield: isNaN(value) || value < 1 ? 1 : value }); },
-          recipeMinutes: minutes > 0 ? String(minutes) : '',
-          setRecipeMinutes: e => { const value = parseInt(e.target.value, 10); updateRecipe({ activeMinutes: isNaN(value) || value < 0 ? 0 : value }); },
+          // the same for the two beside it: clearing the box to type a new
+          // figure put the old clamp back before the first digit landed
+          recipeYield: typing('yield', y, String(y), 1),
+          setRecipeYield: e => {
+            const raw = e.target.value;
+            setTyped('yield', raw);
+            const value = parseInt(raw, 10);
+            updateRecipe({ yield: isNaN(value) || value < 1 ? 1 : value });
+          },
+          recipeMinutes: typing('minutes', minutes, minutes > 0 ? String(minutes) : '', 0),
+          setRecipeMinutes: e => {
+            const raw = e.target.value;
+            setTyped('minutes', raw);
+            const value = parseInt(raw, 10);
+            updateRecipe({ activeMinutes: isNaN(value) || value < 0 ? 0 : value });
+          },
           recipeMinutesLabel: minutes > 0 ? minutes + ' min' : 'not set',
           recipeLabourNote: minutes > 0
             ? (rate > 0
@@ -672,11 +706,22 @@ function replaceRecipeEditorLogic(template: string): string {
               packPickerConfirmLabel: selected.length ? 'Add ' + selected.length + ' item' + (selected.length === 1 ? '' : 's') : 'Select packaging'
             };
           })(),
-          newRecipeMode: isNewRecipe,
-          existingRecipeMode: !isNewRecipe,
+          // The price card has two faces: a box to type in while a recipe is
+          // being written, and a figure once it is saved. That left a saved
+          // recipe's price readable and not changeable -- the one number a
+          // baker comes back to change. Both faces are drawn from these two
+          // flags, so the box is chosen in both cases; the figure still shows
+          // on the preview above, which is a different block.
+          newRecipeMode: true,
+          existingRecipeMode: false,
           recipeSell: CUR + Number(recipe.price || 0).toFixed(2),
-          recipeSellInput: Number(recipe.price || 0).toFixed(2),
-          setRecipeSell: e => { const value = parseFloat(e.target.value); updateRecipe({ price: isNaN(value) || value < 0 ? 0 : value }); },
+          recipeSellInput: typing('price', Number(recipe.price || 0), Number(recipe.price || 0).toFixed(2), 0),
+          setRecipeSell: e => {
+            const raw = e.target.value;
+            setTyped('price', raw);
+            const value = parseFloat(raw);
+            updateRecipe({ price: isNaN(value) || value < 0 ? 0 : value });
+          },
           recipeCostPer: CUR + per.toFixed(2),
           recipeBatch: CUR + (per * y).toFixed(2),
           recipeMargin: Math.round((Number(recipe.price || 0) - per) / Math.max(Number(recipe.price || 0), 1) * 100) + '%',
