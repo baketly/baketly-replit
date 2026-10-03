@@ -193,3 +193,51 @@ The two most likely questions for this app:
 **Guideline 2.1** is explicit that the service must be running during review.
 The deployment at `baketly-app.replit.app` has to stay live from submission
 until approval. A sleeping deployment reads as a broken app.
+
+---
+
+## If Apple asks for more information (Guideline 2.1 — Information Needed)
+
+New developer accounts get this as a matter of course: a recording and six
+answers before they look properly. Reply in the Resolution Center **and** paste
+the same text into App Review Information → Notes. A reply usually turns round
+in a day or two; a silent resubmission starts the queue again.
+
+### The recording
+
+Screen Record from Control Center on an iPhone on the current iOS, starting
+before the app is opened; about five minutes; no narration needed. Start with
+a throwaway account so registration and deletion are both on film without
+touching the demo account, which reviewers come back to.
+
+1. Launch from the home screen; let the login screen show Sign in with Apple, Google and email.
+2. Register a throwaway with email and password; land on the empty home screen.
+3. Delete it: Settings → Account → Delete account → Delete everything. That is the required deletion flow.
+4. Sign in with the demo account. Home: markets, to-dos, the calendar row.
+5. Pantry: open an ingredient; `+ Ingredient` → `Scan label with photo`, point the camera at a food label, let the figures fill the form, cancel.
+6. Recipes: open one; cost per unit, price, margin; move the price.
+7. Markets: an upcoming market (lineup, fee, other costs, expected profit) and a past one (what sold, what came home, what the day made).
+8. Till (Pay): ring up two items, take cash, show the change, email the receipt.
+9. Analytics: the month; Products and Events tabs.
+10. Ask Baketly: type one question; then dictate "add 10 babkas to the next market", tap Send, show the card, tap Open.
+11. Settings → General → Reminders: turn one on, show the permission prompt.
+12. The privacy policy, then stop.
+
+Attach the video to the reply, or put it in iCloud Drive / Google Drive with
+link-sharing and paste the link.
+
+### The reply
+
+> Thank you for the review. The requested information follows; the same text has been added to the Notes field of App Review Information.
+>
+> **1. Screen recording.** Attached (or linked below). Recorded on an iPhone running the current iOS. It begins with launching the app and shows: registration of a new account with email and password; deletion of that account from Settings > Account > Delete account; signing in with the demo account; and the typical flow through the Pantry, Recipes, Markets, the Till, Analytics, Ask Baketly, Reminders and the privacy policy. The app has no user-generated content visible to other users (each baker's data is private to their own account; nothing is shared or published), so there are no reporting or blocking mechanisms to show. There is no paid content: the app is free with no in-app purchases.
+>
+> **2. Purpose and audience.** Baketly is a costing and pricing tool for home bakers and very small bakeries that sell at markets and to neighbours. Most of them do not know what a loaf or a cake actually costs them once ingredients, packaging and their own hours are counted, and they underprice as a result. Baketly keeps the pantry prices, works out the cost of each recipe per unit, shows the margin at a given price, compares it with what nearby bakeries charge for the same kind of product, plans and settles market days (what to bake, booth fee and other costs, what sold, what came home, what the day made), records cash sales at the stall with emailed receipts, and summarises it all in monthly analytics. The audience is adult hobby and micro-business bakers; it is not aimed at children.
+>
+> **3. Setup and access.** Sign-in is required. Demo account: `________` / `________` (email and password on the login screen). It is loaded with a sample pantry, recipes, upcoming and past markets and six months of sales, so every screen has data. Nothing else needs setting up. Pantry: bottom tab Pantry (Ingredients, Packaging, Recipes; "+ Ingredient" then "Scan label with photo" uses the camera). Recipes: Pantry > Recipes; open any recipe. Markets: bottom tab Markets; "+ New event" to plan one. Till: the Pay button in the tab bar. Analytics: bottom tab Analytics. Ask Baketly: the button on the Home screen; questions typed or dictated; proposed changes appear as cards to confirm. Reminders: Settings (gear on Home) > General > Reminders. Account deletion: Settings > Account > Delete account > Delete everything.
+>
+> **4. External services.** Our own API server hosted on Replit (baketly-app.replit.app), holding each user's bakery data, with Replit's object storage for photos the user adds. Authentication: Sign in with Apple, Google Sign-In, and email/password on our own server. AI: the Google Gemini API, called only from our server, for answering questions in Ask Baketly from the user's own records, reading nutrition labels photographed in the Pantry, and reading product names and prices from nearby bakeries' public web pages for the price check; the user's data is sent to Gemini only for the request being answered and is not used to train models. Location and places: the Google Places API to find bakeries near the user's chosen location, and OpenStreetMap services (Nominatim, Photon, Overpass) for place lookup; nearby prices are read from those bakeries' own public websites and shown with a link to the source page. Email: Resend, for receipts the user chooses to email and for contact-form messages. On device: Apple's speech recognition for dictation (the permission strings say Apple transcribes the audio), the camera for label scanning, and local notifications for reminders. No payment processor, no advertising SDK, no analytics or tracking SDK.
+>
+> **5. Regional differences.** The app functions the same in all regions. The interface is in English; the user chooses their currency in Settings (USD, EUR, GBP, ILS and others). The nearby price check depends on there being bakeries with public websites around the chosen location, so its results vary by place, but the feature works everywhere. Nothing is region-locked.
+>
+> **6. Regulated industry / protected material.** Not applicable. Baketly is a bookkeeping and pricing tool for the user's own baking; it is not in a regulated industry and handles no payments, medical, financial-services or legal content. It contains no third-party protected material. The nearby price check displays only a product name and a price from each bakery's public page, with a link to that page, and reproduces nothing further.
