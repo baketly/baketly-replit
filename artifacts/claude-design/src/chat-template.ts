@@ -275,7 +275,8 @@ const chatControllerLogic = `      ...(() => {
             // the same state startNewEvent sets, filled in; unsaved, so the
             // form opens for editing and Save is the baker's to press
             return {
-              eventOtherCosts: [],
+              // the costs they named beyond the fee, as the form keeps them
+              eventOtherCosts: (Array.isArray(action.otherCosts) ? action.otherCosts : []).map(cost => ({ label: String(cost.label || '').slice(0, 60), amount: String(Math.max(0, Number(cost.amount) || 0)) })),
               eventCurrentId: 'event-' + Date.now().toString(36),
               eventName: String(action.name || 'Market').slice(0, 160),
               eventDate: String(action.day || '').slice(0, 10),
@@ -331,7 +332,11 @@ const chatControllerLogic = `      ...(() => {
               eventBoothFee: action.boothFee !== undefined && action.boothFee !== null
                 ? Math.max(0, Number(action.boothFee) || 0)
                 : (Number(event.boothFee) || 0),
-              eventOtherCosts: (event.otherCosts || []).map(cost => ({ label: cost.label, amount: String(cost.amount) })),
+              // the costs it had, and the ones they are adding
+              eventOtherCosts: [
+                ...(event.otherCosts || []).map(cost => ({ label: cost.label, amount: String(cost.amount) })),
+                ...(Array.isArray(action.otherCosts) ? action.otherCosts : []).map(cost => ({ label: String(cost.label || '').slice(0, 60), amount: String(Math.max(0, Number(cost.amount) || 0)) }))
+              ],
               evPicked: picked,
               evQty: quantities,
               evSold: {},
@@ -418,6 +423,16 @@ const chatControllerLogic = `      ...(() => {
           } else if (option) {
             if (action.type === 'setProductPrice') { action.productId = option.id; action.name = option.name; }
             if (action.type === 'setIngredientPrice') { action.key = option.id; action.name = option.name; }
+            if (action.type === 'updateEvent' && option.id === '__new__' && action.asNew) {
+              // they did mean a new market after all: the change becomes the
+              // market it started as, lineup and open questions included
+              const fresh = { type: 'createEvent', name: action.asNew.name, day: action.asNew.day, boothFee: action.asNew.boothFee, otherCosts: action.asNew.otherCosts || [], items: Array.isArray(action.items) ? action.items : [] };
+              const left = (Array.isArray(entry.choices) ? entry.choices : []).filter(c => c.slot !== slot);
+              const when = localDay(fresh.day);
+              const dayWords = when ? when.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' }) : fresh.day;
+              const costWords = fresh.otherCosts.length ? ', ' + fresh.otherCosts.map(c => c.label + ' ' + CUR + c.amount).join(', ') : '';
+              return { chatActions: list.map(a => a.id === id ? { ...a, action: fresh, summary: 'Create ' + fresh.name + ' on ' + dayWords + (fresh.boothFee > 0 ? ', booth fee ' + CUR + fresh.boothFee : '') + costWords, choices: left } : a) };
+            }
             if (action.type === 'updateEvent') { action.eventId = option.id; action.eventName = option.name; }
           } else {
             // nothing fits: the whole card goes, rather than a change to a
