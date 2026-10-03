@@ -715,7 +715,14 @@ function replaceRecipeEditorLogic(template: string): string {
           newRecipeMode: true,
           existingRecipeMode: false,
           recipeSell: CUR + Number(recipe.price || 0).toFixed(2),
-          recipeSellInput: typing('price', Number(recipe.price || 0), Number(recipe.price || 0).toFixed(2), 0),
+          // A box holding "0.00" is a box you cannot type a price into: the
+          // caret lands after the decimals, so 17 arrives as 0.0017 and reads
+          // as though the pence were filling up first. A price not set yet
+          // shows nothing at all; one that is set shows the figure as it is,
+          // 17 rather than 17.00, so typing on the end of it still makes the
+          // number it looks like. The rounded figure belongs on the card
+          // above, which is read rather than typed into.
+          recipeSellInput: typing('price', Number(recipe.price || 0), Number(recipe.price || 0) > 0 ? String(Number(recipe.price)) : '', 0),
           setRecipeSell: e => {
             const raw = e.target.value;
             setTyped('price', raw);
