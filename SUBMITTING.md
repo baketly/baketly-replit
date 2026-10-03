@@ -138,14 +138,23 @@ are obvious. They are there — say so rather than hoping they are noticed.
 >
 > - **Camera.** Pantry → add an ingredient → scan a nutrition label. The
 >   photograph is read and the figures fill the form.
+> - **Microphone and speech recognition.** Home → Ask Baketly → the microphone
+>   button. One press starts listening; Send stops it and sends what was heard.
+>   Apple's own speech service transcribes it, which the privacy policy says.
 > - **Local notifications.** Settings → Reminders. A reminder before a market
 >   and before the shopping, scheduled on the device; tapping one opens the
 >   market or the shopping list it belongs to.
 > - **Sign in with Apple**, offered beside Google and email and password.
 > - The bakery is held on the device and readable without a connection.
 >
-> Account deletion: Settings → Delete my account. It removes the account, the
-> bakery and the session.
+> Ask Baketly can also set things up — a market, a to-do, a price. It never
+> changes anything itself: it prepares one exact change, shows it on a card,
+> and confirming opens the filled-in form with Save still to press. Where a
+> word fits more than one recipe or market, the card asks which, with the
+> baker's own recipes as buttons.
+>
+> Account deletion: Settings → Account → Delete account → Delete everything. It
+> removes the account, the bakery and the session.
 >
 > Nearby prices are read from other bakeries' own public websites and shown with
 > a link to the page they came from. Nothing is reproduced beyond a product name

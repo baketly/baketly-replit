@@ -9,7 +9,7 @@
 // So it lives here as structure rather than markup, and each side renders it
 // the way it renders everything else.
 
-export const PRIVACY_UPDATED = "24 September 2026";
+export const PRIVACY_UPDATED = "3 October 2026";
 
 export interface PolicyBullet {
   /** the few words in bold at the front of the line */
@@ -46,7 +46,7 @@ export const PRIVACY_SECTIONS: PolicySection[] = [
       },
       {
         lead: "Your bakery:",
-        text: "ingredients and their prices, recipes, packaging, products, photos you add to recipes, sales, markets and their results, your to-do list, and your settings. This is yours, kept so it is there on your next visit.",
+        text: "ingredients and their prices, recipes, packaging, products, photos you add to recipes, sales, markets and their results, your to-do list, and your settings. This is yours, kept so it is there on your next visit. Your conversation with Ask Baketly is kept only while the app is open, and cleared the next time you open it.",
       },
       {
         lead: "Where you sell:",
@@ -63,7 +63,11 @@ export const PRIVACY_SECTIONS: PolicySection[] = [
       },
       {
         lead: "Questions you ask Baketly",
-        text: "are sent to Google's Gemini API, together with the figures needed to answer them — for example a market's revenue and costs. Your full bakery is never sent.",
+        text: "are sent to Google's Gemini API, together with what is needed to answer them: the figures looked up for that question — a market's revenue and costs, a product's margin — and, so it can tell which thing you meant, your bakery's name, the names and dates of markets you have coming up, and the names of the recipes or ingredients your question is about. Prices, sales figures and anything else it did not need are not sent, and your bakery is never sent whole.",
+      },
+      {
+        lead: "Changes the chat sets up",
+        text: "are made on your phone, not by Google and not by us. When you ask Baketly to open a market, add a to-do or change a price, it prepares the change and shows it to you as a card; nothing is altered until you confirm it, and what it proposed is sent nowhere.",
       },
       {
         lead: "Speech,",
