@@ -73,6 +73,7 @@ declare global {
       question: string,
       history: Array<{ who: string; text: string }>,
       lastTools?: Array<{ name: string; args: Record<string, unknown> }>,
+      pending?: import("./ask-baketly").AskAction[],
     ) => Promise<import("./ask-baketly").AskAnswer>;
     __baketlyAskContext: (
       state: Record<string, unknown>,

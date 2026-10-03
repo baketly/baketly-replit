@@ -332,6 +332,8 @@ export async function askBaketly(
   question: string,
   history: Array<{ who: string; text: string }>,
   lastTools: Array<{ name: string; args: Record<string, unknown> }> = [],
+  /** the cards still waiting on screen, so "call this market…" changes that one */
+  pending: AskAction[] = [],
 ): Promise<AskAnswer> {
   const controller = new AbortController();
   // the server may call several tools before it answers
@@ -342,7 +344,19 @@ export async function askBaketly(
       headers: { "Content-Type": "application/json" },
       // canAct: this build can show a confirmation card, so the server may
       // offer the model the tools that prepare a change
-      body: JSON.stringify({ question, history: history.slice(-8), lastTools, canAct: true, today: localDay() }),
+      body: JSON.stringify({
+        question,
+        history: history.slice(-8),
+        lastTools,
+        canAct: true,
+        today: localDay(),
+        pending: pending.slice(0, 4).map((card) => ({
+          id: card.id,
+          summary: card.summary,
+          action: card.action,
+          ...(card.choices && card.choices.length ? { choices: card.choices } : {}),
+        })),
+      }),
       signal: controller.signal,
     });
     const payload = (await response.json().catch(() => ({}))) as Partial<AskAnswer> & { error?: unknown };

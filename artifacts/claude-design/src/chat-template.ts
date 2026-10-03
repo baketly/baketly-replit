@@ -48,7 +48,12 @@ const chatControllerLogic = `      ...(() => {
           // this baker's own records and works the answer out there.
           // the subject of the last answer travels with the next question
           const lastTools = Array.isArray(this.state.chatLastTools) ? this.state.chatLastTools : [];
-          window.__baketlyAsk(text, history, lastTools).then(result => {
+          // and so do the cards still waiting on screen, with whatever has
+          // been picked on them, so "call this market…" changes that market
+          const waiting = (Array.isArray(this.state.chatActions) ? this.state.chatActions : [])
+            .filter(a => a && a.status === 'pending')
+            .map(a => ({ id: a.id, summary: a.summary, action: a.action, choices: Array.isArray(a.choices) ? a.choices : [] }));
+          window.__baketlyAsk(text, history, lastTools, waiting).then(result => {
             this.setState(st => {
               if (st.chatRequest !== request) return null;
               const extra = [];
@@ -66,9 +71,17 @@ const chatControllerLogic = `      ...(() => {
                 chatFollowUps: Array.isArray(result.followUps) ? result.followUps : [],
                 chatLastTools: Array.isArray(result.lastTools) ? result.lastTools : [],
                 // changes the server prepared, shown as cards until the baker
-                // confirms or waves each one away; a new answer's cards replace
-                // any still waiting from the last one
-                chatActions: (Array.isArray(result.actions) ? result.actions : []).map(entry => ({ ...entry, status: 'pending' })),
+                // confirms or waves each one away. A card that comes back with
+                // the id of one still waiting is that card, changed -- "call
+                // this market base market" -- and takes its place; the others
+                // stay until they are dealt with, so a question in between
+                // does not lose a market half set up.
+                chatActions: (() => {
+                  const fresh = (Array.isArray(result.actions) ? result.actions : []).map(entry => ({ ...entry, status: 'pending' }));
+                  const kept = (Array.isArray(st.chatActions) ? st.chatActions : [])
+                    .filter(a => a && a.status === 'pending' && !fresh.some(f => f.id === a.id));
+                  return [...kept, ...fresh].slice(-3);
+                })(),
                 chatPending: false,
                 chatError: '',
                 chatFailed: ''
@@ -222,6 +235,7 @@ const chatControllerLogic = `      ...(() => {
           const m = v => cur ? cur + v : v + ' ' + (this.state.currency || '');
           if (action.type === 'addTodo') return 'Added to the list for ' + action.day + ': ' + action.text;
           if (action.type === 'createEvent') return 'Here is ' + action.name + ' for ' + action.day + (action.items && action.items.length ? ', with ' + action.items.map(i => i.quantity + ' × ' + i.name).join(', ') : '') + '. Look it over and press Save.';
+          if (action.type === 'updateEvent') return 'Here is ' + (action.name || action.eventName) + ' with the change in it. Look it over and press Save changes.';
           if (action.type === 'setProductPrice') return 'Done: ' + action.name + ' is now ' + m(action.to) + '.';
           if (action.type === 'setIngredientPrice') return 'Here is ' + action.name + ' at ' + m(action.to) + ' a package. Press Save ingredient to keep it; every recipe that uses it moves with it.';
           return 'Done.';
@@ -285,6 +299,50 @@ const chatControllerLogic = `      ...(() => {
               editingKey: '',
               screen: 'event',
               stack: [...st.stack, st.screen]
+            };
+          }
+          if (action.type === 'updateEvent') {
+            // the saved market, opened for editing with the change already in
+            // it, the way the Markets list opens one and the pencil unlocks it;
+            // Save changes is the baker's to press
+            const events = Array.isArray(st.eventRecords) ? st.eventRecords : [];
+            const event = events.find(e => e && e.id === action.eventId);
+            if (!event) return {};
+            const picked = [];
+            const quantities = {};
+            (event.plannedItems || []).forEach(item => {
+              if (!item || !item.productId || picked.indexOf(item.productId) !== -1) return;
+              picked.push(item.productId);
+              quantities[item.productId] = Math.max(0, Math.round(Number(item.quantity) || 0));
+            });
+            // a line already there takes the new quantity; a new one joins
+            (action.items || []).forEach(item => {
+              const quantity = Math.max(0, Math.round(Number(item.quantity) || 0));
+              if (!item.productId || quantity <= 0) return;
+              if (picked.indexOf(item.productId) === -1) picked.push(item.productId);
+              quantities[item.productId] = quantity;
+            });
+            return {
+              screen: 'event',
+              stack: [...st.stack, st.screen],
+              eventCurrentId: event.id,
+              eventName: String(action.name || event.name || 'Market').slice(0, 160),
+              eventDate: action.day || String(event.occurredAt || '').slice(0, 10),
+              eventBoothFee: action.boothFee !== undefined && action.boothFee !== null
+                ? Math.max(0, Number(action.boothFee) || 0)
+                : (Number(event.boothFee) || 0),
+              eventOtherCosts: (event.otherCosts || []).map(cost => ({ label: cost.label, amount: String(cost.amount) })),
+              evPicked: picked,
+              evQty: quantities,
+              evSold: {},
+              evStatus: event.status === 'completed' ? 'completed' : 'planned',
+              evSaved: true,
+              evEnteringResults: false,
+              evResultsOnly: false,
+              evPickerOpen: false,
+              evPickerSel: [],
+              eventDeleteOpen: false,
+              editingKey: 'ev:' + event.id
             };
           }
           if (action.type === 'setProductPrice') {
@@ -360,6 +418,7 @@ const chatControllerLogic = `      ...(() => {
           } else if (option) {
             if (action.type === 'setProductPrice') { action.productId = option.id; action.name = option.name; }
             if (action.type === 'setIngredientPrice') { action.key = option.id; action.name = option.name; }
+            if (action.type === 'updateEvent') { action.eventId = option.id; action.eventName = option.name; }
           } else {
             // nothing fits: the whole card goes, rather than a change to a
             // recipe nobody picked
@@ -383,9 +442,15 @@ const chatControllerLogic = `      ...(() => {
 
         // a market's lineup is listed on its own card, so a line still being
         // asked about is not folded into a sentence
-        const lineup = action => (action && action.type === 'createEvent' && Array.isArray(action.items) && action.items.length)
-          ? ', baking ' + action.items.map(i => i.quantity + ' × ' + i.name).join(', ')
+        const lineup = action => (action && (action.type === 'createEvent' || action.type === 'updateEvent') && Array.isArray(action.items) && action.items.length)
+          ? (action.type === 'updateEvent' ? ', with ' : ', baking ') + action.items.map(i => i.quantity + ' × ' + i.name).join(', ')
           : '';
+        // The card's words. A change to a saved market names the market, and
+        // the market may only be known once the baker has picked it, so that
+        // one is written here from the action rather than taken as sent.
+        const cardSummary = a => a.action && a.action.type === 'updateEvent'
+          ? 'Change ' + (a.action.eventName || 'that market') + (a.action.what ? ': ' + a.action.what : '') + lineup(a.action)
+          : a.summary + lineup(a.action);
 
         return {
           chatMsgs: shown.map((m, i) => ({
@@ -406,7 +471,7 @@ const chatControllerLogic = `      ...(() => {
           // cards for the changes waiting on the baker
           chatActions: readyActions.map(a => ({
             key: 'a-' + a.id,
-            summary: a.summary + lineup(a.action),
+            summary: cardSummary(a),
             label: actionLabel(a.action),
             confirm: () => settleAction(a.id, 'done'),
             dismiss: () => settleAction(a.id, 'dismissed')
@@ -418,9 +483,7 @@ const chatControllerLogic = `      ...(() => {
           // a name of its own, so the question arrives with the same movement
           // as a message and a new question is told from a redrawn one
           chatAskKey: question && stillAsking ? 'q-' + stillAsking.id + '-' + question.slot : 'q',
-          chatAskingFor: question && stillAsking
-            ? (stillAsking.summary + lineup(stillAsking.action))
-            : '',
+          chatAskingFor: question && stillAsking ? cardSummary(stillAsking) : '',
           chatOptions: question
             ? (question.options || []).slice(0, 6).map(option => ({
               key: 'o-' + stillAsking.id + '-' + question.slot + '-' + option.id,
