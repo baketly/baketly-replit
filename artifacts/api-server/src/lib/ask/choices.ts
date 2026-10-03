@@ -214,3 +214,62 @@ export function ingredientCandidatesFor(
 }
 
 export { MOST_OPTIONS };
+
+/**
+ * The same, for markets: which one did they mean?
+ *
+ * "The Saturday market", "base market", "the one on the 10th". A market is
+ * found by the words of its name and by its day; failing both, the markets
+ * still to come are offered, soonest first, since a change is almost always
+ * to one of those.
+ */
+export function eventCandidatesFor(
+  said: unknown,
+  events: Array<{ id?: string; name?: string; occurredAt?: string; status?: string }>,
+  todayIso: string,
+): Candidate[] {
+  const known = events.filter((event) => event && event.id);
+  if (!known.length) return [];
+  const query = plain(said);
+  const words = query.split(" ").filter((word) => word.length > 2);
+  const dayOf = (event: { occurredAt?: string }) => String(event.occurredAt || "").slice(0, 10);
+  const label = (event: { occurredAt?: string }) => {
+    const day = dayOf(event);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return "";
+    const when = new Date(day + "T00:00:00.000Z");
+    return when.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  };
+  const weekday = (event: { occurredAt?: string }) => {
+    const day = dayOf(event);
+    return /^\d{4}-\d{2}-\d{2}$/.test(day)
+      ? new Date(day + "T00:00:00.000Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }).toLowerCase()
+      : "";
+  };
+  const saidDay = query.match(/\b(\d{4}-\d{2}-\d{2})\b/)?.[1] || "";
+  const saidDayOfMonth = query.match(/\b(\d{1,2})(?:st|nd|rd|th)?\b/)?.[1] || "";
+
+  const scored = known.map((event) => {
+    const name = plain(event.name);
+    let score = 0;
+    if (query && name && (name === query || name.includes(query) || query.includes(name))) score += 8;
+    score += 5 * name.split(" ").filter((word) => words.some((w) => sameWord(w, word))).length;
+    if (saidDay && dayOf(event) === saidDay) score += 8;
+    if (saidDayOfMonth && String(Number(dayOf(event).slice(8, 10))) === String(Number(saidDayOfMonth))) score += 4;
+    if (weekday(event) && words.includes(weekday(event))) score += 4;
+    // what is still to come is what gets changed
+    const upcoming = dayOf(event) >= todayIso && event.status !== "completed";
+    if (upcoming) score += 1;
+    return { event, score, upcoming };
+  });
+  const matched = scored.filter((entry) => entry.score >= 4);
+  const pool = matched.length ? matched : scored.filter((entry) => entry.upcoming);
+  const fallback = pool.length ? pool : scored;
+  return fallback
+    .sort((a, b) => b.score - a.score || dayOf(a.event).localeCompare(dayOf(b.event)))
+    .slice(0, MOST_OPTIONS)
+    .map((entry) => ({
+      id: String(entry.event.id),
+      name: entry.event.name || "Market",
+      detail: label(entry.event),
+    }));
+}

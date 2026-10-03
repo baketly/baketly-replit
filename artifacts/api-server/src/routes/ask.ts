@@ -130,6 +130,8 @@ const SYSTEM_RULES = [
 const ACTION_RULES = [
   "You can set things up for the baker, but you never change anything yourself. The tools addTodo, createEvent, setProductPrice and setIngredientPrice each check a request against their records and prepare one exact change, which appears on their screen as a card for them to confirm. Nothing happens until they tap it.",
   "When they ask you to add, create, open, book, plan, change, set, raise, lower or update something, call the matching tool with exactly what they said -- their words for the product, not a recipe name you picked for them. Do not ask permission first -- the card is the permission. If what they said fits more than one recipe, or none exactly, the card asks them which with their own recipes as buttons: say in one short sentence that it is ready and they can pick below, and never ask which they meant or list their recipes yourself.",
+  "Whenever the baker refers to something you cannot pin down to one thing -- which recipe, which market, which ingredient -- do not ask them in words. Call the tool with their words as they said them; the tool puts the question on the card with the possibilities as buttons, which is faster for them than typing an answer.",
+  "Keep hold of what is already on their screen. When a card is waiting for their confirmation and their next message is about it -- 'call this market', 'make it 30 loaves', 'add a booth fee', 'actually Friday' -- change that card: call createEvent with amends set to the card's id and only what changes. Never open a second market for what is plainly the same one, and never ask again about lines they have already picked. A change to a market they saved earlier is updateEvent.",
   "After a tool has prepared a change, tell them in one short sentence what is waiting for their confirmation. Never say it is done, added, created, changed or updated, because it is not yet: 'I've set up tomorrow's market with 6 sourdough loaves -- confirm it below' is right; 'I've created the event' is wrong. If a tool refused, say why in their words and what would make it work.",
   "Dates are yours to work out from today's date given above: 'tomorrow', 'Friday', 'the 15th', 'next week'. Pass them to the tools as YYYY-MM-DD.",
   "A change is not advice. If they asked for a change, prepare it; if they asked what you think, say what you think and prepare nothing unless they then ask you to.",
@@ -189,6 +191,49 @@ function previousLookups(value: unknown): string {
   ].join("\n");
 }
 
+/**
+ * The cards the app still shows, as the app sent them back: id, summary, and
+ * the change with whatever the baker has picked so far. Only the shape is
+ * checked -- an amend starts from this, so a card nobody could have drawn is
+ * dropped rather than trusted.
+ */
+function readPending(value: unknown): Proposal[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (entry): entry is Proposal =>
+        !!entry &&
+        typeof entry === "object" &&
+        typeof (entry as Proposal).id === "string" &&
+        (entry as Proposal).id.length <= 80 &&
+        typeof (entry as Proposal).summary === "string" &&
+        !!(entry as Proposal).action &&
+        typeof (entry as Proposal).action === "object" &&
+        isAction(String((entry as Proposal).action.type)),
+    )
+    .slice(0, 4);
+}
+
+/** What is waiting on their screen, so a follow-up can be about it. */
+function pendingCards(pending: Proposal[]): string {
+  if (!pending.length) return "";
+  const lines = pending.map((card) => {
+    const action = card.action as { type: string; items?: Array<{ name: string; quantity: number }> };
+    const lineup = Array.isArray(action.items) && action.items.length
+      ? " -- lineup: " + action.items.map((item) => item.quantity + " x " + item.name).join(", ")
+      : "";
+    const open = Array.isArray(card.choices) && card.choices.length
+      ? " (still being asked which recipe for: " + card.choices.map((choice) => choice.said).join(", ") + ")"
+      : "";
+    return "- " + action.type + " [id " + card.id + "]: " + card.summary + lineup + open;
+  });
+  return [
+    "",
+    "These changes are already prepared on the baker's screen, waiting for their confirmation. If the new message is about one of them -- it, this market, that one -- change it with amends set to its id rather than preparing another:",
+    ...lines,
+  ].join("\n");
+}
+
 router.get("/ask/suggestions", requireUser, async (req: Request, res: Response) => {
   try {
     const workspace = await loadWorkspace(req.user!.id);
@@ -216,12 +261,16 @@ router.post(
         lastTools?: unknown;
         canAct?: unknown;
         today?: unknown;
+        pending?: unknown;
       };
       const question = typeof body.question === "string" ? body.question.trim() : "";
       // An app that can show a confirmation card says so; one that cannot is
       // never offered the tools that need it, so the model cannot promise a
       // card an old build has no way to draw.
       const canAct = body.canAct === true;
+      // the cards still waiting on their screen, so "call this market base
+      // market" changes the one they can see rather than opening another
+      const pending = readPending(body.pending);
       // the baker's own date, from their phone: the server's midnight is not theirs
       const today =
         typeof body.today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.today)
@@ -292,6 +341,7 @@ router.post(
           "Today is " + today + ".",
           workspace.bakeryName ? "Their bakery is called " + workspace.bakeryName + "." : "",
           previousLookups(body.lastTools),
+          canAct ? pendingCards(pending) : "",
           "",
           "The baker asks: " + question,
         ]
@@ -310,7 +360,7 @@ router.post(
           // an action prepares a change and hands it to the app; it never
           // runs one, and it is only reachable when the app asked for it
           if (canAct && isAction(call.name)) {
-            const prepared = runAction(workspace, call.name, call.args, today);
+            const prepared = runAction(workspace, call.name, call.args, today, pending);
             if (prepared.proposal) proposals.push(prepared.proposal);
             log.event(prepared.proposal ? "ASK_BAKETLY_TOOL_SUCCESS" : "ASK_BAKETLY_TOOL_REFUSED", {
               tool: call.name,

@@ -14,7 +14,7 @@
 // never sees these tools, so the model cannot promise it something it has no
 // way to display.
 
-import { candidatesFor, ingredientCandidatesFor, type Candidate } from "./choices";
+import { candidatesFor, eventCandidatesFor, ingredientCandidatesFor, type Candidate } from "./choices";
 import type { Recipe, Workspace } from "./workspace";
 
 export type Action =
@@ -25,6 +25,19 @@ export type Action =
       day: string;
       boothFee: number;
       items: Array<{ productId: string; name: string; quantity: number }>;
+    }
+  | {
+      /** a change to a market already saved; only the fields given change */
+      type: "updateEvent";
+      eventId: string;
+      eventName: string;
+      name?: string;
+      day?: string;
+      boothFee?: number;
+      /** lines to set or add; a line already in the market takes the new quantity */
+      items?: Array<{ productId: string; name: string; quantity: number }>;
+      /** the name, day and fee changes in words, for the card */
+      what: string;
     }
   | { type: "setProductPrice"; productId: string; name: string; from: number; to: number }
   | {
@@ -65,6 +78,7 @@ export interface Proposal {
 export const ACTION_NAMES = new Set([
   "addTodo",
   "createEvent",
+  "updateEvent",
   "setProductPrice",
   "setIngredientPrice",
 ]);
@@ -94,11 +108,15 @@ export const actionDeclarations = [
   {
     name: "createEvent",
     description:
-      "Prepares a new market (an event) on a given day, with what to bake for it, for the baker to confirm. Use when they ask to open, create, book, plan or set up a market or event. Products are matched to their recipes by name; if a name matches several recipes the tool says so, and you ask which.",
+      "Prepares a new market (an event) on a given day, with what to bake for it, for the baker to confirm. Use when they ask to open, create, book, plan or set up a market or event. Products are given in the baker's own words; the card asks them which recipe when a word fits several. When a market is already prepared on their screen and they are changing it -- its name, date, fee or lineup; 'call this market', 'make it 30', 'add 5 babkas' -- call this again with amends set to that market's id and only what changes, never a second market.",
     parameters: {
       type: "OBJECT",
       properties: {
-        name: { type: "STRING", description: "What to call the market. Omit to call it Market." },
+        amends: {
+          type: "STRING",
+          description: "The id of a market already prepared on their screen, when they are changing that one rather than opening another. Omit for a new market.",
+        },
+        name: { type: "STRING", description: "What to call the market. Omit to call it Market, or to leave an amended market's name alone." },
         date: { type: "STRING", description: DATE_DESCRIPTION },
         boothFee: { type: "NUMBER", description: "The booth or table fee, if they said one." },
         items: {
@@ -107,7 +125,33 @@ export const actionDeclarations = [
           items: {
             type: "OBJECT",
             properties: {
-              product: { type: "STRING", description: "A recipe's name, as they said it." },
+              product: { type: "STRING", description: "A recipe's name, in the baker's own words." },
+              quantity: { type: "NUMBER", description: "How many to bake." },
+            },
+            required: ["product", "quantity"],
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "updateEvent",
+    description:
+      "Prepares a change to a market they have already saved -- its name, date, booth fee, or what to bake for it -- for the baker to confirm. Use when they ask to change, rename, move, add to or set something on a market that exists: 'set the booth fee for Saturday's market', 'add 10 babkas to the base market', 'move the farmers market to the 17th'. Not for a market still waiting on a card: amend that with createEvent. Say which market in their words; the card asks them which when it is not clear.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        market: { type: "STRING", description: "Which market, in the baker's own words: its name, or its day. Omit only if they did not say." },
+        name: { type: "STRING", description: "A new name for the market, only if they are renaming it." },
+        date: { type: "STRING", description: "A new day for the market, as YYYY-MM-DD, only if they are moving it." },
+        boothFee: { type: "NUMBER", description: "A new booth fee, only if they said one." },
+        items: {
+          type: "ARRAY",
+          description: "Lines to set or add: each product in their words, with how many. A product already in the market takes the new quantity; a new one is added.",
+          items: {
+            type: "OBJECT",
+            properties: {
+              product: { type: "STRING", description: "A recipe's name, in the baker's own words." },
               quantity: { type: "NUMBER", description: "How many to bake." },
             },
             required: ["product", "quantity"],
@@ -311,6 +355,49 @@ function askWhich(slot: string, said: unknown, options: Candidate[]): Choice {
 }
 
 /**
+ * Puts what they said to bake into a market's lineup.
+ *
+ * A line that names one recipe goes in as that recipe. A line that fits
+ * several, or none, keeps its place and its quantity with their words standing
+ * in, and a question is added for the card to ask. A line for a recipe (or a
+ * word) already in the lineup takes the new quantity rather than doubling up:
+ * "make it 30 loaves" is a correction, not a second batch.
+ */
+function lineUp(
+  workspace: Workspace,
+  items: Array<{ productId: string; name: string; quantity: number }>,
+  choices: Choice[],
+  rawItems: unknown,
+): { ok: true } | { error: string } {
+  for (const raw of Array.isArray(rawItems) ? rawItems : []) {
+    const item = (raw || {}) as { product?: unknown; quantity?: unknown };
+    const quantity = Math.min(Math.round(Number(item.quantity) || 0), 9_999);
+    if (quantity <= 0) continue;
+    const said = String(item.product ?? "").trim() || "that";
+    const found = findByName<Recipe>(workspace.recipes, (recipe) => recipe.name || "", item.product);
+    const resolved = "one" in found ? found.one : null;
+    // the same line again: a new quantity for it
+    const existing = items.findIndex((line) =>
+      resolved ? line.productId === resolved.id : plain(line.name) === plain(said));
+    if (existing !== -1) {
+      items[existing] = { ...items[existing], quantity };
+      continue;
+    }
+    if (resolved) {
+      items.push({ productId: resolved.id, name: resolved.name, quantity });
+      continue;
+    }
+    const options = "several" in found
+      ? candidatesFor(item.product, { ...workspace, recipes: found.several })
+      : candidatesFor(item.product, workspace);
+    if (!options.length) return { error: "They have no recipes yet, so there is nothing to bake for a market." };
+    choices.push(askWhich("item:" + items.length, said, options));
+    items.push({ productId: "", name: said, quantity });
+  }
+  return { ok: true };
+}
+
+/**
  * Runs one action tool: checks the request against the workspace and either
  * prepares a change or says what stopped it. Never throws.
  */
@@ -319,6 +406,8 @@ export function runAction(
   name: string,
   args: Record<string, unknown>,
   todayIso: string,
+  /** changes already prepared on the baker's screen, for the ones that amend them */
+  pending: Proposal[] = [],
 ): ActionOutcome {
   const currency = workspace.currency || "USD";
 
@@ -334,43 +423,86 @@ export function runAction(
   }
 
   if (name === "createEvent") {
-    const when = resolveDay(args.date, todayIso);
+    // "Call this market base market and set a fee of $50" is about the
+    // market already on the card, not a new one. The model names it by id,
+    // and the change starts from what is already there -- the recipes they
+    // have picked stay picked, the questions still open stay open.
+    const amended = args.amends ? pending.find((p) => p.id === String(args.amends)) : undefined;
+    const base = amended && amended.action.type === "createEvent" ? amended.action : null;
+
+    const when = args.date !== undefined && args.date !== ""
+      ? resolveDay(args.date, todayIso)
+      : base ? { day: base.day } : resolveDay(undefined, todayIso);
     if ("error" in when) return refuse(when.error);
-    const eventName = String(args.name ?? "").trim().slice(0, 160) || "Market";
-    const boothFee = Math.max(0, Number(args.boothFee) || 0);
-    // "6 loaves and 15 cookies" names kinds, not recipes. A line that fits
-    // no one recipe keeps its place in the lineup with the words they used,
-    // and the card asks which recipe it is, offering the ones that look like
-    // what they said. The quantity is theirs either way.
-    const items: Array<{ productId: string; name: string; quantity: number }> = [];
-    const choices: Choice[] = [];
-    for (const raw of Array.isArray(args.items) ? args.items : []) {
-      const item = (raw || {}) as { product?: unknown; quantity?: unknown };
-      const quantity = Math.round(Number(item.quantity) || 0);
-      if (quantity <= 0) continue;
-      const found = findByName<Recipe>(workspace.recipes, (recipe) => recipe.name || "", item.product);
-      if ("one" in found) {
-        items.push({ productId: found.one.id, name: found.one.name, quantity: Math.min(quantity, 9_999) });
-        continue;
-      }
-      const options = "several" in found
-        // they said something that fits a few of their recipes: those are the
-        // options, in the order the shortlist would have ranked them
-        ? candidatesFor(item.product, { ...workspace, recipes: found.several })
-        : candidatesFor(item.product, workspace);
-      if (!options.length) {
-        return refuse("They have no recipes yet, so there is nothing to bake for a market.");
-      }
-      const said = String(item.product ?? "").trim() || "that";
-      choices.push(askWhich("item:" + items.length, said, options));
-      items.push({ productId: "", name: said, quantity: Math.min(quantity, 9_999) });
-    }
+    const saidName = String(args.name ?? "").trim().slice(0, 160);
+    const eventName = saidName || (base ? base.name : "Market");
+    const boothFee = args.boothFee !== undefined && args.boothFee !== null
+      ? Math.max(0, Number(args.boothFee) || 0)
+      : base ? base.boothFee : 0;
+
+    const items: Array<{ productId: string; name: string; quantity: number }> = base ? base.items.map((item) => ({ ...item })) : [];
+    const choices: Choice[] = base && amended?.choices ? amended.choices.map((choice) => ({ ...choice })) : [];
+    const lined = lineUp(workspace, items, choices, args.items);
+    if ("error" in lined) return refuse(lined.error);
+
     const fee = boothFee > 0 ? ", booth fee " + money(boothFee, currency) : "";
     // The lineup is not in the summary: the card lists it line by line, so a
     // line still being asked about can show its buttons where it stands.
-    return prepare(
+    const outcome = prepare(
       "Create " + eventName + " on " + dayLabel(when.day, todayIso) + fee,
       { type: "createEvent", name: eventName, day: when.day, boothFee, items },
+      choices,
+    );
+    if (amended && outcome.proposal) {
+      // the same card, changed, rather than a second one beside it
+      outcome.proposal.id = amended.id;
+      outcome.result.amended = true;
+      outcome.result.note = "This changes the market already on their card; it is still waiting for their confirmation. Say what it now is in one short sentence; do not say it is done.";
+    }
+    return outcome;
+  }
+
+  if (name === "updateEvent") {
+    const events = workspace.events.filter((event) => event && event.id);
+    if (!events.length) return refuse("They have no markets saved yet. A new one is set up with createEvent.");
+    const said = String(args.market ?? "").trim();
+    const options = eventCandidatesFor(said, events, todayIso);
+    // one market named plainly is that market; anything less is asked
+    const found = findByName(events, (event) => event.name || "", said);
+    const target = "one" in found
+      ? found.one
+      : said && options.length === 1 ? events.find((event) => String(event.id) === options[0].id) : undefined;
+    const choices: Choice[] = [];
+    if (!target) choices.push(askWhich("event", said || "that market", options));
+
+    const changes: string[] = [];
+    const action: Extract<Action, { type: "updateEvent" }> = {
+      type: "updateEvent",
+      eventId: target ? String(target.id) : "",
+      eventName: target ? target.name || "Market" : said || "that market",
+      what: "",
+    };
+    const newName = String(args.name ?? "").trim().slice(0, 160);
+    if (newName) { action.name = newName; changes.push("call it " + newName); }
+    if (args.date !== undefined && args.date !== "") {
+      const when = resolveDay(args.date, todayIso);
+      if ("error" in when) return refuse(when.error);
+      action.day = when.day;
+      changes.push("move it to " + dayLabel(when.day, todayIso));
+    }
+    if (args.boothFee !== undefined && args.boothFee !== null) {
+      action.boothFee = Math.max(0, Number(args.boothFee) || 0);
+      changes.push("booth fee " + money(action.boothFee, currency));
+    }
+    const items: Array<{ productId: string; name: string; quantity: number }> = [];
+    const lined = lineUp(workspace, items, choices, args.items);
+    if ("error" in lined) return refuse(lined.error);
+    if (items.length) action.items = items;
+    if (!changes.length && !items.length) return refuse("Nothing to change was said: a name, a day, a booth fee, or what to bake.");
+    action.what = changes.join(", ");
+    return prepare(
+      "Change " + action.eventName + (action.what ? ": " + action.what : ""),
+      action,
       choices,
     );
   }
