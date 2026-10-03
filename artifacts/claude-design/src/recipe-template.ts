@@ -714,6 +714,9 @@ function replaceRecipeEditorLogic(template: string): string {
           // on the preview above, which is a different block.
           newRecipeMode: true,
           existingRecipeMode: false,
+          // whether there is a recipe to delete, which the price card's two
+          // flags no longer answer now that they always choose the box
+          recipeExists: !isNewRecipe,
           recipeSell: CUR + Number(recipe.price || 0).toFixed(2),
           // A box holding "0.00" is a box you cannot type a price into: the
           // caret lands after the decimals, so 17 arrives as 0.0017 and reads

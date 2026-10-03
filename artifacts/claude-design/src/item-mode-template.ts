@@ -329,7 +329,7 @@ function recipeScreen(template: string): string {
 
   const newHeader =
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button class="btn btn-ghost" sc-camel-on-click="{{ backToRecipes }}" style="margin-left:-6px;min-height:44px">‹ Recipes</button>' +
-    itemActions("editRecipe", "requestDeleteRecipe", "recipe", "recPreviewing", "existingRecipeMode") +
+    itemActions("editRecipe", "requestDeleteRecipe", "recipe", "recPreviewing", "recipeExists") +
     "</div>";
 
   return template
