@@ -113,8 +113,12 @@ export const defaultRecipes = [
   },
 ];
 
+// A new recipe belongs to no group until the baker puts it in one. It used to
+// open in Treats, which is a guess about what they bake and a wrong one often
+// enough: a loaf filed under Treats sorts wrongly everywhere it appears, and
+// nothing on the screen says it was Baketly that chose.
 const blankRecipeSource =
-  "{ name: '', type: 'treat', icon: 'cake', price: 0, yield: 12, activeMinutes: 0, ingredientKeys: [], packagingKeys: [], amounts: {} }";
+  "{ name: '', type: '', icon: 'cake', price: 0, yield: 12, activeMinutes: 0, ingredientKeys: [], packagingKeys: [], amounts: {} }";
 
 export const packagingDefaults = {
   babkabag: { name: "Mini babka bag", supplier: "Uline", packPrice: 11, unitsPerPack: 50 },
