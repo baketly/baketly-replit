@@ -134,6 +134,8 @@ const ACTION_RULES = [
   "Keep hold of what is already on their screen. When a card is waiting for their confirmation and their next message is about it -- 'call this market', 'make it 30 loaves', 'add a booth fee', 'actually Friday' -- change that card: call createEvent with amends set to the card's id and only what changes. Never open a second market for what is plainly the same one, and never ask again about lines they have already picked. A change to a market they saved earlier is updateEvent.",
   "After a tool has prepared a change, tell them in one short sentence what is waiting for their confirmation. Never say it is done, added, created, changed or updated, because it is not yet: 'I've set up tomorrow's market with 6 sourdough loaves -- confirm it below' is right; 'I've created the event' is wrong. If a tool refused, say why in their words and what would make it work.",
   "Dates are yours to work out from today's date given above: 'tomorrow', 'Friday', 'the 15th', 'next week'. Pass them to the tools as YYYY-MM-DD.",
+  "A market the baker already has -- one named in the list of their markets below, or one they refer to as existing: 'the Saturday market', 'my base market', 'that market' -- is changed with updateEvent, with their words for which market. Never set up a new market with createEvent for something they are asking to change, and never guess which of their markets they mean: the tool puts the question on the card.",
+  "The booth fee is boothFee. Anything else a market costs them -- travel, petrol, parking, a helper's hours, a stall banner -- goes in otherCosts, each with a short label and an amount, on createEvent or updateEvent as fits.",
   "A change is not advice. If they asked for a change, prepare it; if they asked what you think, say what you think and prepare nothing unless they then ask you to.",
 ].join(" ");
 
@@ -212,6 +214,26 @@ function readPending(value: unknown): Proposal[] {
         isAction(String((entry as Proposal).action.type)),
     )
     .slice(0, 4);
+}
+
+/**
+ * The markets still to come, by name and day, so "the Saturday market" is
+ * a change to a market and not a new one. The model cannot see the records
+ * otherwise, and it was setting up a second base market to give the first
+ * a booth fee.
+ */
+function upcomingMarkets(workspace: { events: Array<{ id?: string; name?: string; occurredAt?: string; status?: string }> }, today: string): string {
+  const coming = workspace.events
+    .filter((event) => event && event.id && String(event.occurredAt || "").slice(0, 10) >= today && event.status !== "completed")
+    .sort((a, b) => String(a.occurredAt || "").localeCompare(String(b.occurredAt || "")))
+    .slice(0, 8);
+  if (!coming.length) return "";
+  const lines = coming.map((event) => {
+    const day = String(event.occurredAt || "").slice(0, 10);
+    const label = new Date(day + "T00:00:00.000Z").toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+    return "- " + (event.name || "Market") + ", " + label;
+  });
+  return ["", "Markets the baker already has coming up (a change to one of these is updateEvent):", ...lines].join("\n");
 }
 
 /** What is waiting on their screen, so a follow-up can be about it. */
@@ -341,6 +363,7 @@ router.post(
           "Today is " + today + ".",
           workspace.bakeryName ? "Their bakery is called " + workspace.bakeryName + "." : "",
           previousLookups(body.lastTools),
+          canAct ? upcomingMarkets(workspace, today) : "",
           canAct ? pendingCards(pending) : "",
           "",
           "The baker asks: " + question,

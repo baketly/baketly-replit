@@ -253,3 +253,61 @@ test("a change with nothing to change in it is refused", () => {
   assert.equal(out.proposal, null);
   assert.match(String(out.result.problem), /Nothing to change/);
 });
+
+test("a 'new' market that names one they have is a change to that one", () => {
+  // what the model did: createEvent for the base market with a fee
+  const out = runAction(withMarkets(), "createEvent", { name: "base market", boothFee: 50 }, TODAY);
+  assert.ok(out.proposal);
+  const action = out.proposal.action;
+  if (action.type !== "updateEvent") throw new Error("expected a change to the saved market, got " + action.type);
+  assert.equal(action.eventId, "e1");
+  assert.equal(action.eventName, "Base market");
+  assert.equal(action.boothFee, 50);
+  assert.equal(out.proposal.choices, undefined, "one market named plainly is not asked about");
+  assert.match(String(out.result.note), /already have this market/);
+});
+
+test("a 'new' market that looks like a saved one but on another day asks: that one, or a new one?", () => {
+  const out = runAction(withMarkets(), "createEvent", { name: "base market", date: "2026-10-24", boothFee: 50 }, TODAY);
+  assert.ok(out.proposal);
+  const choices = out.proposal.choices || [];
+  assert.equal(choices.length, 1);
+  assert.equal(choices[0].slot, "event");
+  assert.deepEqual(choices[0].options.map((option) => option.name), ["Base market", "A new market"]);
+  const action = out.proposal.action;
+  if (action.type !== "updateEvent") throw new Error("wrong action");
+  // what a new market would be, kept for the "new market" button
+  assert.deepEqual(action.asNew, { name: "base market", day: "2026-10-24", boothFee: 50, otherCosts: [] });
+});
+
+test("a market on a day that already has one, with no name said, asks too", () => {
+  const out = runAction(withMarkets(), "createEvent", { date: "2026-10-10", items: [{ product: "chocolate chip cookie", quantity: 12 }] }, TODAY);
+  assert.ok(out.proposal);
+  const choices = out.proposal.choices || [];
+  assert.equal(choices[0].slot, "event");
+  assert.deepEqual(choices[0].options.map((option) => option.name), ["Base market", "A new market"]);
+});
+
+test("a genuinely new market on a free day is set up, costs and all", () => {
+  const out = runAction(
+    withMarkets(),
+    "createEvent",
+    { name: "Harvest fair", date: "2026-11-07", boothFee: 80, otherCosts: [{ label: "parking", amount: 20 }, { label: "helper", amount: 60 }] },
+    TODAY,
+  );
+  assert.ok(out.proposal);
+  const action = out.proposal.action;
+  if (action.type !== "createEvent") throw new Error("wrong action");
+  assert.deepEqual(action.otherCosts, [{ label: "parking", amount: 20 }, { label: "helper", amount: 60 }]);
+  assert.match(out.proposal.summary, /parking ₪20, helper ₪60/);
+});
+
+test("costs beyond the booth fee can be added to a saved market", () => {
+  const out = runAction(withMarkets(), "updateEvent", { market: "riverside", otherCosts: [{ label: "petrol", amount: 35 }] }, TODAY);
+  assert.ok(out.proposal);
+  const action = out.proposal.action;
+  if (action.type !== "updateEvent") throw new Error("wrong action");
+  assert.equal(action.eventId, "e2");
+  assert.deepEqual(action.otherCosts, [{ label: "petrol", amount: 35 }]);
+  assert.equal(action.what, "petrol ₪35");
+});
