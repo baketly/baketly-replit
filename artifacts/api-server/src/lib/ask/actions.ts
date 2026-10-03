@@ -146,6 +146,10 @@ export const actionDeclarations = [
             required: ["label", "amount"],
           },
         },
+        otherCostsText: {
+          type: "STRING",
+          description: "The same other costs in words, if that is easier: 'parking 20, helper 60'. Use this or otherCosts, not both.",
+        },
         items: {
           type: "ARRAY",
           description: "What to bake for it: each product by name, with how many.",
@@ -183,6 +187,10 @@ export const actionDeclarations = [
             },
             required: ["label", "amount"],
           },
+        },
+        otherCostsText: {
+          type: "STRING",
+          description: "The same other costs in words, if that is easier: 'parking 20, helper 60'. Use this or otherCosts, not both.",
         },
         items: {
           type: "ARRAY",
@@ -393,16 +401,52 @@ function askWhich(slot: string, said: unknown, options: Candidate[]): Choice {
   return { slot, said: what, question: "Which did you mean by “" + what + "”?", options };
 }
 
-/** The other costs as said, tidied: a label and a positive amount each. */
+/**
+ * The other costs as said, tidied: a label and a positive amount each.
+ *
+ * Read leniently. The model was asked for a list of {label, amount} and did
+ * not always oblige: one object instead of a list, other key names, or the
+ * costs in words -- "parking 20, helper 60". A cost that reaches here in any
+ * of those shapes is a cost the baker said, and dropping it quietly left the
+ * card saying nothing about the parking they had just mentioned.
+ */
 function costsFrom(raw: unknown): OtherCost[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((entry) => {
-      const cost = (entry || {}) as { label?: unknown; amount?: unknown };
-      return { label: String(cost.label ?? "").trim().slice(0, 60), amount: Math.round((Number(cost.amount) || 0) * 100) / 100 };
-    })
-    .filter((cost) => cost.label && cost.amount > 0)
-    .slice(0, 12);
+  if (raw === undefined || raw === null || raw === "") return [];
+  if (typeof raw === "string") return costsFromWords(raw);
+  const list = Array.isArray(raw) ? raw : [raw];
+  const costs: OtherCost[] = [];
+  for (const entry of list) {
+    if (typeof entry === "string") {
+      costs.push(...costsFromWords(entry));
+      continue;
+    }
+    const cost = (entry || {}) as Record<string, unknown>;
+    const label = String(cost.label ?? cost.name ?? cost.what ?? cost.item ?? cost.description ?? "").trim().slice(0, 60);
+    const amount = Math.round((Number(cost.amount ?? cost.cost ?? cost.price ?? cost.value ?? cost.total) || 0) * 100) / 100;
+    if (amount > 0) costs.push({ label: label || "other cost", amount });
+  }
+  return costs.slice(0, 12);
+}
+
+/** "parking 20, petrol $35 and a helper 60" -> three costs */
+function costsFromWords(text: string): OtherCost[] {
+  const costs: OtherCost[] = [];
+  for (const piece of text.split(/,|;|\band\b|\n/i)) {
+    const amount = piece.match(/(\d+(?:[.,]\d{1,2})?)/);
+    if (!amount) continue;
+    const value = Math.round(Number(amount[1].replace(",", ".")) * 100) / 100;
+    if (!(value > 0)) continue;
+    const label = piece
+      .replace(amount[0], " ")
+      .replace(/[$€£₪]|\b(?:usd|eur|gbp|ils|nis|dollars?|shekels?|euros?|pounds?)\b/gi, " ")
+      .replace(/\b(?:a|an|the|for|of|cost|costs|fee|about|around)\b/gi, " ")
+      .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 60);
+    costs.push({ label: label || "other cost", amount: value });
+  }
+  return costs;
 }
 
 function costsText(costs: OtherCost[], currency: string): string {
@@ -499,7 +543,7 @@ export function runAction(
       ? Math.max(0, Number(args.boothFee) || 0)
       : base ? base.boothFee : 0;
 
-    const otherCosts = [...(base ? base.otherCosts || [] : []), ...costsFrom(args.otherCosts)];
+    const otherCosts = [...(base ? base.otherCosts || [] : []), ...costsFrom(args.otherCosts), ...costsFrom(args.otherCostsText)];
 
     // "Set a booth fee of $50 for the base market" came through here, as a
     // new market called base market with a fee -- a second base market
@@ -607,7 +651,7 @@ export function runAction(
       action.boothFee = Math.max(0, Number(args.boothFee) || 0);
       changes.push("booth fee " + money(action.boothFee, currency));
     }
-    const otherCosts = costsFrom(args.otherCosts);
+    const otherCosts = [...costsFrom(args.otherCosts), ...costsFrom(args.otherCostsText)];
     if (otherCosts.length) { action.otherCosts = otherCosts; changes.push(costsText(otherCosts, currency)); }
     const items: Array<{ productId: string; name: string; quantity: number }> = [];
     const lined = lineUp(workspace, items, choices, args.items);

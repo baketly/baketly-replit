@@ -311,3 +311,26 @@ test("costs beyond the booth fee can be added to a saved market", () => {
   assert.deepEqual(action.otherCosts, [{ label: "petrol", amount: 35 }]);
   assert.equal(action.what, "petrol ₪35");
 });
+
+test("other costs are read however the model sends them", () => {
+  // in words
+  const words = runAction(withMarkets(), "updateEvent", { market: "base market", otherCostsText: "parking $20, petrol 35 and a helper 60" }, TODAY);
+  assert.ok(words.proposal);
+  if (words.proposal.action.type !== "updateEvent") throw new Error("wrong action");
+  assert.deepEqual(words.proposal.action.otherCosts, [
+    { label: "parking", amount: 20 },
+    { label: "petrol", amount: 35 },
+    { label: "helper", amount: 60 },
+  ]);
+  // one object instead of a list, with other key names
+  const odd = runAction(withMarkets(), "updateEvent", { market: "base market", otherCosts: { name: "parking", cost: "20" } }, TODAY);
+  assert.ok(odd.proposal);
+  if (odd.proposal.action.type !== "updateEvent") throw new Error("wrong action");
+  assert.deepEqual(odd.proposal.action.otherCosts, [{ label: "parking", amount: 20 }]);
+  // an amount with no label is still a cost
+  const bare = runAction(withMarkets(), "updateEvent", { market: "base market", otherCosts: [{ amount: 12 }] }, TODAY);
+  assert.ok(bare.proposal);
+  if (bare.proposal.action.type !== "updateEvent") throw new Error("wrong action");
+  assert.deepEqual(bare.proposal.action.otherCosts, [{ label: "other cost", amount: 12 }]);
+  assert.equal(bare.proposal.action.what, "other cost ₪12");
+});

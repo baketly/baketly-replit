@@ -377,7 +377,10 @@ router.post(
         budgetMs: 55_000,
         maxRounds: 4,
         runTool: async (call) => {
-          log.event("ASK_BAKETLY_TOOL_REQUESTED", { tool: call.name });
+          // the argument names too, never the values: whether the model filled
+          // otherCosts or not is the difference between a cost on the card and
+          // a baker saying the parking was ignored
+          log.event("ASK_BAKETLY_TOOL_REQUESTED", { tool: call.name, args: Object.keys(call.args || {}).join(",") });
           toolsUsed.push(call.name);
           calledLast.push({ name: call.name, args: call.args });
           // an action prepares a change and hands it to the app; it never
