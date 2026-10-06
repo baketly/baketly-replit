@@ -20,17 +20,22 @@ with Capacitor, and talks to an Express API in `artifacts/api-server`.
 - It was submitted, and Apple replied with **Guideline 2.1 – Information
   Needed**: a routine hold on new developer accounts asking for a screen
   recording and six written answers. Not a verdict on the app.
-- **Build 2** is in TestFlight. **Build 3** is what the repo is set to now
-  (`CURRENT_PROJECT_VERSION = 3`, `MARKETING_VERSION = 1.0`) and is the one to
-  archive: it carries every fix listed below.
+- **Build 4 is uploaded** and is the one to submit: it carries every fix listed
+  below. The repo is set to match (`CURRENT_PROJECT_VERSION = 4`,
+  `MARKETING_VERSION = 1.0`). Build 2 is in TestFlight.
+- It went up as 4 rather than 3 because Xcode's upload flow ticks **Manage
+  Version and Build Number** by default, which bumps the build number when the
+  one being uploaded already exists. It does this quietly. If a number ever
+  jumps again, that is why, and the repo has to be brought up to match or the
+  next archive collides and jumps again.
 - The version string in Xcode must read exactly what App Store Connect shows
   for the version — `1.0`, not `1`. A build whose version string differs is
   never offered in that version's Build picker.
 
 ### What still has to happen
 
-1. Rebuild and sync on the Mac, archive, upload build 3.
-2. Attach build 3 to version 1.0.
+1. ~~Rebuild and sync, archive, upload.~~ Done — build 4 is uploaded.
+2. Attach build 4 to version 1.0.
 3. Paste the reply (below) into **App Review Information → Notes**, with the
    demo account in its own two fields.
 4. Record the video on the phone, on that build.
