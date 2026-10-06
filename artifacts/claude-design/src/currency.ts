@@ -90,27 +90,78 @@ function bindCurrencyControl(template: string): string {
 }
 
 /**
- * The page formats money through two helpers of its own, both declared inside
+ * The page formats money through three helpers of its own, all declared inside
  * renderVals(). Everything they produce — the Markets estimate, recipe prices,
- * pantry unit costs — was dollars regardless of the setting.
+ * pantry unit costs, and every figure on the till — was dollars regardless of
+ * the setting.
  */
 function bindPageHelpers(template: string): string {
-  const helpers: Array<[string, string, string]> = [
+  // What the page declares, what it should say instead, a name for the error,
+  // and how many times it appears. The count is part of the anchor: a helper
+  // that quietly stops matching is how the till kept printing dollars through
+  // two rounds of currency work.
+  const helpers: Array<[string, string, string, number]> = [
     [
       "const $r = n => '$' + Math.round(n).toLocaleString();",
       `const $r = n => ${currencySymbolExpr} + Math.round(n).toLocaleString();`,
       "rounded",
+      1,
     ],
     [
       "const fmt = n => '$' + (Number.isInteger(n) ? n : n.toFixed(2));",
       `const fmt = n => ${currencySymbolExpr} + (Number.isInteger(n) ? n : n.toFixed(2));`,
       "exact",
+      1,
+    ],
+    // The till's own formatter, declared beside $r in the same block. It was
+    // missed when the other two were bound, so the one screen a customer
+    // watches over the baker's shoulder — the basket, the charge button, the
+    // change owed — stayed in dollars while the rest of the app changed.
+    [
+      "const $ = n => '$' + n.toFixed(2);",
+      `const $ = n => ${currencySymbolExpr} + n.toFixed(2);`,
+      "till",
+      1,
+    ],
+    // The notes a customer hands over. Only the label is anchored on: the
+    // condition beside it is rewritten by the sale patch before this runs.
+    [
+      "opts.push({ label: '$' + v, v });",
+      `opts.push({ label: ${currencySymbolExpr} + v, v });`,
+      "tender",
+      1,
+    ],
+    // What the done screen shows before a sale has landed in it.
+    [
+      "doneTotal: posDone ? $(posDone.total) : '$0.00',",
+      `doneTotal: posDone ? $(posDone.total) : ${currencySymbolExpr} + '0.00',`,
+      "done total",
+      1,
+    ],
+    // A product's price, as it reads beside its name: the market lineup, the
+    // same lineup on a new event, and the till's cash rows. These sit in the
+    // same statements as costs the helpers above already fixed, so leaving
+    // them made a single row say "cost £1.24" and "$3.25" side by side.
+    [
+      "priceStr: '$' + p.price,",
+      `priceStr: ${currencySymbolExpr} + p.price,`,
+      "lineup price",
+      3,
+    ],
+    [
+      "priceStr: '$' + r.sell,",
+      `priceStr: ${currencySymbolExpr} + r.sell,`,
+      "till price",
+      1,
     ],
   ];
   let out = template;
-  for (const [from, to, label] of helpers) {
-    if (!out.includes(from)) throw new Error(`Missing page money helper: ${label}`);
-    out = out.replace(from, () => to);
+  for (const [from, to, label, count] of helpers) {
+    const found = out.split(from).length - 1;
+    if (found !== count) {
+      throw new Error(`Page money helper ${label}: expected ${count}, found ${found}`);
+    }
+    out = out.split(from).join(to);
   }
   return out;
 }
